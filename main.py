@@ -1,4 +1,5 @@
 from flask import Flask
+import requests
 from flask import request
 
 app = Flask(__name__)
@@ -7,10 +8,15 @@ app = Flask(__name__)
 def hello_world():
     return "<p>Hello, World!</p>"
 
-@app.route("/data/<id>")
-def get_data(id):
-    data = request.args.get('data')
+@app.route("/register/<discord_id>")
+def get_data(discord_id):
+    
+
+
 
 
     
-    return f'data:{data}, id:{id}'
+
+
+    
+    return ''
