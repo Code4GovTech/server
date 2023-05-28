@@ -38,11 +38,17 @@ def register(discord_userdata):
 
     #Check if the user is registered
     supabase_client = SupabaseInterface(url=url, key=key)
-    if supabase_client.user_exists(discord_id=discord_id):
-        print('true')
-        authenticated_url = f'{os.getenv("HOST")}/already_authenticated'
-        return redirect(authenticated_url)
-
+    if role == 'mentor':
+        if supabase_client.mentor_exists(discord_id=discord_id):
+            print('true')
+            authenticated_url = f'{os.getenv("HOST")}/already_authenticated'
+            return redirect(authenticated_url)
+    elif role == 'contributor':
+        if supabase_client.contributor_exists(discord_id=discord_id):
+            print('true')
+            authenticated_url = f'{os.getenv("HOST")}/already_authenticated'
+            return redirect(authenticated_url)
+        
     #get github ID
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
     data = {
@@ -64,15 +70,59 @@ def register(discord_userdata):
     github_username = user.json()["login"]
 
 
-    #adding to the database
-    supabase_client.add_user({
+    user_data = {
         "discord_id": int(discord_id),
         "github_id": github_id,
         "github_url": f"https://github.com/{github_username}",
         "discord_username": discord_username,
-        "role": role
-    })
+    }
 
+    #adding to the database
+    if role == 'mentor':
+        supabase_client.add_mentor(user_data)
+    elif role == 'contributor':
+        supabase_client.add_contributor(user_data)
     
 
     return render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
+
+@app.route("/metrics/discord", methods = ['POST'])
+def discord_metrics():
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    request_data = request.json
+    discord_data = []
+    for product_name, value in request_data.items():
+        data = {
+            "product_name" : product_name,
+            "mentor_messages" : value['mentor_messages'],
+            "contributor_messages": value['contributor_messages']     
+        }
+        discord_data.append(data)
+
+    supabase_client = SupabaseInterface(url=url, key=key)
+    data = supabase_client.add_discord_metrics(discord_data)
+    return data.data
+
+@app.route("/metrics/github", methods = ['POST'])
+def github_metrics():
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    request_data = request.json
+    github_data = []
+    for product_name, value in request_data.items():
+        data = {
+            "product_name" : product_name,
+            "open_prs" : value['open_prs'],
+            "closed_prs": value['closed_prs'],
+            "open_issues": value['open_issues'],
+            "closed_issues": value['closed_issues'],
+            "number_of_commits": value['number_of_commits'],           
+        }
+        github_data.append(data)
+
+    supabase_client = SupabaseInterface(url, key)
+    data = supabase_client.add_github_metrics(github_data)
+    return data.data
+    
+    
