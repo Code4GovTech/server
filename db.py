@@ -14,26 +14,37 @@ class SupabaseInterface:
         self.supabase_key = key
         self.client: Client = create_client(self.supabase_url, self.supabase_key)
     
-    def add_user(self, userdata):
+    def add_mentor(self, userdata):
         
-        data = self.client.table("users").insert(userdata).execute()
+        data = self.client.table("mentors").insert(userdata).execute()
         print(data.data)
         return data
     
-    def user_exists(self, discord_id):
-        data = self.client.table("users").select("*").eq("discord_id", discord_id).execute()
+    def add_contributor(self, userdata):
+        
+        data = self.client.table("contributors").insert(userdata).execute()
+        print(data.data)
+        return data
+    
+    def mentor_exists(self, discord_id):
+        data = self.client.table("mentors").select("*").eq("discord_id", discord_id).execute()
         if len(data.data)>0:
             return True
         else:
             return False
+        
+    def contributor_exists(self, discord_id):
+        data = self.client.table("contributors").select("*").eq("discord_id", discord_id).execute()
+        if len(data.data)>0:
+            return True
+        else:
+            return False
+    
+    def add_discord_metrics(self, discord_metrics):
+        data = self.client.table("discord_metrics").insert(discord_metrics).execute()
+        return data
 
+    def add_github_metrics(self, github_metrics):
+        data = self.client.table("github_metrics").insert(github_metrics).execute()
+        return data
                     
-
-tester = SupabaseInterface(url,key)
-# tester.add_user({
-#     "discord_id": 476285280811483140,
-#     "github_id": 74085496
-
-# })
-
-print(tester.user_exists(476285280811483141))

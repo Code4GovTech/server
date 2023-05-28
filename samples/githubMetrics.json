@@ -1,0 +1,23 @@
+{
+    "text2sql": {
+        "open_prs" : 1,
+        "closed_prs": 2,
+        "open_issues": 3,
+        "closed_issues": 0,
+        "number_of_commits": 64
+    },
+    "beckn": {
+        "open_prs" : 6,
+        "closed_prs": 2,
+        "open_issues": 32,
+        "closed_issues": 0,
+        "number_of_commits": 6  
+    },
+    "cqube": {
+        "open_prs" : 10,
+        "closed_prs": 2,
+        "open_issues": 13,
+        "closed_issues": 10,
+        "number_of_commits": 128  
+    }
+}

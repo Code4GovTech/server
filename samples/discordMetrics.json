@@ -1,0 +1,14 @@
+{
+    "cqube": {
+        "mentor_messages" : 1,
+        "contributor_messages": 20
+    },
+    "text2sql": {
+        "mentor_messages" : 30,
+        "contributor_messages": 12
+    },
+    "beckn": {
+        "mentor_messages" : 22,
+        "contributor_messages": 201
+    }
+}
