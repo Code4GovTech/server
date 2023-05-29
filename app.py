@@ -12,6 +12,7 @@ app = Flask(__name__)
 app.config['TESTING']= True
 app.config['SECRET_KEY']=os.getenv("FLASK_SESSION_KEY")
 
+
 @app.route("/")
 def hello_world():
     return "<p>Hello, World!</p>"
@@ -30,15 +31,13 @@ def authenticate(discord_userdata):
 #this is where github calls back to
 @app.route("/register/<discord_userdata>")
 def register(discord_userdata):
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
 
     #Extrapolate discord data from callback
     #$ sign is being used as separator
     [discord_id, discord_username, role] = discord_userdata.split('$')
 
     #Check if the user is registered
-    supabase_client = SupabaseInterface(url=url, key=key)
+    supabase_client = SupabaseInterface()
     if role == 'mentor':
         if supabase_client.mentor_exists(discord_id=discord_id):
             print('true')
@@ -89,8 +88,6 @@ def register(discord_userdata):
 
 @app.route("/metrics/discord", methods = ['POST'])
 def discord_metrics():
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
     request_data = json.loads(request.json)
     # print(request_data, type(request_data))
     discord_data = []
@@ -104,14 +101,12 @@ def discord_metrics():
         }
         discord_data.append(data)
 
-    supabase_client = SupabaseInterface(url=url, key=key)
+    supabase_client = SupabaseInterface()
     data = supabase_client.add_discord_metrics(discord_data)
     return data.data
 
 @app.route("/metrics/github", methods = ['POST'])
 def github_metrics():
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
     request_data = json.loads(request.json)
     metrics = request_data["metrics"]
     github_data = []
@@ -126,7 +121,7 @@ def github_metrics():
         }
         github_data.append(data)
 
-    supabase_client = SupabaseInterface(url, key)
+    supabase_client = SupabaseInterface()
     data = supabase_client.add_github_metrics(github_data)
     return data.data
     

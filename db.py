@@ -9,9 +9,9 @@ dotenv.load_dotenv(".env")
 # key: str = os.getenv("SUPABASE_KEY")
 
 class SupabaseInterface:
-    def __init__(self, url, key) -> None:
-        self.supabase_url = url
-        self.supabase_key = key
+    def __init__(self) -> None:
+        self.supabase_url = os.getenv("SUPABASE_URL")
+        self.supabase_key = os.getenv("SUPABASE_KEY")
         self.client: Client = create_client(self.supabase_url, self.supabase_key)
     
     def add_mentor(self, userdata):
