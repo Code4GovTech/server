@@ -41,10 +41,22 @@ class SupabaseInterface:
             return False
     
     def add_discord_metrics(self, discord_metrics):
-        data = self.client.table("discord_metrics").insert(discord_metrics).execute()
+
+        for metric in discord_metrics:
+            data = self.client.table("discord_metrics").select("*").eq("product_name", metric["product_name"]).execute()
+            if len(data.data)>0:
+                data = self.client.table("discord_metrics").update({"mentor_messages": metric["mentor_messages"], "contributor_messages": metric["contributor_messages"]}).eq("product_name", metric["product_name"]).execute()
+            else:
+                data = self.client.table("discord_metrics").insert(metric).execute()
         return data
 
     def add_github_metrics(self, github_metrics):
-        data = self.client.table("github_metrics").insert(github_metrics).execute()
+        for metric in github_metrics:
+            data = data = self.client.table("github_metrics").select("*").eq("product_name", metric["product_name"]).execute()
+            if len(data.data)>0:
+                #this is updatating product name which is bad
+                data = self.client.table("github_metrics").update(metric).eq("product_name", metric["product_name"]).execute()
+            else:
+                data = self.client.table("github_metrics").insert(metric).execute()
         return data
                     
