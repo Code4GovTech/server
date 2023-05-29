@@ -5,8 +5,8 @@ import dotenv
 
 dotenv.load_dotenv(".env")
 
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
+# url: str = os.getenv("SUPABASE_URL")
+# key: str = os.getenv("SUPABASE_KEY")
 
 class SupabaseInterface:
     def __init__(self, url, key) -> None:

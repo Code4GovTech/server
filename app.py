@@ -4,6 +4,7 @@ from flask import request
 import dotenv
 import os
 from db import SupabaseInterface
+import json
 
 dotenv.load_dotenv(".env")
 
@@ -90,9 +91,12 @@ def register(discord_userdata):
 def discord_metrics():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
-    request_data = request.json
+    request_data = json.loads(request.json)
+    # print(request_data, type(request_data))
     discord_data = []
-    for product_name, value in request_data.items():
+    last_measured = request_data["measured_at"]
+    metrics = request_data["metrics"]
+    for product_name, value in metrics.items():
         data = {
             "product_name" : product_name,
             "mentor_messages" : value['mentor_messages'],
@@ -108,9 +112,10 @@ def discord_metrics():
 def github_metrics():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
-    request_data = request.json
+    request_data = json.loads(request.json)
+    metrics = request_data["metrics"]
     github_data = []
-    for product_name, value in request_data.items():
+    for product_name, value in metrics.items():
         data = {
             "product_name" : product_name,
             "open_prs" : value['open_prs'],
