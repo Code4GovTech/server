@@ -1,0 +1,7 @@
+version: '3'
+services:
+  c4gt-server:
+    build: .
+    ports: 
+      - 5366:5000
+    env_file: .env

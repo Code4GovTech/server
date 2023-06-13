@@ -49,6 +49,13 @@ class SupabaseInterface:
             else:
                 data = self.client.table("discord_metrics").insert(metric).execute()
         return data
+    
+    def add_event_data(self, data):
+        data_ = {
+            "event_data": data
+        }
+        data = self.client.table("github_events_data_dump").insert(data_).execute()
+        return data
 
     def add_github_metrics(self, github_metrics):
         for metric in github_metrics:
