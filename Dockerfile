@@ -1,6 +1,6 @@
 FROM python:3.9-slim-buster
 WORKDIR /app
-COPY ./requirements.txt ./repository_monitor_app_pk.pem /app
+COPY ./requirements.txt /app
 RUN pip install -r requirements.txt
 COPY . .
 EXPOSE 5000
