@@ -5,7 +5,7 @@ import dotenv
 import os
 from db import SupabaseInterface
 import json
-import urllib
+import urllib, markdown, re
 
 dotenv.load_dotenv(".env")
 
@@ -87,11 +87,51 @@ def register(discord_userdata):
 
 @app.route("/github/events", methods = ['POST'])
 def event_handler():
-    print(1)
-    print(request.json, type(request))
-    data = request.json
-    print(data, type(data))
     supabase_client = SupabaseInterface()
+    data = request.json
+
+    if data.get("issue"):
+        issue = data["issue"]
+        if any(label["name"] == "C4GT Community" for label in issue["labels"] ):
+            if not data.get("comment"):
+                if data["action"] == "opened":
+                    #Event: A new issue was created in some monitored repository
+                    markdown_contents = markdownParser(issue["body"])
+                    missing_headers = markdownMetadataValidator(markdown_contents)
+                    # if missing_headers:
+                    #     head = {
+                    #         'Accept': 'application/vnd.github+json',
+                    #         'Authorization': f'Bearer ghs_oF5E1qRDaNR5qSztdNSUY8fF6xL6ZA2NM4mD'
+                    #     }
+                    #     url = f'https://api.github.com/repos/OWNER/REPO/issues/{data["issue"]["number"]}/comments'
+                    #     requests.post(url, data={"body":"body1"}, json={"body":"body2"}, headers=head)
+                        
+                    #     return data
+                    ticket_points = {
+                        "High": 30,
+                        "Medium":20,
+                        "Low":10,
+                        "Unknown":10
+                    }
+                    ticket_data = {
+                        "name":issue["title"],     #name of ticket
+                        "product":issue["repository_url"].split('/')[-1],
+                        "complexity":markdown_contents["Complexity"],
+                        "project_category":markdown_contents["Category"].split(','),
+                        "project_sub_category":markdown_contents["Sub Category"].split(','),
+                        "reqd_skills":markdown_contents["Tech Skills Needed"],
+                        "issue_id":issue["id"],
+                        "api_endpoint_url":issue["url"],
+                        "url": issue["html_url"],
+                        "ticket_points":ticket_points[markdown_contents["Complexity"]]
+                    }
+                    supabase_client.record_created_ticket(data=ticket_data)
+            elif data.get("comment"):
+                if data["action"]=="created":
+                    #Event: A new comment was created on a C4GT Community ticket
+                    supabase_client.add_engagement(data["sender"]["id"])
+
+
     supabase_client.add_event_data(data=data)
     return request.json
 

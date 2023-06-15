@@ -50,6 +50,18 @@ class SupabaseInterface:
                 data = self.client.table("discord_metrics").insert(metric).execute()
         return data
     
+    def record_created_ticket(self, data):
+        data = self.client.table("ccbp_tickets").insert(data).execute()
+        print(data)
+        return data.data
+    
+    def add_engagement(self, github_id):
+        contributor = self.client.table("contributor_engagement").select("*").eq("contributor_github",github_id).execute()
+        comment_count = contributor.data[0]["github_comments"]
+        data = self.client.table("contributor_engagement").update({"github_comments":comment_count+1}).eq("contributor_github",github_id).execute()
+        return data
+
+    
     def add_event_data(self, data):
         data_ = {
             "event_data": data
