@@ -9,7 +9,7 @@ import time
 
 class GenerateJWT:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pem="/root/c4gt-server/repository_monitor_app_pk.pem"
+        pem="/app/utils/c4gt-repository-monitor.2023-06-14.private-key.pem"
         app_id=346766
 
         # Open PEM
