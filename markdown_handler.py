@@ -33,4 +33,13 @@ class MarkdownHandler:
         for i in range(0,len(clean_sections), 2):
             markdown_dict[clean_sections[i]] = clean_sections[i+1]
         return markdown_dict
+    
+    def markdownMetadataValidator(markdown_dict):
+        required_headings = ["Project", "Organisation Name", "Domain", "Tech Skills Needed", "Mentor(s)", "Complexity", "Category", "Sub Category"]
+        missing_headings=[]
+        for heading in required_headings:
+            if heading not in markdown_dict.keys():
+                missing_headings.append(heading)
+
+        return missing_headings
         
