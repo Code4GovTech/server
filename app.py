@@ -101,7 +101,7 @@ def event_handler():
         issue = data["issue"]
         if any(label["name"] == "C4GT Community" for label in issue["labels"] ):
             if not data.get("comment"):
-                if data["action"] == "opened":
+                if data["action"] == "opened" or data["action"] == "edited":
                     #Event: A new issue was created in some monitored repository
                     markdown_contents = MarkdownHandler().markdownParser(issue["body"])
                     missing_headers = MarkdownHandler().markdownMetadataValidator(markdown_contents)

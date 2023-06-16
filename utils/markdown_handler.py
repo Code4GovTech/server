@@ -97,6 +97,8 @@ class MarkdownHandler:
             if heading not in markdown_dict.keys():
                 missing_headings.append(heading)
 
+        print(missing_headings)
+
         return missing_headings
         
 
