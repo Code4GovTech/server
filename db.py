@@ -1,4 +1,4 @@
-import os
+import os, sys
 from typing import Any
 from supabase import create_client, Client
 import dotenv
@@ -51,8 +51,12 @@ class SupabaseInterface:
         return data
     
     def record_created_ticket(self, data):
+        issues = self.client.table("ccbp_tickets").select("*").eq("issue_id",data["issue_id"]).execute()
+        if len(issues.data)>0:
+            print(issues, file=sys.stderr)
+            return issues.data
         data = self.client.table("ccbp_tickets").insert(data).execute()
-        print(data)
+        print(data, file=sys.stderr)
         return data.data
     
     def add_engagement(self, github_id):

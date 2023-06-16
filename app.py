@@ -7,7 +7,7 @@ from db import SupabaseInterface
 import json
 import urllib, sys
 from utils.github_api import GithubAPI
-from utils.markdown_handler import MarkdownHandler
+from utils.markdown_handler import MarkdownHeaders
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -104,46 +104,48 @@ def event_handler():
             print(2,file=sys.stderr)
             if not data.get("comment"):
                 print(3,file=sys.stderr)
-                if data["action"] == "opened" or data["action"] == "edited" or data["labeled"]:
+                if data["action"] == "opened" or data["action"] == "edited" or data["action"]=="labeled":
                     print(4,file=sys.stderr)
                     #Event: A new issue was created in some monitored repository
-                    markdown_contents = MarkdownHandler().markdownParser(issue["body"])
-                    missing_headers = MarkdownHandler().markdownMetadataValidator(markdown_contents)
-                    if missing_headers:
-                        repo = issue["repository_url"].split('/')[-1]
-                        owner = issue["repository_url"].split('/')[-2]
-                        token  = GithubAPI().authenticate_app_as_installation(repo_owner=owner)
-                        print(token, file=sys.stderr)
-                        head = {
-                            'Accept': 'application/vnd.github+json',
-                            'Authorization': f'Bearer {token}'
-                        }
-                        body = "The following headers are missing or misspelled in the metadata:"
-                        for header in missing_headers:
-                            body+= f'\n{header}'
-                        url = f'https://api.github.com/repos/{owner}/{repo}/issues/{data["issue"]["number"]}/comments'
-                        print(5,file=sys.stderr)
-                        print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
-                        return data
+                    markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+                    # missing_headers = MarkdownHandler().markdownMetadataValidator(markdown_contents)
+                    # if False:
+                    #     repo = issue["repository_url"].split('/')[-1]
+                    #     owner = issue["repository_url"].split('/')[-2]
+                    #     token  = GithubAPI().authenticate_app_as_installation(repo_owner=owner)
+                    #     print(token, file=sys.stderr)
+                    #     head = {
+                    #         'Accept': 'application/vnd.github+json',
+                    #         'Authorization': f'Bearer {token}'
+                    #     }
+                    #     body = "The following headers are missing or misspelled in the metadata:"
+                    #     for header in missing_headers:
+                    #         body+= f'\n{header}'
+                    #     url = f'https://api.github.com/repos/{owner}/{repo}/issues/{data["issue"]["number"]}/comments'
+                    #     print(5,file=sys.stderr)
+                    #     print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
+                    #     return data
                     ticket_points = {
                         "High": 30,
                         "Medium":20,
                         "Low":10,
                         "Unknown":10
                     }
+                    print(5,file=sys.stderr)
                     ticket_data = {
                         "name":issue["title"],     #name of ticket
                         "product":issue["repository_url"].split('/')[-1],
-                        "complexity":markdown_contents["Complexity"],
-                        "project_category":markdown_contents["Category"].split(','),
-                        "project_sub_category":markdown_contents["Sub Category"].split(','),
-                        "reqd_skills":markdown_contents["Tech Skills Needed"],
+                        "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+                        "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
+                        "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
+                        "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
                         "issue_id":issue["id"],
                         "api_endpoint_url":issue["url"],
                         "url": issue["html_url"],
-                        "ticket_points":ticket_points[markdown_contents["Complexity"]],
-                        "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')]
+                        "ticket_points":ticket_points[markdown_contents["Complexity"]] if markdown_contents.get("Complexity") else None,
+                        "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
+                    print(ticket_data,file=sys.stderr)
                     supabase_client.record_created_ticket(data=ticket_data)
             elif data.get("comment"):
                 if data["action"]=="created":
