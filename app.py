@@ -98,10 +98,14 @@ def event_handler():
     supabase_client.add_event_data(data=data)
     # data = test_data
     if data.get("issue"):
+        print(1,file=sys.stderr)
         issue = data["issue"]
         if any(label["name"] == "C4GT Community" for label in issue["labels"] ):
+            print(2,file=sys.stderr)
             if not data.get("comment"):
-                if data["action"] == "opened" or data["action"] == "edited":
+                print(3,file=sys.stderr)
+                if data["action"] == "opened" or data["action"] == "edited" or data["labeled"]:
+                    print(4,file=sys.stderr)
                     #Event: A new issue was created in some monitored repository
                     markdown_contents = MarkdownHandler().markdownParser(issue["body"])
                     missing_headers = MarkdownHandler().markdownMetadataValidator(markdown_contents)
@@ -109,6 +113,7 @@ def event_handler():
                         repo = issue["repository_url"].split('/')[-1]
                         owner = issue["repository_url"].split('/')[-2]
                         token  = GithubAPI().authenticate_app_as_installation(repo_owner=owner)
+                        print(token, file=sys.stderr)
                         head = {
                             'Accept': 'application/vnd.github+json',
                             'Authorization': f'Bearer {token}'
@@ -117,8 +122,8 @@ def event_handler():
                         for header in missing_headers:
                             body+= f'\n{header}'
                         url = f'https://api.github.com/repos/{owner}/{repo}/issues/{data["issue"]["number"]}/comments'
-                        # print(5)
-                        requests.post(url, json={"body":body}, headers=head).json()
+                        print(5,file=sys.stderr)
+                        print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
                         return data
                     ticket_points = {
                         "High": 30,
