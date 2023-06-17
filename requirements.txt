@@ -1,6 +1,9 @@
-Flask==2.3.2
+quart==0.18.4
 python-dotenv==1.0.0
-Requests==2.31.0
+aiohttp==3.8.4
 supabase==1.0.3
 markdown==3.4.3
 jwt===1.3.1
+mistune==0.8.4
+fuzzywuzzy==0.18.0
+flatdict==4.0.1

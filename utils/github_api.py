@@ -1,5 +1,5 @@
 from utils.jwt_generator import GenerateJWT
-import requests
+import aiohttp
 class GithubAPI:
     def __init__(self):
         self.headers = {
@@ -13,7 +13,7 @@ class GithubAPI:
         jwt = GenerateJWT().__call__()
         url = f"https://api.github.com/app/installations"
         self.headers["Authorization"]=f'Bearer {jwt}'
-        installations = requests.get(url, headers=self.headers).json()
+        installations = []#requests.get(url, headers=self.headers).json()
         for installation in installations:
             if installation["account"]["login"] == repo_owner:
                 installation_id = installation["id"]
@@ -21,7 +21,7 @@ class GithubAPI:
         
         if not installation_id:
             return None
-        token_req = requests.post(url=url, headers=self.headers).json()
+        token_req = s#requests.post(url=url, headers=self.headers).json()
         return token_req["token"]
 
         

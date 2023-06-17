@@ -1,102 +1,143 @@
-import markdown, re
 
-test_md = """
-## Description
-[Provide a brief description of the feature, including why it is needed and what it will accomplish. You can skip any of Goals, Expected Outcome, Implementation Details, Mockups / Wireframes if they are irrelevant]
+import mistune
+import re
+import pprint
+from fuzzywuzzy import fuzz
+import flatdict
 
-## Goals
-- [ ] [Goal 1]
-- [ ] [Goal 2]
-- [ ] [Goal 3]
-- [ ] [Goal 4]
-- [ ] [Goal 5]
+class HeadingRenderer(mistune.Renderer):
+    def __init__(self):
+        super().__init__()
+        self.current_heading = None
+        self.current_subheading = None
+        self.data = {}
+        self.first_class_headers = [
+            'Project',
+            'Organization Name',
+            'Domain',
+            'Tech Skills Needed',
+            'Mentor(s)',
+            'Complexity',
+            'Category',
+            'Sub Category'
+        ]
 
-## Expected Outcome
-[Describe in detail what the final product or result should look like and how it should behave.]
+    def header(self, text, level, raw=None):
+        matched_header = self.match_header(text)
+        if level == 2:
+            self.current_heading = matched_header
+            self.data[self.current_heading] = {"text": ""}
+            self.current_subheading = None
+        elif level == 3 and self.current_heading:
+            self.current_subheading = matched_header
+            self.data[self.current_heading][self.current_subheading] = {"text": ""}
+        return ""
 
-## Acceptance Criteria
-- [ ] [Criteria 1]
-- [ ] [Criteria 2]
-- [ ] [Criteria 3]
-- [ ] [Criteria 4]
-- [ ] [Criteria 5]
+    def match_header(self, text):
+      for header in self.first_class_headers:
+          if fuzz.token_set_ratio(header.lower(), text.lower()) > 80:
+              return header
+      return text
 
-## Implementation Details
-[List any technical details about the proposed implementation, including any specific technologies that will be used.]
+    def list_item(self, text):
+        if self.current_subheading:
+            if not self.data[self.current_heading][self.current_subheading].get('items'):
+                self.data[self.current_heading][self.current_subheading]['items'] = []
+            self.data[self.current_heading][self.current_subheading]['items'].append(text)
+        return ""
 
-## Mockups / Wireframes
-[Include links to any visual aids, mockups, wireframes, or diagrams that help illustrate what the final product should look like. This is not always necessary, but can be very helpful in many cases.]
+    def paragraph(self, text):
+        if self.current_heading:
+            if self.current_subheading:
+                if self.data[self.current_heading][self.current_subheading]["text"]:
+                    self.data[self.current_heading][self.current_subheading]["text"] += "\n" + text
+                else:
+                    self.data[self.current_heading][self.current_subheading]["text"] = text
+            else:
+                if self.data[self.current_heading]["text"]:
+                    self.data[self.current_heading]["text"] += "\n" + text
+                else:
+                    self.data[self.current_heading]["text"] = text
+        return ""
 
----
-
-### Project
-[Project Name]
-
-### Organization Name:
-[Organization Name]
-
-### Domain
-[Area of governance]
-
-### Tech Skills Needed:
-[Required technical skills for the project]
-
-### Mentor(s)
-[@Mentor1] [@Mentor2] [@Mentor3]
-
-### Complexity
-Pick one of [High]/[Medium]/[Low]
-
-### Category
-Pick one or more of [CI/CD], [Integrations], [Performance Improvement], [Security], [UI/UX/Design], [Bug], [Feature], [Documentation], [Deployment], [Test], [PoC]
-
-### Sub Category
-Pick one or more of [API], [Database], [Analytics], [Refactoring], [Data Science], [Machine Learning], [Accessibility], [Internationalization], [Localization], [Frontend], [Backend], [Mobile], [SEO], [Configuration], [Deprecation], [Breaking Change], [Maintenance], [Support], [Question], [Technical Debt], [Beginner friendly], [Research], [Reproducible], [Needs Reproduction].
-
-
-"""
-
-class MarkdownHandler:
+class MarkdownHeaders:
     def __init__(self) -> None:
+        self.headers = [
+            'Project',
+            'Organization Name',
+            'Domain',
+            'Tech Skills Needed',
+            'Mentor(s)',
+            'Complexity',
+            'Category',
+            'Sub Category'
+        ]
+
         return
     
-    def markdownParser(self, markdown_content):
+    def flattenAndParse(self, rawMarkdown):
+        markdown = mistune.Markdown(renderer=HeadingRenderer())
+        markdown(rawMarkdown)
+        markdownDict = markdown.renderer.data
+        flatDict = flatdict.FlatDict(markdownDict, delimiter=".")
+        dataDict = {}
+        for header in self.headers:
+            pattern = fr".*{header}\.text"
+            for key in flatDict.keys():
+                if re.match(pattern, key):
+                    dataDict[header] = flatDict[key]
+        return dataDict
 
-        #Taking metadata
-        markdown_metadata = markdown_content.split('---')[1]
+# test = """## Description
+# [Provide a brief description of the feature, including why it is needed and what it will accomplish. You can skip any of Goals, Expected Outcome, Implementation Details, Mockups / Wireframes if they are irrelevant]
 
-        # Parse Markdown to HTML
-        html = markdown.markdown(markdown_metadata)
-        # print("-------METADATA----------")
+# ## Goals
+# - [ ] [Goal 1]
+# - [ ] [Goal 2]
+# - [ ] [Goal 3]
+# - [ ] [Goal 4]
+# - [ ] [Goal 5]
 
-        # Split HTML into sections using heading tags as delimiters
-        sections = re.split("</h3>|<h3>", html)
-        while '' in sections:
-            sections.remove('')
-        # print("------SECTIONS---------")
-        for section in sections:
-            # print(sections, section)
-            section.strip()
-            section = re.split("<p>|</p>", section)
-        # Define regex pattern to match '\n', ':', and any html tags'<>'
-            pattern = re.compile(r'[\n]|[:]|<(.*?)>')
+# ## Expected Outcome
+# [Describe in detail what the final product or result should look like and how it should behave.]
 
-        # Remove matching substrings from each string
-        clean_sections = [re.sub(pattern, '', s) for s in sections]
+# ## Acceptance Criteria
+# - [ ] [Criteria 1]
+# - [ ] [Criteria 2]
+# - [ ] [Criteria 3]
+# - [ ] [Criteria 4]
+# - [ ] [Criteria 5]
 
-        # Initialize dictionary
-        markdown_dict = {}
-        for i in range(0,len(clean_sections), 2):
-            markdown_dict[clean_sections[i]] = clean_sections[i+1]
-        return markdown_dict
-    
-    def markdownMetadataValidator(self, markdown_dict):
-        required_headings = ["Project", "Organization Name", "Domain", "Tech Skills Needed", "Mentor(s)", "Complexity", "Category", "Sub Category"]
-        missing_headings=[]
-        for heading in required_headings:
-            if heading not in markdown_dict.keys():
-                missing_headings.append(heading)
+# ## Implementation Details
+# [List any technical details about the proposed implementation, including any specific technologies that will be used.]
 
-        return missing_headings
-        
+# ## Mockups / Wireframes
+# [Include links to any visual aids, mockups, wireframes, or diagrams that help illustrate what the final product should look like. This is not always necessary, but can be very helpful in many cases.]
 
+# ----------------------
+
+# ### Projects
+# Test
+
+# ### Organisation Name:
+# Samagra
+
+# ### Domains
+# Impacct
+
+# ### Tech Skillts Needed:
+# React
+
+# ### Mentor(s
+# @KDwevedi 
+
+# ### Complexitie
+# High
+
+# ### Category
+# Security, Deployment
+
+# ### Sub Category
+# Database, Support
+# """
+# print(MarkdownHeaders().flattenAndParse(test))
