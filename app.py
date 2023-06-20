@@ -1,7 +1,7 @@
 from quart import Quart, redirect, render_template, request
 import aiohttp
 import dotenv, os, json, urllib, sys
-from db import SupabaseInterface
+from utils.db import SupabaseInterface
 from utils.github_api import GithubAPI
 from utils.markdown_handler import MarkdownHeaders
 
