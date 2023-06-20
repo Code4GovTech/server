@@ -9,3 +9,6 @@ A Quart Server to handle registration for C4GT 2023
 set up .env file
 install dependencies in requirements.txt
 execute "flask run" in bash to start app
+
+## Reference
+[Github Webhook Reference](https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads)

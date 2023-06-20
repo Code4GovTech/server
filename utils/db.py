@@ -13,17 +13,32 @@ class SupabaseInterface:
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
         self.client: Client = create_client(self.supabase_url, self.supabase_key)
+
+    def dump_dev_data(self, data):
+        data = self.client.table("dev_data").insert(data).execute()
+        return
     
+    def isPrRecorded(self, id):
+        data = self.client.table("pull_requests").select("*").eq("pr_id", id).execute()
+        if len(data.data)>0:
+            return True
+        else:
+            return False
+    
+    def addPr(self, data):
+        data = self.client.table("pull_requests").insert(data).execute()
+        return data.data
+
     def add_mentor(self, userdata):
         
         data = self.client.table("mentors").insert(userdata).execute()
-        print(data.data)
+        # print(data.data)
         return data
     
     def add_contributor(self, userdata):
         
         data = self.client.table("contributors").insert(userdata).execute()
-        print(data.data)
+        # print(data.data)
         return data
     
     def mentor_exists(self, discord_id):

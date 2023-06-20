@@ -4,6 +4,7 @@ import dotenv, os, json, urllib, sys
 from utils.db import SupabaseInterface
 from utils.github_api import GithubAPI
 from utils.markdown_handler import MarkdownHeaders
+from aiographql.client import GraphQLClient, GraphQLRequest
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -14,6 +15,51 @@ app = Quart(__name__)
 app.config['TESTING']= True
 # app.cotester = SupabaseInterface('users', url="https://kcavhjwafgtoqkqbbqrd.supabase.co",key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYXZoandhZmd0b3FrcWJicXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODQ5NTQxMzIsImV4cCI6MjAwMDUzMDEzMn0.8PKGvntMY7kw5-wmvG2FBOCxf-OrA2yV5fnudeA6SVQ" )
 # tester.test()nfig['SECRET_KEY']=os.getenv("FLASK_SESSION_KEY")
+
+
+async def get_closing_pr(repo, owner, num):
+    client = GraphQLClient(
+    endpoint="https://api.github.com/graphql",
+    headers={"Authorization": f"Bearer {os.getenv('GithubPAT')}"},
+    )
+    request = GraphQLRequest(
+    query=f"""
+query {{
+  repository(name: "{repo}", owner: "{owner}") {{
+    issue(number: {num}) {{
+      timelineItems(itemTypes: CLOSED_EVENT, last: 1) {{
+        nodes {{
+          ... on ClosedEvent {{
+            createdAt
+            closer {{
+               __typename
+              ... on PullRequest {{
+                baseRefName
+                url
+                baseRepository {{
+                  nameWithOwner
+                }}
+                headRefName
+                headRepository {{
+                  nameWithOwner
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+    """
+    )
+    response = await client.query(request=request)
+    if response["data"]["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]:
+        if response["data"]["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["__typename"] == "PullRequest":
+            return response["data"]["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["url"]
+        else: 
+            return None
+
 
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
@@ -93,6 +139,14 @@ async def event_handler():
         print(1,file=sys.stderr)
         issue = data["issue"]
         if any(label["name"] == "C4GT Community" for label in issue["labels"] ):
+            # Checking for closed tickets
+            if data["action"] == "closed":
+                data[""]
+                [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
+                pull_request = await get_closing_pr(repo, owner, issue_number)
+                if pull_request:
+                    supabase_client.dump_dev_data({"data":f"{pull_request}"})
+
             print(2,file=sys.stderr)
             if not data.get("comment"):
                 print(3,file=sys.stderr)
