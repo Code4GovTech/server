@@ -12,7 +12,8 @@ dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
 app.config['TESTING']= True
-app.config['SECRET_KEY']=os.getenv("FLASK_SESSION_KEY")
+# app.cotester = SupabaseInterface('users', url="https://kcavhjwafgtoqkqbbqrd.supabase.co",key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYXZoandhZmd0b3FrcWJicXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODQ5NTQxMzIsImV4cCI6MjAwMDUzMDEzMn0.8PKGvntMY7kw5-wmvG2FBOCxf-OrA2yV5fnudeA6SVQ" )
+# tester.test()nfig['SECRET_KEY']=os.getenv("FLASK_SESSION_KEY")
 
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
@@ -78,14 +79,14 @@ async def register(discord_userdata):
     #adding to the database
     supabase_client.add_contributor(user_data)
     
-    return render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
+    return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 
 
 @app.route("/github/events", methods = ['POST'])
 async def event_handler():
     supabase_client = SupabaseInterface()
-    data = request.json
+    data = await request.json
     supabase_client.add_event_data(data=data)
     # data = test_data
     if data.get("issue"):
@@ -137,7 +138,7 @@ async def event_handler():
 
 @app.route("/metrics/discord", methods = ['POST'])
 async def discord_metrics():
-    request_data = json.loads(request.json)
+    request_data = json.loads(await request.json)
     # print(request_data, type(request_data))
     discord_data = []
     last_measured = request_data["measured_at"]
