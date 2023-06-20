@@ -7,7 +7,6 @@ from utils.markdown_handler import MarkdownHeaders
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
-print(sys.path)
 
 dotenv.load_dotenv(".env")
 
@@ -15,13 +14,34 @@ app = Quart(__name__)
 app.config['TESTING']= True
 app.config['SECRET_KEY']=os.getenv("FLASK_SESSION_KEY")
 
+async def get_github_data(code, discord_id):
+    github_url_for_access_token = 'https://github.com/login/oauth/access_token'
+    data = {
+        "client_id": os.getenv("GITHUB_CLIENT_ID"),
+        "client_secret": os.getenv("GITHUB_CLIENT_SECRET"),
+        "code": code
+    }
+    headers = {
+        "Accept": "application/json"
+    }
 
+    async with aiohttp.ClientSession() as session:
+        async with session.post(github_url_for_access_token, data=data, headers=headers) as response:
+            auth_token = (await response.json())["access_token"]
+            headers = {
+                "Authorization": f"Bearer {auth_token}"
+            }
+            async with session.get("https://api.github.com/user", headers=headers) as user_response:
+                user = await user_response.json()
+                github_id = user["id"]
+                github_username = user["login"]
 
-
-
-
-
-
+                user_data = {
+                    "discord_id": int(discord_id),
+                    "github_id": github_id,
+                    "github_url": f"https://github.com/{github_username}"
+                }
+                return user_data
 
 @app.route("/")
 async def hello_world():
@@ -40,55 +60,23 @@ async def authenticate(discord_userdata):
     # print(github_auth_url)
     return redirect(github_auth_url)
 
-#this is where github calls back to
+#Callback url for Github App
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
 
-    #Extrapolate discord data from callback
-    #$ sign is being used as separator
     discord_id = discord_userdata
 
     #Check if the user is registered
     supabase_client = SupabaseInterface()
-    # if role == 'mentor':
-    #     if supabase_client.mentor_exists(discord_id=discord_id):
-    #         print('True')
-    #         authenticated_url = f'{os.getenv("HOST")}/already_authenticated'
-    #         return redirect(authenticated_url)
     if supabase_client.contributor_exists(discord_id=discord_id):
         # print('True')
         authenticated_url = f'{os.getenv("HOST")}/already_authenticated'
         return redirect(authenticated_url)
         
-    #get github ID
-    github_url_for_access_token = 'https://github.com/login/oauth/access_token'
-    data = {
-        "client_id": os.getenv("GITHUB_CLIENT_ID"),
-        "client_secret": os.getenv("GITHUB_CLIENT_SECRET"),
-        "code": request.args.get("code")
-    }
-    header = {
-        "Accept":"application/json"
-    }
-    # r = requests.post(github_url_for_access_token, data=data, headers=header)
-    # auth_token = r.json()["access_token"]
-    # user = requests.get("https://api.github.com/user", headers={
-    #     "Authorization": f"Bearer {auth_token}"
-    # })
-    # print(user.json())
+    user_data =  await get_github_data(request.args.get("code"), discord_id=discord_id)
 
-    # github_id = user.json()["id"]
-    # github_username = user.json()["login"]
-
-
-    # user_data = {
-    #     "discord_id": int(discord_id),
-    #     "github_id": github_id,
-    #     "github_url": f"https://github.com/{github_username}",
-    # }
-
-    # #adding to the database
-    # supabase_client.add_contributor(user_data)
+    #adding to the database
+    supabase_client.add_contributor(user_data)
     
     return render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
@@ -111,23 +99,6 @@ async def event_handler():
                     print(4,file=sys.stderr)
                     #Event: A new issue was created in some monitored repository
                     markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-                    # missing_headers = MarkdownHandler().markdownMetadataValidator(markdown_contents)
-                    # if False:
-                    #     repo = issue["repository_url"].split('/')[-1]
-                    #     owner = issue["repository_url"].split('/')[-2]
-                    #     token  = GithubAPI().authenticate_app_as_installation(repo_owner=owner)
-                    #     print(token, file=sys.stderr)
-                    #     head = {
-                    #         'Accept': 'application/vnd.github+json',
-                    #         'Authorization': f'Bearer {token}'
-                    #     }
-                    #     body = "The following headers are missing or misspelled in the metadata:"
-                    #     for header in missing_headers:
-                    #         body+= f'\n{header}'
-                    #     url = f'https://api.github.com/repos/{owner}/{repo}/issues/{data["issue"]["number"]}/comments'
-                    #     print(5,file=sys.stderr)
-                    #     print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
-                    #     return data
                     ticket_points = {
                         "High": 30,
                         "Medium":20,
