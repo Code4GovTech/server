@@ -20,64 +20,64 @@ app.config['TESTING']= True
 # print(os.getenv("GithubPAT"), file=sys.stderr)
 
 
-async def get_pull_request(owner, repo, number):
-    headers = {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': f'Bearer {os.getenv("GithubPAT")}'
-    }
-    url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{number}'
+# async def get_pull_request(owner, repo, number):
+#     headers = {
+#         'Accept': 'application/vnd.github+json',
+#         'Authorization': f'Bearer {os.getenv("GithubPAT")}'
+#     }
+#     url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{number}'
     
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                return await response.json()
-            else:
-                return None
+#     async with aiohttp.ClientSession() as session:
+#         async with session.get(url, headers=headers) as response:
+#             if response.status == 200:
+#                 return await response.json()
+#             else:
+#                 return None
 
 
-async def get_closing_pr(repo, owner, num):
-    client = GraphQLClient(
-    endpoint="https://api.github.com/graphql",
-    headers={"Authorization": f"Bearer {os.getenv('GithubPAT')}"},
-    )
-    request = GraphQLRequest(
-    query=f"""
-query {{
-  repository(name: "{repo}", owner: "{owner}") {{
-    issue(number: {num}) {{
-      timelineItems(itemTypes: CLOSED_EVENT, last: 1) {{
-        nodes {{
-          ... on ClosedEvent {{
-            createdAt
-            closer {{
-               __typename
-              ... on PullRequest {{
-                baseRefName
-                url
-                baseRepository {{
-                  nameWithOwner
-                }}
-                headRefName
-                headRepository {{
-                  nameWithOwner
-                }}
-              }}
-            }}
-          }}
-        }}
-      }}
-    }}
-  }}
-}}
-    """
-    )
-    response = await client.query(request=request)
-    data = response.data
-    if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]:
-        if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["__typename"] == "PullRequest":
-            return data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["url"]
-        else: 
-            return None
+# async def get_closing_pr(repo, owner, num):
+#     client = GraphQLClient(
+#     endpoint="https://api.github.com/graphql",
+#     headers={"Authorization": f"Bearer {os.getenv('GithubPAT')}"},
+#     )
+#     request = GraphQLRequest(
+#     query=f"""
+# query {{
+#   repository(name: "{repo}", owner: "{owner}") {{
+#     issue(number: {num}) {{
+#       timelineItems(itemTypes: CLOSED_EVENT, last: 1) {{
+#         nodes {{
+#           ... on ClosedEvent {{
+#             createdAt
+#             closer {{
+#                __typename
+#               ... on PullRequest {{
+#                 baseRefName
+#                 url
+#                 baseRepository {{
+#                   nameWithOwner
+#                 }}
+#                 headRefName
+#                 headRepository {{
+#                   nameWithOwner
+#                 }}
+#               }}
+#             }}
+#           }}
+#         }}
+#       }}
+#     }}
+#   }}
+# }}
+#     """
+#     )
+#     response = await client.query(request=request)
+#     data = response.data
+#     if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]:
+#         if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["__typename"] == "PullRequest":
+#             return data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["url"]
+#         else: 
+#             return None
 
 
 async def get_github_data(code, discord_id):
@@ -126,13 +126,11 @@ async def authenticate(discord_userdata):
     # print(github_auth_url)
     return redirect(github_auth_url)
 
-@app.route("/test")
+@app.route("/delete_comments")
 async def test():
-    url =  await get_closing_pr("testing_for_github_app","KDwevedi", 39)
-    pull_number=url.split('/')[-1]
-    pull_data = await get_pull_request("KDwevedi", "testing_for_github_app", pull_number)
-    SupabaseInterface().addPr(pull_data)
-    return 200
+    # TicketEventHandler().bot_comments()
+
+    return await TicketEventHandler().bot_comments()
 
 
 #Callback url for Github App
@@ -165,59 +163,58 @@ async def event_handler():
     # data = test_data
     if data.get("issue"):
         issue = data["issue"]
-        if any(label["name"] == "C4GT Community" for label in issue["labels"] ):
-            if supabase_client.checkIsTicket(issue["id"]):
-                await TicketEventHandler().onTicketEdit(data)
-            else:
-                await TicketEventHandler().onTicketCreate(data)
+        if supabase_client.checkIsTicket(issue["id"]):
+            await TicketEventHandler().onTicketEdit(data)
+        else:
+            await TicketEventHandler().onTicketCreate(data)
 
-            # Checking for closed tickets
-            if data["action"] == "closed":
-                await TicketEventHandler().onTicketClose(data)
-                # [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
-                # pull_request_url = await get_closing_pr(repo, owner, issue_number)
-                # if pull_request_url:
-                #     pull_number=pull_request_url.split('/')[-1]
-                #     pull_data = await get_pull_request(owner, repo, pull_number)
-                #     supabase_client.addPr(pull_data)
+        # Checking for closed tickets
+        if data["action"] == "closed":
+            await TicketEventHandler().onTicketClose(data)
+            # [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
+            # pull_request_url = await get_closing_pr(repo, owner, issue_number)
+            # if pull_request_url:
+            #     pull_number=pull_request_url.split('/')[-1]
+            #     pull_data = await get_pull_request(owner, repo, pull_number)
+            #     supabase_client.addPr(pull_data)
 
-            # print(2,file=sys.stderr)
-            # if not data.get("comment"):
-            #     print(3,file=sys.stderr)
-            #     if data["action"] == "opened" or data["action"] == "edited" or data["action"]=="labeled":
-            #         print(4,file=sys.stderr)
-            #         #Event: A new issue was created in some monitored repository
-            #         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-            #         ticket_points = {
-            #             "High": 30,
-            #             "Medium":20,
-            #             "Low":10,
-            #             "Unknown":10
-            #         }
-            #         print(5,file=sys.stderr)
-            #         ticket_data = {
-            #             "name":issue["title"],     #name of ticket
-            #             "product":issue["repository_url"].split('/')[-1],
-            #             "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
-            #             "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
-            #             "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
-            #             "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
-            #             "issue_id":issue["id"],
-            #             "api_endpoint_url":issue["url"],
-            #             "url": issue["html_url"],
-            #             "ticket_points":ticket_points[markdown_contents["Complexity"]] if markdown_contents.get("Complexity") else None,
-            #             "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
-            #         }
-            #         print(ticket_data,file=sys.stderr)
-            #         supabase_client.record_created_ticket(data=ticket_data)
-            elif data.get("comment"):
-                if data["action"]=="created":
-                    #Event: A new comment was created on a C4GT Community ticket
-                    if data["comment"]["user"]["login"]=="c4gt-repository-monitor[bot]":
-                       pass
-                    
-                    else:
-                      supabase_client.add_engagement(data["sender"]["id"])
+        # print(2,file=sys.stderr)
+        # if not data.get("comment"):
+        #     print(3,file=sys.stderr)
+        #     if data["action"] == "opened" or data["action"] == "edited" or data["action"]=="labeled":
+        #         print(4,file=sys.stderr)
+        #         #Event: A new issue was created in some monitored repository
+        #         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+        #         ticket_points = {
+        #             "High": 30,
+        #             "Medium":20,
+        #             "Low":10,
+        #             "Unknown":10
+        #         }
+        #         print(5,file=sys.stderr)
+        #         ticket_data = {
+        #             "name":issue["title"],     #name of ticket
+        #             "product":issue["repository_url"].split('/')[-1],
+        #             "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+        #             "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
+        #             "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
+        #             "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
+        #             "issue_id":issue["id"],
+        #             "api_endpoint_url":issue["url"],
+        #             "url": issue["html_url"],
+        #             "ticket_points":ticket_points[markdown_contents["Complexity"]] if markdown_contents.get("Complexity") else None,
+        #             "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
+        #         }
+        #         print(ticket_data,file=sys.stderr)
+        #         supabase_client.record_created_ticket(data=ticket_data)
+        elif data.get("comment"):
+            if data["action"]=="created":
+                #Event: A new comment was created on a C4GT Community ticket
+                if data["comment"]["user"]["login"]=="c4gt-repository-monitor[bot]":
+                    pass
+                
+                else:
+                    supabase_client.add_engagement(data["sender"]["id"])
 
     return data
 

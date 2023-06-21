@@ -90,16 +90,12 @@ class MarkdownHeaders:
         print(flatDict)
         dataDict = {}
         for header in self.headers:
-            pattern = fr"(?:^{header}\.text$)|(?:\.{header}\.text$)"
+            pattern = fr"(?:^{re.escape(header)}\.text$)|(?:\.{re.escape(header)}\.text$)"
             for key in flatDict.keys():
-                if re.match(pattern, key):
+                if re.search(pattern, key):
                     dataDict[header] = flatDict[key]
             if f'{header}.text' in flatDict.keys():
                 dataDict[header] = flatDict[f'{header}.text']
-        for key in flatDict.keys():
-            mentor_pattern = r'.*Mentor\(s\)\.text$'
-            if re.match(mentor_pattern, key):
-                dataDict["Mentor(s)"] = flatDict[key]
         return dataDict
 
 # test = """## Description

@@ -25,8 +25,12 @@ class SupabaseInterface:
         else:
             return False
     
+    def deleteTicket(self, issue_id):
+        data = self.client.table("ccbp_tickets").delete().eq("issue_id", issue_id)
+        return data.data
+    
     def update_recorded_ticket(self, data):
-        data = self.client.table.update(data).eq("issue_id", data["issue_id"]).execute()
+        data = self.client.table("ccbp_tickets").update(data).eq("issue_id", data["issue_id"]).execute()
         return data.data
         
 

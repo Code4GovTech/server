@@ -8,7 +8,7 @@ class GithubAPI:
         }
         return
     
-    async def authenticate_app_as_installation(repo_owner):
+    async def authenticate_app_as_installation(self, repo_owner):
         installation_id = 0
         jwt = GenerateJWT().__call__()
         url = "https://api.github.com/app/installations"
