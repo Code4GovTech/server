@@ -165,12 +165,13 @@ async def event_handler():
         issue = data["issue"]
         if supabase_client.checkIsTicket(issue["id"]):
             await TicketEventHandler().onTicketEdit(data)
+            if data["action"] == "closed":
+                await TicketEventHandler().onTicketClose(data)
         else:
             await TicketEventHandler().onTicketCreate(data)
 
         # Checking for closed tickets
-        if data["action"] == "closed":
-            await TicketEventHandler().onTicketClose(data)
+
             # [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
             # pull_request_url = await get_closing_pr(repo, owner, issue_number)
             # if pull_request_url:
@@ -207,14 +208,14 @@ async def event_handler():
         #         }
         #         print(ticket_data,file=sys.stderr)
         #         supabase_client.record_created_ticket(data=ticket_data)
-        elif data.get("comment"):
-            if data["action"]=="created":
-                #Event: A new comment was created on a C4GT Community ticket
-                if data["comment"]["user"]["login"]=="c4gt-repository-monitor[bot]":
-                    pass
+        # elif data.get("comment"):
+        #     if data["action"]=="created":
+        #         #Event: A new comment was created on a C4GT Community ticket
+        #         if data["comment"]["user"]["login"]=="c4gt-repository-monitor[bot]":
+        #             pass
                 
-                else:
-                    supabase_client.add_engagement(data["sender"]["id"])
+        #         else:
+        #             supabase_client.add_engagement(data["sender"]["id"])
 
     return data
 
