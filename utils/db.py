@@ -18,6 +18,19 @@ class SupabaseInterface:
         data = self.client.table("dev_data").insert(data).execute()
         return
     
+    def checkIsTicket(self, issue_id):
+        data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data.data)>0:
+            return True
+        else:
+            return False
+    
+    def update_recorded_ticket(self, data):
+        data = self.client.table.update(data).eq("issue_id", data["issue_id"]).execute()
+        return data.data
+        
+
+    
     def isPrRecorded(self, id):
         data = self.client.table("pull_requests").select("*").eq("pr_id", id).execute()
         if len(data.data)>0:
@@ -26,6 +39,20 @@ class SupabaseInterface:
             return False
     
     def addPr(self, data):
+
+        data = {
+                    "api_url":data["url"],
+                    "html_url":data["html_url"],
+                    "pr_id":data["id"],
+                    "raised_by":data["user"]["id"],
+                    "raised_at":data["created_at"],
+                    "raised_by_username":data["user"]["login"],
+                    "status":data["state"],
+                    "is_merged":data["merged"],
+                    "merged_by":data["merged_by"]["id"] if data["merged"] else None,
+                    "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
+                    "merged_at":data["merged_at"] if data["merged"] else None,
+                }
         data = self.client.table("pull_requests").insert(data).execute()
         return data.data
 
