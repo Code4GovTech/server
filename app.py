@@ -126,7 +126,7 @@ async def authenticate(discord_userdata):
     # print(github_auth_url)
     return redirect(github_auth_url)
 
-@app.route("/delete_comments")
+@app.route("/installations")
 async def test():
     # TicketEventHandler().bot_comments()
 

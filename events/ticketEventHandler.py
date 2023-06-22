@@ -71,44 +71,45 @@ class TicketEventHandler:
     def __init__(self):
         self.supabase_client = SupabaseInterface()
         self.ticket_points = {
-                        "High": 30,
-                        "Medium":20,
-                        "Low":10,
-                        "Unknown":10
+                        "hard":30,
+                        "easy":10,
+                        "high": 30,
+                        "medium":20,
+                        "low":10,
+                        "unknown":10
                     }
         return
     
     async def onTicketCreate(self, eventData):
-        if not eventData.get("comment"):
-            issue = eventData["issue"]
-            if any(label["name"] == "C4GT Community" for label in issue["labels"] ):
-                markdown_contents = MarkdownHeaders().flattenAndParse(eventData["issue"]["body"])
-                ticket_data = {
-                            "name":issue["title"],     #name of ticket
-                            "product":issue["repository_url"].split('/')[-1],
-                            "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
-                            "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
-                            "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
-                            "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
-                            "issue_id":issue["id"],
-                            "status": issue["state"],
-                            "api_endpoint_url":issue["url"],
-                            "url": issue["html_url"],
-                            "ticket_points":self.ticket_points[markdown_contents["Complexity"]] if markdown_contents.get("Complexity") else None,
-                            "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
-                        }
-                print(ticket_data, file=sys.stderr)
-                print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
+        issue = eventData["issue"]
+        if any(label["name"].lower() == "c4gt community".lower() for label in issue["labels"] ):
+            markdown_contents = MarkdownHeaders().flattenAndParse(eventData["issue"]["body"])
+            print(markdown_contents, file=sys.stderr)
+            ticket_data = {
+                        "name":issue["title"],     #name of ticket
+                        "product":issue["repository_url"].split('/')[-1],
+                        "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+                        "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
+                        "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
+                        "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
+                        "issue_id":issue["id"],
+                        "status": issue["state"],
+                        "api_endpoint_url":issue["url"],
+                        "url": issue["html_url"],
+                        "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
+                        "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
+                    }
+            print(ticket_data, file=sys.stderr)
+            print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
         return eventData
 
     async def onTicketEdit(self, eventData):
         issue = eventData["issue"]
         if eventData["action"] == "unlabeled":
-            if (not issue["labels"]) or (not any(label["name"] == "C4GT Community" for label in issue["labels"] )):
+            if (not issue["labels"]) or (not any(label["name"].lower() == "C4GT Community".lower() for label in issue["labels"] )):
                 # Delete Ticket
                 self.supabase_client.deleteTicket(issue["id"])
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-        print(markdown_contents)
         ticket_data = {
                         "name":issue["title"],     #name of ticket
                         "product":issue["repository_url"].split('/')[-1],
@@ -120,7 +121,7 @@ class TicketEventHandler:
                         "status": issue["state"],
                         "api_endpoint_url":issue["url"],
                         "url": issue["html_url"],
-                        "ticket_points":self.ticket_points[markdown_contents["Complexity"]] if markdown_contents.get("Complexity") else None,
+                        "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
         print(ticket_data, file=sys.stderr)
@@ -134,7 +135,7 @@ class TicketEventHandler:
         if pull_request_url:
             pull_number=pull_request_url.split('/')[-1]
             pull_data = await get_pull_request(owner, repo, pull_number)
-            self.supabase_client.addPr(pull_data)
+            self.supabase_client.addPr(pull_data, issue["id"])
         return
     
     async def bot_comments(self):
@@ -201,18 +202,19 @@ class TicketEventHandler:
                         if repositories:
                             print("----RePO-----", file=sys.stderr)
                             for repo in repositories:
+                                print(installation["account"]["login"]+'/'+repo["name"], file=sys.stderr)
                                 # print(repo, file=sys.stderr)
-                                data = await get_comments(repo)
-                                if data:
-                                    comments+=data
+                                # data = await get_comments(repo)
+                                # if data:
+                                #     comments+=data
                     
                     count = 0
                     for comment in comments:
-                        print(comment)
+                        # print(comment)
                         if comment["user"]["login"] == "c4gt-community-support[bot]":
                             count+=1
                     print(count, file=sys.stderr)
-                    return {}
+                    return app_installations
                     
 
                     

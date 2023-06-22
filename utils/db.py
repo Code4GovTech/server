@@ -25,8 +25,12 @@ class SupabaseInterface:
         else:
             return False
     
+    def getTicket(self, issue_id):
+        data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        return data.data
+    
     def deleteTicket(self, issue_id):
-        data = self.client.table("ccbp_tickets").delete().eq("issue_id", issue_id)
+        data = self.client.table("ccbp_tickets").delete().eq("issue_id", issue_id).execute()
         return data.data
     
     def update_recorded_ticket(self, data):
@@ -42,8 +46,8 @@ class SupabaseInterface:
         else:
             return False
     
-    def addPr(self, data):
-
+    def addPr(self, data, issue_id):
+        ticket = self.getTicket(issue_id)
         data = {
                     "api_url":data["url"],
                     "html_url":data["html_url"],
@@ -56,6 +60,7 @@ class SupabaseInterface:
                     "merged_by":data["merged_by"]["id"] if data["merged"] else None,
                     "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
                     "merged_at":data["merged_at"] if data["merged"] else None,
+                    "points": ticket["ticket_points"]
                 }
         data = self.client.table("pull_requests").insert(data).execute()
         return data.data
