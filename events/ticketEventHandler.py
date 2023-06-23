@@ -83,7 +83,7 @@ class TicketEventHandler:
     async def onTicketCreate(self, eventData):
         issue = eventData["issue"]
         if any(label["name"].lower() == "c4gt community".lower() for label in issue["labels"] ):
-            markdown_contents = MarkdownHeaders().flattenAndParse(eventData["issue"]["body"])
+            markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
             print(markdown_contents, file=sys.stderr)
             ticket_data = {
                         "name":issue["title"],     #name of ticket
@@ -124,7 +124,7 @@ class TicketEventHandler:
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
-        print(ticket_data, file=sys.stderr)
+        # print(ticket_data, file=sys.stderr)
         print(self.supabase_client.update_recorded_ticket(data=ticket_data))
 
         return eventData
@@ -137,6 +137,52 @@ class TicketEventHandler:
             pull_data = await get_pull_request(owner, repo, pull_number)
             self.supabase_client.addPr(pull_data, issue["id"])
         return
+    
+    async def updateInstallation(self, installation):
+        async def get_repositories(installation):
+            repositories_url = f'https://api.github.com/installation/repositories'
+            token = await GithubAPI().authenticate_app_as_installation(installation["account"]["login"])
+            headers = {
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/vnd.github.machine-man-preview+json'  # Required for accessing GitHub app APIs
+        }
+
+            async with aiohttp.ClientSession(headers=headers) as session:
+                async with session.get(repositories_url) as response:
+                    # print(await response.json(), file=sys.stderr)
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        return data["repositories"]
+        async def get_issues(repository):
+                        # print(repository, file=sys.stderr)
+            url = repository["url"]
+            issue_url = url+"/issues"
+            headers = {
+            'Authorization': f'Bearer {os.getenv("GithubPAT")}',
+            'Accept': 'application/vnd.github.machine-man-preview+json'  # Required for accessing GitHub app APIs
+            }
+            
+
+            async with aiohttp.ClientSession(headers=headers) as session:
+                async with session.get(issue_url) as response:
+                    if response.status == 200:
+                        issues = await response.json()
+                        # print(comments, file=sys.stderr)
+                        return issues
+        
+        repositories = await get_repositories(installation)
+        for repository in repositories:
+            issues = await get_issues(repository)
+            for issue in issues:
+                self.onTicketCreate({"issue":issue})
+
+
+
+             
+
+        
+        return installation
     
     async def bot_comments(self):
                     # headers = {

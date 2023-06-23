@@ -169,53 +169,9 @@ async def event_handler():
                 await TicketEventHandler().onTicketClose(data)
         else:
             await TicketEventHandler().onTicketCreate(data)
-
-        # Checking for closed tickets
-
-            # [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
-            # pull_request_url = await get_closing_pr(repo, owner, issue_number)
-            # if pull_request_url:
-            #     pull_number=pull_request_url.split('/')[-1]
-            #     pull_data = await get_pull_request(owner, repo, pull_number)
-            #     supabase_client.addPr(pull_data)
-
-        # print(2,file=sys.stderr)
-        # if not data.get("comment"):
-        #     print(3,file=sys.stderr)
-        #     if data["action"] == "opened" or data["action"] == "edited" or data["action"]=="labeled":
-        #         print(4,file=sys.stderr)
-        #         #Event: A new issue was created in some monitored repository
-        #         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-        #         ticket_points = {
-        #             "High": 30,
-        #             "Medium":20,
-        #             "Low":10,
-        #             "Unknown":10
-        #         }
-        #         print(5,file=sys.stderr)
-        #         ticket_data = {
-        #             "name":issue["title"],     #name of ticket
-        #             "product":issue["repository_url"].split('/')[-1],
-        #             "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
-        #             "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
-        #             "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
-        #             "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
-        #             "issue_id":issue["id"],
-        #             "api_endpoint_url":issue["url"],
-        #             "url": issue["html_url"],
-        #             "ticket_points":ticket_points[markdown_contents["Complexity"]] if markdown_contents.get("Complexity") else None,
-        #             "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
-        #         }
-        #         print(ticket_data,file=sys.stderr)
-        #         supabase_client.record_created_ticket(data=ticket_data)
-        # elif data.get("comment"):
-        #     if data["action"]=="created":
-        #         #Event: A new comment was created on a C4GT Community ticket
-        #         if data["comment"]["user"]["login"]=="c4gt-repository-monitor[bot]":
-        #             pass
-                
-        #         else:
-        #             supabase_client.add_engagement(data["sender"]["id"])
+    if data.get("installation"):
+        # if data["action"] not in ["deleted", "suspend"]:
+        TicketEventHandler().updateInstallation(data.get("installation"))
 
     return data
 
