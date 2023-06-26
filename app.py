@@ -161,7 +161,7 @@ async def event_handler():
     data = await request.json
     supabase_client.add_event_data(data=data)
     # data = test_data
-    if data.get("issue"):
+    if data.get("issue") and not data.get("comment"):
         issue = data["issue"]
         if supabase_client.checkIsTicket(issue["id"]):
             await TicketEventHandler().onTicketEdit(data)
