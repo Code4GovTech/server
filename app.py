@@ -152,15 +152,15 @@ async def register(discord_userdata):
 
     #Check if the user is registered
     supabase_client = SupabaseInterface()
-    if supabase_client.contributor_exists(discord_id=discord_id):
-        # print('True')
-        authenticated_url = f'{os.getenv("HOST")}/already_authenticated'
-        return redirect(authenticated_url)
         
     user_data =  await get_github_data(request.args.get("code"), discord_id=discord_id)
 
+    if supabase_client.contributor_exists(discord_id=discord_id):
+        supabase_client.update_contributor(discord_id, user_data)
+
     #adding to the database
-    supabase_client.add_contributor(user_data)
+    else:
+        supabase_client.add_contributor(user_data)
     
     return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
@@ -182,7 +182,7 @@ async def event_handler():
             await TicketEventHandler().onTicketCreate(data)
     if data.get("installation"):
         # if data["action"] not in ["deleted", "suspend"]:
-        TicketEventHandler().updateInstallation(data.get("installation"))
+        await TicketEventHandler().updateInstallation(data.get("installation"))
 
     return data
 

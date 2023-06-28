@@ -71,6 +71,11 @@ class SupabaseInterface:
         # print(data.data)
         return data
     
+    def update_contributor(self, discord_id, user_data):
+        data = self.client.table("contributors").update(user_data).eq("discord_id", discord_id).execute()
+        return data
+
+    
     def add_contributor(self, userdata):
         
         data = self.client.table("contributors").insert(userdata).execute()
