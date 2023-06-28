@@ -13,6 +13,29 @@ class SupabaseInterface:
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
         self.client: Client = create_client(self.supabase_url, self.supabase_key)
+    
+    def recordComment(self, data):
+        data = self.client.table("app_comments").insert(data).execute()
+        return data.data
+    
+    def updateComment(self, data):
+        data = self.client.table("app_comments").update(data).eq("issue_id", data["issue_id"]).execute()
+        return data.data
+    
+    def readCommentData(self, issue_id):
+        data = self.client.table("app_comments").select("*").eq("issue_id", issue_id).execute()
+        return data.data
+
+    
+    def commentExists(self,issue_id):
+        data = self.client.table("app_comments").select("*").eq("issue_id", issue_id).execute()
+        if len(data.data)>0:
+            return True
+        else:
+            return False
+    def deleteComment(self, issue_id):
+        data = self.client.table("app_comments").delete().eq("issue_id", issue_id).execute()
+        return data.data
 
     def dump_dev_data(self, data):
         data = self.client.table("dev_data").insert(data).execute()
