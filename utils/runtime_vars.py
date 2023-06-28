@@ -2,8 +2,8 @@
 MARKDOWN_TEMPLATE_HEADERS = [
             'Product Name',
             'Product',
-            'Project Name',
             'Project',
+            'Project Name',
             'Organization Name',
             'Domain',
             'Tech Skills Needed',

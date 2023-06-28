@@ -1,11 +1,9 @@
 from quart import Quart, redirect, render_template, request
-import aiohttp
-import dotenv, os, json, urllib, sys
+import aiohttp, asyncio
+import dotenv, os, json, urllib, sys, dateutil, datetime
 from utils.db import SupabaseInterface
-from utils.github_api import GithubAPI
-from utils.markdown_handler import MarkdownHeaders
 from events.ticketEventHandler import TicketEventHandler
-from aiographql.client import GraphQLClient, GraphQLRequest
+from events.ticketFeedbackHandler import TicketFeedbackHandler
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -16,8 +14,6 @@ app = Quart(__name__)
 app.config['TESTING']= True
 # app.cotester = SupabaseInterface('users', url="https://kcavhjwafgtoqkqbbqrd.supabase.co",key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYXZoandhZmd0b3FrcWJicXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODQ5NTQxMzIsImV4cCI6MjAwMDUzMDEzMn0.8PKGvntMY7kw5-wmvG2FBOCxf-OrA2yV5fnudeA6SVQ" )
 # tester.test()nfig['SECRET_KEY']=os.getenv("FLASK_SESSION_KEY")
-
-# print(os.getenv("GithubPAT"), file=sys.stderr)
 
 
 # async def get_pull_request(owner, repo, number):
@@ -80,6 +76,7 @@ app.config['TESTING']= True
 #             return None
 
 
+
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
     data = {
@@ -107,7 +104,6 @@ async def get_github_data(code, discord_id):
                 if "user:email" in r["scope"]:
                     async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
                         emails = await email_response.json()
-                        print(emails, file=sys.stderr)
                         private_emails = [email["email"] for email in emails if email["verified"]]
                 else:
                     private_emails = []
@@ -119,6 +115,29 @@ async def get_github_data(code, discord_id):
                     "email": ','.join(private_emails)
                 }
                 return user_data
+            
+async def comment_cleaner():
+    while True:
+        await asyncio.sleep(5)
+        comments = SupabaseInterface().readAll("app_comments")
+        for comment in comments:
+            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            update_time = dateutil.parser.parse(comment["updated_at"])
+            if utc_now - update_time >= datetime.timedelta(minutes=15):
+                url_components = comment["api_url"].split("/")
+                owner = url_components[-5]
+                repo = url_components[-4]
+                comment_id = comment["comment_id"]
+                issue_id = comment["issue_id"]
+                comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
+                print(f"Print Delete Task,{comment}", file=sys.stderr)
+                print(SupabaseInterface().deleteComment(issue_id))
+
+
+
+@app.before_serving
+async def startup():
+    app.add_background_task(comment_cleaner)
 
 @app.route("/")
 async def hello_world():
