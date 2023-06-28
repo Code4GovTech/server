@@ -93,7 +93,8 @@ async def get_github_data(code, discord_id):
 
     async with aiohttp.ClientSession() as session:
         async with session.post(github_url_for_access_token, data=data, headers=headers) as response:
-            auth_token = (await response.json())["access_token"]
+            r = await response.json()
+            auth_token = (r)["access_token"]
             headers = {
                 "Authorization": f"Bearer {auth_token}"
             }
@@ -102,10 +103,20 @@ async def get_github_data(code, discord_id):
                 github_id = user["id"]
                 github_username = user["login"]
 
+                # Fetching user's private emails
+                if "user:email" in r["scope"]:
+                    async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
+                        emails = await email_response.json()
+                        print(emails, file=sys.stderr)
+                        private_emails = [email["email"] for email in emails if email["verified"]]
+                else:
+                    private_emails = []
+
                 user_data = {
                     "discord_id": int(discord_id),
                     "github_id": github_id,
-                    "github_url": f"https://github.com/{github_username}"
+                    "github_url": f"https://github.com/{github_username}",
+                    "email": ','.join(private_emails)
                 }
                 return user_data
 
@@ -122,7 +133,7 @@ async def authenticate(discord_userdata):
 
     redirect_uri = urllib.parse.quote(f'{os.getenv("HOST")}/register/{discord_userdata}')
     # print(redirect_uri)
-    github_auth_url = f'https://github.com/login/oauth/authorize?client_id={os.getenv("GITHUB_CLIENT_ID")}&redirect_uri={redirect_uri}'
+    github_auth_url = f'https://github.com/login/oauth/authorize?client_id={os.getenv("GITHUB_CLIENT_ID")}&redirect_uri={redirect_uri}&scope=user:email'
     # print(github_auth_url)
     return redirect(github_auth_url)
 
