@@ -2,12 +2,14 @@
 # Comments are created edited and deleted
 
 import aiohttp
-import os, sys
+import os, sys, datetime
 from utils.db import SupabaseInterface
 from utils.markdown_handler import MarkdownHeaders
 from utils.github_api import GithubAPI
 from utils.jwt_generator import GenerateJWT
 from aiographql.client import GraphQLClient, GraphQLRequest
+from events.ticketFeedbackHandler import TicketFeedbackHandler
+import postgrest
 
 async def get_pull_request(owner, repo, number):
     headers = {
@@ -84,10 +86,10 @@ class TicketEventHandler:
         issue = eventData["issue"]
         if any(label["name"].lower() == "c4gt community".lower() for label in issue["labels"] ):
             markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-            print(markdown_contents, file=sys.stderr)
+            # print(markdown_contents, file=sys.stderr)
             ticket_data = {
                         "name":issue["title"],     #name of ticket
-                        "product":issue["repository_url"].split('/')[-1],
+                        "product":markdown_contents["Product Name"] if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
                         "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
@@ -99,8 +101,29 @@ class TicketEventHandler:
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
-            print(ticket_data, file=sys.stderr)
+            # print(ticket_data, file=sys.stderr)
             print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
+
+            if TicketFeedbackHandler().evaluateDict(markdown_contents):
+                url_components = issue["url"].split('/')
+                issue_number = url_components[-1]
+                repo = url_components[-3]
+                owner = url_components[-4]
+                try:
+                    SupabaseInterface().recordComment({
+                            "issue_id":issue["id"],
+                            "updated_at": datetime.datetime.utcnow().isoformat()
+                        })
+                    comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+                    if comment:
+                        SupabaseInterface().updateComment({
+                            "api_url":comment["url"],
+                            "comment_id":comment["id"],
+                            "issue_id":issue["id"],
+                            "updated_at": datetime.datetime.utcnow().isoformat()
+                        })
+                except postgrest.exceptions.APIError:
+                    print("Issue already commented")
         return eventData
 
     async def onTicketEdit(self, eventData):
@@ -109,7 +132,9 @@ class TicketEventHandler:
             if (not issue["labels"]) or (not any(label["name"].lower() == "C4GT Community".lower() for label in issue["labels"] )):
                 # Delete Ticket
                 self.supabase_client.deleteTicket(issue["id"])
+                return
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+        print("MARKDOWN", markdown_contents, file=sys.stderr )
         ticket_data = {
                         "name":issue["title"],     #name of ticket
                         "product":issue["repository_url"].split('/')[-1],
@@ -124,8 +149,49 @@ class TicketEventHandler:
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
-        # print(ticket_data, file=sys.stderr)
+        # print("TICKET", ticket_data, file=sys.stderr)
         print(self.supabase_client.update_recorded_ticket(data=ticket_data))
+        if SupabaseInterface().commentExists(issue["id"]):
+            url_components = issue["url"].split('/')
+            repo = url_components[-3]
+            owner = url_components[-4]
+            comment_id = SupabaseInterface().readCommentData(issue["id"])[0]["comment_id"]
+            if TicketFeedbackHandler().evaluateDict(markdown_contents):
+                comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
+                if comment:
+                    SupabaseInterface().updateComment({
+                        "updated_at": datetime.datetime.utcnow().isoformat(),
+                        "issue_id": issue["id"]
+                    })
+            else:
+                try:
+                    comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
+                    print(f"Print Delete Task,{comment}", file=sys.stderr)
+                    print(SupabaseInterface().deleteComment(issue["id"]))
+                except:
+                    print("Error in deletion")
+        else:
+            if TicketFeedbackHandler().evaluateDict(markdown_contents):
+                url_components = issue["url"].split('/')
+                issue_number = url_components[-1]
+                repo = url_components[-3]
+                owner = url_components[-4]
+                try:
+                    SupabaseInterface().recordComment({
+                            "issue_id":issue["id"],
+                            "updated_at": datetime.datetime.utcnow().isoformat()
+                        })
+                    comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+                    if comment:
+                        SupabaseInterface().updateComment({
+                            "api_url":comment["url"],
+                            "comment_id":comment["id"],
+                            "issue_id":issue["id"],
+                            "updated_at": datetime.datetime.utcnow().isoformat()
+                        })
+                except postgrest.exceptions.APIError:
+                    print("Issue already commented")
+
 
         return eventData
     async def onTicketClose(self, eventData):
