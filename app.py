@@ -135,9 +135,9 @@ async def comment_cleaner():
 
 
 
-@app.before_serving
-async def startup():
-    app.add_background_task(comment_cleaner)
+# @app.before_serving
+# async def startup():
+#     app.add_background_task(comment_cleaner)
 
 @app.route("/")
 async def hello_world():
