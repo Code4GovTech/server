@@ -180,9 +180,11 @@ async def event_handler():
                 await TicketEventHandler().onTicketClose(data)
         else:
             await TicketEventHandler().onTicketCreate(data)
-    if data.get("installation"):
+    if data.get("installation") and data["installation"].get("account"):
         # if data["action"] not in ["deleted", "suspend"]:
         await TicketEventHandler().updateInstallation(data.get("installation"))
+    if data.get("pull_request"):
+        SupabaseInterface().addPr(data["pull_request"], None)
 
     return data
 

@@ -47,7 +47,8 @@ class SupabaseInterface:
             return False
     
     def addPr(self, data, issue_id):
-        ticket = self.getTicket(issue_id)
+        if issue_id:
+            ticket = self.getTicket(issue_id)
         data = {
                     "api_url":data["url"],
                     "html_url":data["html_url"],
@@ -60,7 +61,7 @@ class SupabaseInterface:
                     "merged_by":data["merged_by"]["id"] if data["merged"] else None,
                     "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
                     "merged_at":data["merged_at"] if data["merged"] else None,
-                    "points": ticket["ticket_points"]
+                    "points": ticket["ticket_points"] if issue_id else 10
                 }
         data = self.client.table("pull_requests").insert(data).execute()
         return data.data
