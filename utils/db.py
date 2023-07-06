@@ -84,7 +84,7 @@ class SupabaseInterface:
                     "raised_at":data["created_at"],
                     "raised_by_username":data["user"]["login"],
                     "status":data["state"],
-                    "is_merged":data["merged"],
+                    "is_merged":data["merged"] if data.get("meged") else None,
                     "merged_by":data["merged_by"]["id"] if data["merged"] else None,
                     "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
                     "merged_at":data["merged_at"] if data["merged"] else None,
