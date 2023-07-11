@@ -143,6 +143,11 @@ async def comment_cleaner():
 async def hello_world():
     return "<p>Hello, World!</p>"
 
+@app.route("/misc_actions")
+async def addIssues():
+    prs = SupabaseInterface().readAll("mentorship_program")
+    
+
 @app.route("/already_authenticated")
 async def isAuthenticated():
     return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}

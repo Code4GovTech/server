@@ -8,3 +8,4 @@ mistune==0.8.4
 fuzzywuzzy==0.18.0
 flatdict==4.0.1
 aiographql-client==1.0.3
+python-Levenshtein==0.21.1

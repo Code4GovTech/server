@@ -10,6 +10,63 @@ from utils.jwt_generator import GenerateJWT
 from aiographql.client import GraphQLClient, GraphQLRequest
 from events.ticketFeedbackHandler import TicketFeedbackHandler
 import postgrest
+from fuzzywuzzy import fuzz
+
+def matchProduct(enteredProductName):
+    products = [
+    "ABDM",
+    "AI Tools",
+    "Avni",
+    "Bahmni",
+    "Beckn DSEP",
+    "Beckn",
+    "CARE",
+    "CORD Network",
+    "cQube",
+    "DDP",
+    "DevOps Pipeline",
+    "DIGIT",
+    "DIKSHA",
+    "Doc Generator",
+    "Farmstack",
+    "Glific",
+    "Health Claims Exchange",
+    "Karmayogi",
+    "ODK Extension Collection",
+    "Quiz Creator",
+    "QuML player for Manage learn",
+    "Solve Ninja Chatbot",
+    "Sunbird DevOps",
+    "Sunbird ED",
+    "Sunbird inQuiry",
+    "Sunbird Knowlg",
+    "Sunbird Lern",
+    "Sunbird Obsrv",
+    "Sunbird RC",
+    "Sunbird Saral",
+    "Sunbird UCI",
+    "Template creation portal",
+    "Text2SQL",
+    "TrustBot and POSHpal",
+    "TrustIn",
+    "Unnati",
+    "WarpSQL",
+    "Workflow",
+    "Yaus"
+]
+    matchingProduct = None
+    for product in products:
+        if fuzz.ratio(enteredProductName.lower(), product.lower())>80:
+            matchingProduct = product
+        if fuzz.partial_ratio(enteredProductName.lower(), product.lower())>80:
+            matchingProduct = product
+        if fuzz.token_sort_ratio(enteredProductName.lower(), product.lower())>80:
+            matchingProduct = product
+        if fuzz.token_set_ratio(enteredProductName.lower(), product.lower())>80:
+            matchingProduct = product
+    return matchingProduct
+
+
 
 async def send_message(message):
     webhook_url = 'https://discord.com/api/webhooks/1126709789876043786/TF_IdCbooRo7_Y3xLzwSExdpvyFcoUGzxBGS_oqCH7JcVq0mzYbu6Av0dbVWjgqYUoNM'
@@ -104,7 +161,7 @@ class TicketEventHandler:
             # print(markdown_contents, file=sys.stderr)
             ticket_data = {
                         "name":issue["title"],     #name of ticket
-                        "product":markdown_contents["Product Name"] if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
+                        "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
                         "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
@@ -153,7 +210,7 @@ class TicketEventHandler:
         print("MARKDOWN", markdown_contents, file=sys.stderr )
         ticket_data = {
                         "name":issue["title"],     #name of ticket
-                        "product":issue["repository_url"].split('/')[-1],
+                        "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
                         "complexity":markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
@@ -363,231 +420,5 @@ class TicketEventHandler:
                         # return data
     
 
-class CommentEventHandler:
-    def __init__():
-        return
 
-# from events.ticketEventHandler import TicketEventHandler
-# testEvent = {
-#   "action": "opened",
-#   "issue": {
-#     "url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/53",
-#     "repository_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app",
-#     "labels_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/53/labels{/name}",
-#     "comments_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/53/comments",
-#     "events_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/53/events",
-#     "html_url": "https://github.com/KDwevedi/testing_for_github_app/issues/53",
-#     "id": 1766723561,
-#     "node_id": "I_kwDOJvNYv85pTg_p",
-#     "number": 53,
-#     "title": "[C4GT] Test Issue",
-#     "user": {
-#       "login": "KDwevedi",
-#       "id": 74085496,
-#       "node_id": "MDQ6VXNlcjc0MDg1NDk2",
-#       "avatar_url": "https://avatars.githubusercontent.com/u/74085496?v=4",
-#       "gravatar_id": "",
-#       "url": "https://api.github.com/users/KDwevedi",
-#       "html_url": "https://github.com/KDwevedi",
-#       "followers_url": "https://api.github.com/users/KDwevedi/followers",
-#       "following_url": "https://api.github.com/users/KDwevedi/following{/other_user}",
-#       "gists_url": "https://api.github.com/users/KDwevedi/gists{/gist_id}",
-#       "starred_url": "https://api.github.com/users/KDwevedi/starred{/owner}{/repo}",
-#       "subscriptions_url": "https://api.github.com/users/KDwevedi/subscriptions",
-#       "organizations_url": "https://api.github.com/users/KDwevedi/orgs",
-#       "repos_url": "https://api.github.com/users/KDwevedi/repos",
-#       "events_url": "https://api.github.com/users/KDwevedi/events{/privacy}",
-#       "received_events_url": "https://api.github.com/users/KDwevedi/received_events",
-#       "type": "User",
-#       "site_admin": False
-#     },
-#     "labels": [
-#       {
-#         "id": 5618130256,
-#         "node_id": "LA_kwDOJvNYv88AAAABTt3dUA",
-#         "url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/labels/bug",
-#         "name": "bug",
-#         "color": "d73a4a",
-#         "default": True,
-#         "description": "Something isn't working"
-#       },
-#       {
-#         "id": 5618130272,
-#         "node_id": "LA_kwDOJvNYv88AAAABTt3dYA",
-#         "url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/labels/help%20wanted",
-#         "name": "help wanted",
-#         "color": "008672",
-#         "default": True,
-#         "description": "Extra attention is needed"
-#       },
-#       {
-#         "id": 5618368045,
-#         "node_id": "LA_kwDOJvNYv88AAAABTuF-LQ",
-#         "url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/labels/C4GT%20Community",
-#         "name": "C4GT Community",
-#         "color": "3C6698",
-#         "default": False,
-#         "description": "C4GT Community Ticket"
-#       }
-#     ],
-#     "state": "open",
-#     "locked": False,
-#     "assignee": None,
-#     "assignees": [],
-#     "milestone": None,
-#     "comments": 0,
-#     "created_at": "2023-06-21T05:36:22Z",
-#     "updated_at": "2023-06-21T05:36:22Z",
-#     "closed_at": None,
-#     "author_association": "OWNER",
-#     "active_lock_reason": None,
-#     "body": "## Description\r\nDesc\r\n\r\n## Goals\r\n- [ ] [Goal 1]\r\n- [ ] [Goal 2]\r\n- [ ] [Goal 3]\r\n- [ ] [Goal 4]\r\n- [ ] [Goal 5]\r\n\r\n## Expected Outcome\r\n[Describe in detail what the final product or result should look like and how it should behave.]\r\n\r\n## Acceptance Criteria\r\n- [ ] [Criteria 1]\r\n- [ ] [Criteria 2]\r\n- [ ] [Criteria 3]\r\n- [ ] [Criteria 4]\r\n- [ ] [Criteria 5]\r\n\r\n## Implementation Details\r\n[List any technical details about the proposed implementation, including any specific technologies that will be used.]\r\n\r\n## Mockups / Wireframes\r\n[Include links to any visual aids, mockups, wireframes, or diagrams that help illustrate what the final product should look like. This is not always necessary, but can be very helpful in many cases.]\r\n\r\n---\r\n\r\n### Project\r\nProject\r\n\r\n### Organization Name:\r\nOrganisation\r\n\r\n### Domain\r\nE-Governance\r\n\r\n### Tech Skills Needed:\r\nReactJS\r\n\r\n### Mentor(s)\r\n@KDwevedi \r\n\r\n### Complexity\r\nMedium\r\n\r\n### Category\r\nPerformance Improvement\r\n\r\n### Sub Category\r\nAnalytics\r\n",
-#     "reactions": {
-#       "url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/53/reactions",
-#       "total_count": 0,
-#       "+1": 0,
-#       "-1": 0,
-#       "laugh": 0,
-#       "hooray": 0,
-#       "confused": 0,
-#       "heart": 0,
-#       "rocket": 0,
-#       "eyes": 0
-#     },
-#     "timeline_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/53/timeline",
-#     "performed_via_github_app": None,
-#     "state_reason": None
-#   },
-#   "repository": {
-#     "id": 653482175,
-#     "node_id": "R_kgDOJvNYvw",
-#     "name": "testing_for_github_app",
-#     "full_name": "KDwevedi/testing_for_github_app",
-#     "private": False,
-#     "owner": {
-#       "login": "KDwevedi",
-#       "id": 74085496,
-#       "node_id": "MDQ6VXNlcjc0MDg1NDk2",
-#       "avatar_url": "https://avatars.githubusercontent.com/u/74085496?v=4",
-#       "gravatar_id": "",
-#       "url": "https://api.github.com/users/KDwevedi",
-#       "html_url": "https://github.com/KDwevedi",
-#       "followers_url": "https://api.github.com/users/KDwevedi/followers",
-#       "following_url": "https://api.github.com/users/KDwevedi/following{/other_user}",
-#       "gists_url": "https://api.github.com/users/KDwevedi/gists{/gist_id}",
-#       "starred_url": "https://api.github.com/users/KDwevedi/starred{/owner}{/repo}",
-#       "subscriptions_url": "https://api.github.com/users/KDwevedi/subscriptions",
-#       "organizations_url": "https://api.github.com/users/KDwevedi/orgs",
-#       "repos_url": "https://api.github.com/users/KDwevedi/repos",
-#       "events_url": "https://api.github.com/users/KDwevedi/events{/privacy}",
-#       "received_events_url": "https://api.github.com/users/KDwevedi/received_events",
-#       "type": "User",
-#       "site_admin": False
-#     },
-#     "html_url": "https://github.com/KDwevedi/testing_for_github_app",
-#     "description": None,
-#     "fork": False,
-#     "url": "https://api.github.com/repos/KDwevedi/testing_for_github_app",
-#     "forks_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/forks",
-#     "keys_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/keys{/key_id}",
-#     "collaborators_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/collaborators{/collaborator}",
-#     "teams_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/teams",
-#     "hooks_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/hooks",
-#     "issue_events_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/events{/number}",
-#     "events_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/events",
-#     "assignees_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/assignees{/user}",
-#     "branches_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/branches{/branch}",
-#     "tags_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/tags",
-#     "blobs_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/git/blobs{/sha}",
-#     "git_tags_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/git/tags{/sha}",
-#     "git_refs_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/git/refs{/sha}",
-#     "trees_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/git/trees{/sha}",
-#     "statuses_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/statuses/{sha}",
-#     "languages_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/languages",
-#     "stargazers_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/stargazers",
-#     "contributors_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/contributors",
-#     "subscribers_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/subscribers",
-#     "subscription_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/subscription",
-#     "commits_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/commits{/sha}",
-#     "git_commits_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/git/commits{/sha}",
-#     "comments_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/comments{/number}",
-#     "issue_comment_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues/comments{/number}",
-#     "contents_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/contents/{+path}",
-#     "compare_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/compare/{base}...{head}",
-#     "merges_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/merges",
-#     "archive_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/{archive_format}{/ref}",
-#     "downloads_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/downloads",
-#     "issues_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/issues{/number}",
-#     "pulls_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/pulls{/number}",
-#     "milestones_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/milestones{/number}",
-#     "notifications_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/notifications{?since,all,participating}",
-#     "labels_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/labels{/name}",
-#     "releases_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/releases{/id}",
-#     "deployments_url": "https://api.github.com/repos/KDwevedi/testing_for_github_app/deployments",
-#     "created_at": "2023-06-14T06:28:22Z",
-#     "updated_at": "2023-06-20T10:43:27Z",
-#     "pushed_at": "2023-06-20T15:21:18Z",
-#     "git_url": "git://github.com/KDwevedi/testing_for_github_app.git",
-#     "ssh_url": "git@github.com:KDwevedi/testing_for_github_app.git",
-#     "clone_url": "https://github.com/KDwevedi/testing_for_github_app.git",
-#     "svn_url": "https://github.com/KDwevedi/testing_for_github_app",
-#     "homepage": None,
-#     "size": 36,
-#     "stargazers_count": 0,
-#     "watchers_count": 0,
-#     "language": None,
-#     "has_issues": True,
-#     "has_projects": True,
-#     "has_downloads": True,
-#     "has_wiki": True,
-#     "has_pages": False,
-#     "has_discussions": False,
-#     "forks_count": 0,
-#     "mirror_url": None,
-#     "archived": False,
-#     "disabled": False,
-#     "open_issues_count": 1,
-#     "license": {
-#       "key": "mit",
-#       "name": "MIT License",
-#       "spdx_id": "MIT",
-#       "url": "https://api.github.com/licenses/mit",
-#       "node_id": "MDc6TGljZW5zZTEz"
-#     },
-#     "allow_forking": True,
-#     "is_template": False,
-#     "web_commit_signoff_required": False,
-#     "topics": [],
-#     "visibility": "public",
-#     "forks": 0,
-#     "open_issues": 1,
-#     "watchers": 0,
-#     "default_branch": "main"
-#   },
-#   "sender": {
-#     "login": "KDwevedi",
-#     "id": 74085496,
-#     "node_id": "MDQ6VXNlcjc0MDg1NDk2",
-#     "avatar_url": "https://avatars.githubusercontent.com/u/74085496?v=4",
-#     "gravatar_id": "",
-#     "url": "https://api.github.com/users/KDwevedi",
-#     "html_url": "https://github.com/KDwevedi",
-#     "followers_url": "https://api.github.com/users/KDwevedi/followers",
-#     "following_url": "https://api.github.com/users/KDwevedi/following{/other_user}",
-#     "gists_url": "https://api.github.com/users/KDwevedi/gists{/gist_id}",
-#     "starred_url": "https://api.github.com/users/KDwevedi/starred{/owner}{/repo}",
-#     "subscriptions_url": "https://api.github.com/users/KDwevedi/subscriptions",
-#     "organizations_url": "https://api.github.com/users/KDwevedi/orgs",
-#     "repos_url": "https://api.github.com/users/KDwevedi/repos",
-#     "events_url": "https://api.github.com/users/KDwevedi/events{/privacy}",
-#     "received_events_url": "https://api.github.com/users/KDwevedi/received_events",
-#     "type": "User",
-#     "site_admin": False
-#   },
-#   "installation": {
-#     "id": 38589024,
-#     "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uMzg1ODkwMjQ="
-#   }
-# }
-# TicketEventHandler().onTicketEdit(testEvent)
     
