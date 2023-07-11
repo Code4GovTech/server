@@ -6,6 +6,10 @@ import flatdict
 
 #CONSTS
 from utils.runtime_vars import MARKDOWN_TEMPLATE_HEADERS
+def remove_special_characters(string):
+    #ignores '-' and ',' because '-' can be used in github usernames and ',' is needed for comma separated values
+    special_characters = re.compile(r"[^a-zA-Z0-9\s-,]")
+    return re.sub(special_characters, "", string)
 
 
 class HeadingRenderer(mistune.Renderer):
@@ -82,7 +86,7 @@ class MarkdownHeaders:
                 if re.search(pattern, key):
                     dataDict[header] = flatDict[key]
             if f'{header}.text' in flatDict.keys():
-                dataDict[header] = flatDict[f'{header}.text']
+                dataDict[header] = remove_special_characters(flatDict[f'{header}.text'])
         return dataDict
 
 # test = """## Description

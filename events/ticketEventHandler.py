@@ -2,7 +2,7 @@
 # Comments are created edited and deleted
 
 import aiohttp
-import os, sys, datetime
+import os, sys, datetime, json
 from utils.db import SupabaseInterface
 from utils.markdown_handler import MarkdownHeaders
 from utils.github_api import GithubAPI
@@ -10,6 +10,21 @@ from utils.jwt_generator import GenerateJWT
 from aiographql.client import GraphQLClient, GraphQLRequest
 from events.ticketFeedbackHandler import TicketFeedbackHandler
 import postgrest
+
+async def send_message(message):
+    webhook_url = 'https://discord.com/api/webhooks/1126709789876043786/TF_IdCbooRo7_Y3xLzwSExdpvyFcoUGzxBGS_oqCH7JcVq0mzYbu6Av0dbVWjgqYUoNM'
+    message = f'{message}'
+
+    payload = {
+        'content': message
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(webhook_url, data=json.dumps(payload)) as response:
+            if response.status == 204:
+                print('Message sent successfully')
+            else:
+                print(f'Failed to send message. Status code: {response.status}')
 
 async def get_pull_request(owner, repo, number):
     headers = {
@@ -102,6 +117,7 @@ class TicketEventHandler:
                         "mentors": [github_handle[1:] for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
             # print(ticket_data, file=sys.stderr)
+            await send_message(ticket_data)
             print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
 
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
