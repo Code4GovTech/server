@@ -1,4 +1,5 @@
 import aiohttp, os
+from utils.db import SupabaseInterface
 headers = {
             'Accept': 'application/vnd.github+json',
             'Authorization': f'Bearer {os.getenv("GithubPAT")}'
@@ -139,63 +140,64 @@ mentorship_repos = [
 
 repositories = list(set(mentorship_repos))
 
-for repo in repositories:
-        pulls = []
+async def getNewPRs():
+    for repo in repositories:
+            pulls = []
 
-        for i in range(1,10):
-                page = await get_pull_requests('all', i)
-                # print(page)
-                if page == []:
+            for i in range(1,10):
+                    page = await get_pull_requests('all', i)
+                    # print(page)
+                    if page == []:
+                            break
+                    # print(page)
+                    for pull in page:
+                            if pull not in pulls:
+                                    pulls.append(pull)
+            count = 1
+            for pr in pulls:
+                    # print(pr, pulls)
+                    if isinstance(pr, dict) and pr.get("number"):
+                            pull = get_pull_request(pr["number"])
+                    else: 
+                        continue
+                    print(count,'/',len(pulls))
+                    count+=1
+                    # break
+                    try:
+                            p = {
+                            "pr_url": pull["url"],
+                            "pr_id": pull["id"],
+                            "pr_node_id": pull["node_id"],
+                            "html_url": pull["html_url"],
+                            "status": pull["state"],
+                            "title": pull["title"],
+                            "raised_by_username": pull["user"]["login"],
+                            "raised_by_id": pull["user"]["id"],
+                            "body": pull["body"],
+                            "created_at": pull["created_at"],
+                            "updated_at": pull["updated_at"],
+                            "closed_at": pull["closed_at"],
+                            "merged_at": pull["merged_at"],
+                            "assignees": pull["assignees"],
+                            "requested_reviewers": pull["requested_reviewers"],
+                            "labels": pull["labels"],
+                            "review_comments_url": pull["review_comments_url"],
+                            "comments_url": pull["comments_url"],
+                            "repository_id": pull["base"]["repo"]["id"],
+                            "repository_owner_name": pull["base"]["repo"]["owner"]["login"],
+                            "repository_owner_id": pull["base"]["repo"]["owner"]["id"],
+                            "repository_url": pull["base"]["repo"]["html_url"],
+                            "merged_by_username":pull["merged_by"]["login"] if pull.get("merged_by") else None,
+                            "merged_by_id":pull["merged_by"]["id"] if pull.get("merged_by") else None,
+                            "merged": pull["merged"] if pull.get("merged") else None,
+                            "number_of_commits": pull["commits"],
+                            "number_of_comments": pull["comments"] ,
+                            "lines_of_code_added": pull["additions"] ,
+                            "lines_of_code_removed": pull["deletions"] ,
+                            "number_of_files_changed": pull["changed_files"] 
+
+                    }
+                            SupabaseInterface().insert("mentorship_program_pull_request", p)
+                    except Exception as e:
+                        print("Exception", e)
                         break
-                # print(page)
-                for pull in page:
-                        if pull not in pulls:
-                                pulls.append(pull)
-        count = 1
-        for pr in pulls:
-                # print(pr, pulls)
-                if isinstance(pr, dict) and pr.get("number"):
-                        pull = client.get_pull_request(pr["number"])
-                else: 
-                      continue
-                print(count,'/',len(pulls))
-                count+=1
-                # break
-                try:
-                        p = {
-                        "pr_url": pull["url"],
-                        "pr_id": pull["id"],
-                        "pr_node_id": pull["node_id"],
-                        "html_url": pull["html_url"],
-                        "status": pull["state"],
-                        "title": pull["title"],
-                        "raised_by_username": pull["user"]["login"],
-                        "raised_by_id": pull["user"]["id"],
-                        "body": pull["body"],
-                        "created_at": pull["created_at"],
-                        "updated_at": pull["updated_at"],
-                        "closed_at": pull["closed_at"],
-                        "merged_at": pull["merged_at"],
-                        "assignees": pull["assignees"],
-                        "requested_reviewers": pull["requested_reviewers"],
-                        "labels": pull["labels"],
-                        "review_comments_url": pull["review_comments_url"],
-                        "comments_url": pull["comments_url"],
-                        "repository_id": pull["base"]["repo"]["id"],
-                        "repository_owner_name": pull["base"]["repo"]["owner"]["login"],
-                        "repository_owner_id": pull["base"]["repo"]["owner"]["id"],
-                        "repository_url": pull["base"]["repo"]["html_url"],
-                        "merged_by_username":pull["merged_by"]["login"] if pull.get("merged_by") else None,
-                        "merged_by_id":pull["merged_by"]["id"] if pull.get("merged_by") else None,
-                        "merged": pull["merged"] if pull.get("merged") else None,
-                        "number_of_commits": pull["commits"],
-                        "number_of_comments": pull["comments"] ,
-                        "lines_of_code_added": pull["additions"] ,
-                        "lines_of_code_removed": pull["deletions"] ,
-                        "number_of_files_changed": pull["changed_files"] 
-
-                }
-                        supa.table("community_program_pull_request").insert([p]).execute()
-                except Exception as e:
-                      print("Exception", e)
-                      continue

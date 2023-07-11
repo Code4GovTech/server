@@ -29,6 +29,10 @@ class SupabaseInterface:
     def readCommentData(self, issue_id):
         data = self.client.table("app_comments").select("*").eq("issue_id", issue_id).execute()
         return data.data
+    
+    def insert(self, table, data):
+        data = self.client.table(table).insert(data).execute()
+        return data.data
 
     
     def commentExists(self,issue_id):
