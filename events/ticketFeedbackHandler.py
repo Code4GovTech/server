@@ -3,6 +3,19 @@ from utils.db import SupabaseInterface
 import aiohttp, sys
 from utils.runtime_vars import MARKDOWN_TEMPLATE_HEADERS
 
+headerMessages = {
+    "Product Name": "Product Name - (Missing/Misspelled)",
+    "Project": "Project/Project Name",
+    "Project Name": "Project/Project Name",
+    "Organisation Name": "Organisation Name",
+    "Domain": "Domain - Area of governance",
+    "Tech Skills Needed": "Technical Skills - Please add relevant tech skills in a comma separated format",
+    "Mentor(s)": "Please tag the relevant mentors on the ticket",
+    "Complexity": "Complexity - High/Medium/Low",
+    "Category": "Category - Please add one or more of these options [CI/CD], [Integrations], [Performance Improvement], [Security], [UI/UX/Design], [Bug], [Feature], [Documentation], [Deployment], [Test], [PoC]",
+    "Sub Category": "Sub-Category - Please mention the sub-category if any for the ticket"
+}
+
 class TicketFeedbackHandler:
     def __init__(self):
         return
@@ -29,14 +42,24 @@ class TicketFeedbackHandler:
         missing_headers = self.evaluateDict(markdown_dict)
         if "Product" in missing_headers and "Product Name" in missing_headers:
             missing_headers.remove("Product")
+        mandatoryHeaders = ''
+        optionalHeaders = ''
         heads = ''
         for header in missing_headers:
-            heads+=f'\n- {header}'
-        body = f'''Your C4GT Community Ticket has been added to the dashboard. However, we were unable to detect the following details in your ticket:
-        {heads}
-        \nTo have all details visible on the C4GT Community dashboard, please add the missing headers.
-        \nIn case the app isn't able to detect headers, try and make sure all headers are level 3 headings "### Heading"
-        This comment will disapper 15 minutes after the last edit to the ticket'''
+            if header in ['Product Name', 'Complexity', 'Category', 'Mentor(s)', 'Tech Skills Needed']:
+                mandatoryHeaders+=f'- {headerMessages(header)}\n'
+            else:
+                optionalHeaders+=f'- {headerMessages(header)}\n'
+        body = f'''"Hi! 
+Mandatory Details - The following details essential to submit tickets to C4GT Community Program are missing. Please add them!
+{mandatoryHeaders}
+Without these details, the ticket cannot be listed on the C4GT Community Listing. Please update your ticket!
+
+Important Details -  These following details are helpful for contributors to effectively identify and contribute to tickets. 
+{optionalHeaders}
+Please update the ticket"
+
+        '''
 
         return body
     
