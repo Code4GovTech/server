@@ -4,6 +4,7 @@ import dotenv, os, json, urllib, sys, dateutil, datetime
 from utils.db import SupabaseInterface
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
+from githubdatapipeline.pull_request.scraper import getNewPRs
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
