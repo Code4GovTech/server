@@ -18,12 +18,20 @@ class SupabaseInterface:
         data = self.client.table(f"{table}").select("*").execute()
         return data.data
     
+    def insert(self,table, data):
+        data = self.client.table(table).insert(data).execute()
+        return data.data
+    
     def recordComment(self, data):
         data = self.client.table("app_comments").insert(data).execute()
         return data.data
     
     def updateComment(self, data):
         data = self.client.table("app_comments").update(data).eq("issue_id", data["issue_id"]).execute()
+        return data.data
+    
+    def update(self,table, update, query_key, query_value):
+        data = self.client.table(table).update(update).eq(query_key, query_value).execute()
         return data.data
     
     def readCommentData(self, issue_id):

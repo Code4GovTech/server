@@ -1,10 +1,10 @@
-import aiohttp, os
+import aiohttp, os, sys
 from utils.db import SupabaseInterface
 headers = {
             'Accept': 'application/vnd.github+json',
             'Authorization': f'Bearer {os.getenv("GithubPAT")}'
         }
-async def get_pull_requests(self, status, page):
+async def get_pull_requests(owner, repo,status, page):
     """Gets pull requests from GitHub.
 
     Args:
@@ -21,12 +21,12 @@ async def get_pull_requests(self, status, page):
         "page": page,
         "created": "2023-07-01T01:01:01Z"
     }
-    url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls"
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, params=params) as resp:
             return await resp.json()
 
-async def get_pull_request(self, number):
+async def get_pull_request(owner, repo, number):
     """Gets a pull request from GitHub.
 
     Args:
@@ -36,7 +36,7 @@ async def get_pull_request(self, number):
         The JSON response from GitHub.
     """
 
-    url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as resp:
             return await resp.json()
@@ -142,10 +142,12 @@ repositories = list(set(mentorship_repos))
 
 async def getNewPRs():
     for repo in repositories:
+            components = repo.split('/')
+            owner, repository = components[-2], components[-1]
             pulls = []
 
             for i in range(1,10):
-                    page = await get_pull_requests('all', i)
+                    page = await get_pull_requests(owner, repository, 'all', i)
                     # print(page)
                     if page == []:
                             break
@@ -157,7 +159,7 @@ async def getNewPRs():
             for pr in pulls:
                     # print(pr, pulls)
                     if isinstance(pr, dict) and pr.get("number"):
-                            pull = get_pull_request(pr["number"])
+                            pull = await get_pull_request(owner, repository, pr["number"])
                     else: 
                         continue
                     print(count,'/',len(pulls))
@@ -199,5 +201,5 @@ async def getNewPRs():
                     }
                             SupabaseInterface().insert("mentorship_program_pull_request", p)
                     except Exception as e:
-                        print("Exception", e)
+                        print("Exception", e, file=sys.stderr)
                         break
