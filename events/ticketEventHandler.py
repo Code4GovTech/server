@@ -177,6 +177,8 @@ class TicketEventHandler:
             await send_message(ticket_data)
             if ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
                 print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
+            else:
+                self.supabase_client.insert("unlisted_tickets", ticket_data)
 
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
                 url_components = issue["url"].split('/')
