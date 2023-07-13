@@ -7,6 +7,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
+import minio
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -164,6 +165,21 @@ async def event_handler():
 
     return data
 
+@app.route("/image", methods=["GET"])
+async def get_image():
+    # client = minio.Minio(f"{os.getenv('MINIO_HOST')}:{os.getenv('MINIO_PORT')}", f"{os.getenv('MINIO_ACCESS_KEY')}","m4UcAe3d1omV", secure=False)
+    # bucket = "c4gt-github-profiles"
+    # file = "RisingStar.png"
+
+    # with client.get_object(bucket, file, request_headers= {
+    #     "Content-Type": "image/png"
+    # }) as f:
+    #     image = await f.read()
+
+    res = SupabaseInterface().client.storage.from_("c4gt-github-profile").get_public_url('RisingStar.png')
+
+
+    return res
 
 
 
