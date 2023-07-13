@@ -59,7 +59,8 @@ class SupabaseInterface:
     
     def checkIsTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
-        if len(data.data)>0:
+        unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data.data)>0 or len(unlisted_data.data)>0:
             return True
         else:
             return False

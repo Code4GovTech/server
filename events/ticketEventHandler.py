@@ -45,7 +45,7 @@ def matchProduct(enteredProductName):
     "Sunbird RC",
     "Sunbird Saral",
     "Sunbird UCI",
-    "Template creation portal",
+    "Template Creation Portal",
     "Text2SQL",
     "TrustBot and POSHpal",
     "TrustIn",
@@ -69,19 +69,44 @@ def matchProduct(enteredProductName):
 
 
 async def send_message(message):
+    discord_channels = SupabaseInterface().readAll("discord_channels")
+    products = SupabaseInterface().readAll("product")
+
+    url = None
+    # for product in products:
+    #     if product["name"].lower() == message["product"].lower():
+    #         for channel in discord_channels:
+    #             if channel["channel_id"] == product["channel"]:
+    #                 if channel["should_notify"]:
+    #                     url = channel["webhook"]
+
     webhook_url = 'https://discord.com/api/webhooks/1126709789876043786/TF_IdCbooRo7_Y3xLzwSExdpvyFcoUGzxBGS_oqCH7JcVq0mzYbu6Av0dbVWjgqYUoNM'
-    message = f'{message}'
+    message = f'''Hey!
+A new project has been listed under {message["product"]}.
+Project Link: {message["url"]}
+Complexity: {message["complexity"]}
+Tech Skills Required: {message["reqd_skills"]}'''
+    headers = {
+        "Content-Type": 'application/json'
+    }
 
     payload = {
         'content': message
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(webhook_url, data=json.dumps(payload)) as response:
+        async with session.post(webhook_url,headers=headers, data=json.dumps(payload)) as response:
             if response.status == 204:
                 print('Message sent successfully')
             else:
-                print(f'Failed to send message. Status code: {response.status}')
+                print(f'Failed to send message. Status code: {response}')
+        
+        if url:
+            async with session.post(url,headers=headers, data=json.dumps(payload)) as response:
+                if response.status == 204:
+                    print('Message sent successfully')
+                else:
+                    print(f'Failed to send message. Status code: {response}')
 
 async def get_pull_request(owner, repo, number):
     headers = {
@@ -177,6 +202,7 @@ class TicketEventHandler:
             await send_message(ticket_data)
             if ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
                 print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
+                await send_message(ticket_data)
             else:
                 self.supabase_client.insert("unlisted_tickets", ticket_data)
 

@@ -7,10 +7,10 @@ headerMessages = {
     "Product Name": "Product Name - (Missing/Misspelled)",
     "Project": "Project/Project Name",
     "Project Name": "Project/Project Name",
-    "Organisation Name": "Organisation Name",
+    "Organization Name": "Organization Name",
     "Domain": "Domain - Area of governance",
     "Tech Skills Needed": "Technical Skills - Please add relevant tech skills in a comma separated format",
-    "Mentor(s)": "Please tag the relevant mentors on the ticket",
+    "Mentor(s)": "Mentors(s) Please tag the relevant mentors on the ticket",
     "Complexity": "Complexity - High/Medium/Low",
     "Category": "Category - Please add one or more of these options [CI/CD], [Integrations], [Performance Improvement], [Security], [UI/UX/Design], [Bug], [Feature], [Documentation], [Deployment], [Test], [PoC]",
     "Sub Category": "Sub-Category - Please mention the sub-category if any for the ticket"
@@ -47,17 +47,17 @@ class TicketFeedbackHandler:
         heads = ''
         for header in missing_headers:
             if header in ['Product Name', 'Complexity', 'Category', 'Mentor(s)', 'Tech Skills Needed']:
-                mandatoryHeaders+=f'- {headerMessages(header)}\n'
+                mandatoryHeaders+=f'- {headerMessages[header]}\n'
             else:
-                optionalHeaders+=f'- {headerMessages(header)}\n'
-        body = f'''"Hi! 
+                optionalHeaders+=f'- {headerMessages[header]}\n'
+        body = f'''Hi! 
 Mandatory Details - The following details essential to submit tickets to C4GT Community Program are missing. Please add them!
 {mandatoryHeaders}
-Without these details, the ticket cannot be listed on the C4GT Community Listing. Please update your ticket!
+Without these details, the ticket cannot be listed on the C4GT Community Listing.
 
 Important Details -  These following details are helpful for contributors to effectively identify and contribute to tickets. 
 {optionalHeaders}
-Please update the ticket"
+Please update the ticket
 
         '''
 
