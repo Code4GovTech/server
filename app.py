@@ -7,6 +7,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
+import minio
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -84,19 +85,19 @@ async def hello_world():
 
 @app.route("/misc_actions")
 async def addIssues():
-    prs = SupabaseInterface().readAll("mentorship_program_pull_request")
-    tickets = SupabaseInterface().readAll("mentorship_program_tickets")
-    ticketUrls = [ticket["html_url"] for ticket in tickets]
-    for pr in prs:
-        if pr.get("body"):
-            issues = PrProcessor().getLinkedIssues(pr)
-            for issue in issues:
-                if pr["repository_url"]+f'/issues/{issue}' in ticketUrls:
-                    SupabaseInterface().update("mentorship_program_pull_request", {"linked_ticket":pr["repository_url"]+f'/issues/{issue}' }, "pr_id", pr["pr_id"])
-    return "Hello World"
+    # prs = SupabaseInterface().readAll("mentorship_program_pull_request")
+    # tickets = SupabaseInterface().readAll("mentorship_program_tickets")
+    # ticketUrls = [ticket["html_url"] for ticket in tickets]
+    # for pr in prs:
+    #     if pr.get("body"):
+    #         issues = PrProcessor().getLinkedIssues(pr)
+    #         for issue in issues:
+    #             if pr["repository_url"]+f'/issues/{issue}' in ticketUrls:
+    #                 SupabaseInterface().update("mentorship_program_pull_request", {"linked_ticket":pr["repository_url"]+f'/issues/{issue}' }, "pr_id", pr["pr_id"])
+    # return "Hello World"
         
 
-    # await getNewPRs()
+    await getNewPRs()
     
 
 @app.route("/already_authenticated")
@@ -146,7 +147,6 @@ async def event_handler():
     supabase_client = SupabaseInterface()
     data = await request.json
     supabase_client.add_event_data(data=data)
-    # data = test_data
     if data.get("issue"):
         issue = data["issue"]
         if supabase_client.checkUnlisted(issue["id"]):
@@ -161,9 +161,26 @@ async def event_handler():
     if data.get("installation") and data["installation"].get("account"):
         # if data["action"] not in ["deleted", "suspend"]:
         await TicketEventHandler().updateInstallation(data.get("installation"))
+    
+    # if data.
 
     return data
 
+@app.route("/image", methods=["GET"])
+async def get_image():
+    # client = minio.Minio(f"{os.getenv('MINIO_HOST')}:{os.getenv('MINIO_PORT')}", f"{os.getenv('MINIO_ACCESS_KEY')}","m4UcAe3d1omV", secure=False)
+    # bucket = "c4gt-github-profiles"
+    # file = "RisingStar.png"
+
+    # with client.get_object(bucket, file, request_headers= {
+    #     "Content-Type": "image/png"
+    # }) as f:
+    #     image = await f.read()
+
+    res = SupabaseInterface().client.storage.from_("c4gt-github-profile").get_public_url('RisingStar.png')
+
+
+    return res
 
 
 
