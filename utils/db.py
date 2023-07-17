@@ -65,6 +65,18 @@ class SupabaseInterface:
         else:
             return False
     
+    def checkUnlisted(self, issue_id):
+        unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(unlisted_data.data)>0:
+            return True
+        else:
+            return False
+    
+    def deleteUnlistedTicket(self, issue_id):
+        data = self.client.table("unlisted_tickets").delete().eq("issue_id", issue_id).execute()
+        return data.data
+
+    
     def getTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
         return data.data

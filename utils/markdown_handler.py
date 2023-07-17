@@ -1,5 +1,5 @@
 import mistune
-import re
+import re, sys
 import pprint
 from fuzzywuzzy import fuzz
 import flatdict
@@ -8,7 +8,7 @@ import flatdict
 from utils.runtime_vars import MARKDOWN_TEMPLATE_HEADERS
 def remove_special_characters(string):
     #ignores '-' and ',' because '-' can be used in github usernames and ',' is needed for comma separated values
-    special_characters = re.compile(r"[^a-zA-Z0-9\s-,]")
+    special_characters = re.compile(r"[^a-zA-Z0-9\s,-]")
     return re.sub(special_characters, "", string)
 
 
@@ -84,9 +84,10 @@ class MarkdownHeaders:
             pattern = fr"(?:^{re.escape(header)}\.text$)|(?:\.{re.escape(header)}\.text$)"
             for key in flatDict.keys():
                 if re.search(pattern, key):
-                    dataDict[header] = flatDict[key]
+                    dataDict[header] = remove_special_characters(flatDict[key])
             if f'{header}.text' in flatDict.keys():
                 dataDict[header] = remove_special_characters(flatDict[f'{header}.text'])
+                print("special char check", dataDict[header], file=sys.stderr)
         return dataDict
 
 # test = """## Description
