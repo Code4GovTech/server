@@ -85,19 +85,19 @@ async def hello_world():
 
 @app.route("/misc_actions")
 async def addIssues():
-    prs = SupabaseInterface().readAll("mentorship_program_pull_request")
-    tickets = SupabaseInterface().readAll("mentorship_program_tickets")
-    ticketUrls = [ticket["html_url"] for ticket in tickets]
-    for pr in prs:
-        if pr.get("body"):
-            issues = PrProcessor().getLinkedIssues(pr)
-            for issue in issues:
-                if pr["repository_url"]+f'/issues/{issue}' in ticketUrls:
-                    SupabaseInterface().update("mentorship_program_pull_request", {"linked_ticket":pr["repository_url"]+f'/issues/{issue}' }, "pr_id", pr["pr_id"])
-    return "Hello World"
+    # prs = SupabaseInterface().readAll("mentorship_program_pull_request")
+    # tickets = SupabaseInterface().readAll("mentorship_program_tickets")
+    # ticketUrls = [ticket["html_url"] for ticket in tickets]
+    # for pr in prs:
+    #     if pr.get("body"):
+    #         issues = PrProcessor().getLinkedIssues(pr)
+    #         for issue in issues:
+    #             if pr["repository_url"]+f'/issues/{issue}' in ticketUrls:
+    #                 SupabaseInterface().update("mentorship_program_pull_request", {"linked_ticket":pr["repository_url"]+f'/issues/{issue}' }, "pr_id", pr["pr_id"])
+    # return "Hello World"
         
 
-    # await getNewPRs()
+    await getNewPRs()
     
 
 @app.route("/already_authenticated")
@@ -161,6 +161,8 @@ async def event_handler():
     if data.get("installation") and data["installation"].get("account"):
         # if data["action"] not in ["deleted", "suspend"]:
         await TicketEventHandler().updateInstallation(data.get("installation"))
+    
+    # if data.
 
     return data
 
