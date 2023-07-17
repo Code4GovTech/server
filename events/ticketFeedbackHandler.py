@@ -9,7 +9,7 @@ headerMessages = {
     "Project Name": "Project/Project Name",
     "Organization Name": "Organization Name",
     "Domain": "Domain - Area of governance",
-    "Tech Skills Needed": "Technical Skills - Please add relevant tech skills in a comma separated format",
+    "Tech Skills Needed": "Tech Skills Needed - Please add relevant tech skills in a comma separated format",
     "Mentor(s)": "Mentors(s) Please tag the relevant mentors on the ticket",
     "Complexity": "Complexity - High/Medium/Low",
     "Category": "Category - Please add one or more of these options [CI/CD], [Integrations], [Performance Improvement], [Security], [UI/UX/Design], [Bug], [Feature], [Documentation], [Deployment], [Test], [PoC]",
@@ -50,15 +50,15 @@ class TicketFeedbackHandler:
                 mandatoryHeaders+=f'- {headerMessages[header]}\n'
             else:
                 optionalHeaders+=f'- {headerMessages[header]}\n'
-        body = f'''Hi! 
-Mandatory Details - The following details essential to submit tickets to C4GT Community Program are missing. Please add them!
-{mandatoryHeaders}
-Without these details, the ticket cannot be listed on the C4GT Community Listing.
-
-Important Details -  These following details are helpful for contributors to effectively identify and contribute to tickets. 
-{optionalHeaders}
+        print("Error", markdown_dict.get("Complexity"), file=sys.stderr)
+        if markdown_dict.get("Complexity") and markdown_dict.get("Complexity").lower() not in ['low', 'medium', 'high']:
+            mandatoryHeaders+=f'- {headerMessages["Complexity"]}' 
+        mandatoryHeaderText = f'''\nMandatory Details - The following details essential to submit tickets to C4GT Community Program are missing. Please add them!
+{mandatoryHeaders}Without these details, the ticket cannot be listed on the C4GT Community Listing.\n'''
+        optionalHeaderText = f'''\nImportant Details -  These following details are helpful for contributors to effectively identify and contribute to tickets. 
+{optionalHeaders}\n'''
+        body = f'''Hi! {mandatoryHeaderText if mandatoryHeaders else ''}{optionalHeaderText if optionalHeaders else ''}
 Please update the ticket
-
         '''
 
         return body

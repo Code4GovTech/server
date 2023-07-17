@@ -149,18 +149,18 @@ async def event_handler():
     # data = test_data
     if data.get("issue"):
         issue = data["issue"]
+        if supabase_client.checkUnlisted(issue["id"]):
+            supabase_client.deleteUnlistedTicket(issue["id"])
+        await TicketEventHandler().onTicketCreate(data)
         recordIssue(issue)
         if supabase_client.checkIsTicket(issue["id"]):
+            
             await TicketEventHandler().onTicketEdit(data)
             if data["action"] == "closed":
                 await TicketEventHandler().onTicketClose(data)
-        else:
-            await TicketEventHandler().onTicketCreate(data)
     if data.get("installation") and data["installation"].get("account"):
         # if data["action"] not in ["deleted", "suspend"]:
         await TicketEventHandler().updateInstallation(data.get("installation"))
-    if data.get("pull_request"):
-        SupabaseInterface().addPr(data["pull_request"], None)
 
     return data
 
