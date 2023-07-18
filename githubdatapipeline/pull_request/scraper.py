@@ -43,13 +43,15 @@ query {{
 }}
     """
     )
-    response = await client.query(request=request)
-    data = response.data
-    if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]:
-        if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["__typename"] == "PullRequest":
-            return data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["url"]
-        else: 
-            return None
+    return await client.query(request=request)
+    # response = 
+    # data = response.data
+    # if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]:
+    #     if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["__typename"] == "PullRequest":
+    #         return data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["url"]
+    #     else: 
+    #         return None
+    # await client.session.close()
 
 async def get_pull_requests(owner, repo,status, page):
     """Gets pull requests from GitHub.
@@ -406,9 +408,9 @@ for ticket in tickets:
         
 
 async def getNewPRs():
-    for tickets in closedTickets:
+    for ticket in closedTickets:
         components = ticket["url"].split('/')
-        print(get_closing_pr(repo= components[-3], owner=components[-4], num=components[-1]))
+        print(await get_closing_pr(repo= components[-3], owner=components[-4], num=components[-1]), file=sys.stderr)
     # for repo in repositories:
     #         components = repo.split('/')
     #         owner, repository = components[-2], components[-1]
