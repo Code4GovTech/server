@@ -6,11 +6,13 @@ headers = {
             'Accept': 'application/vnd.github+json',
             'Authorization': f'Bearer {os.getenv("GithubPAT")}'
         }
+def getClosingPr(vars):
+    
 
 async def get_closing_pr(repo, owner, num):
     client = GraphQLClient(
     endpoint="https://api.github.com/graphql",
-    headers={"Authorization": f"Bearer {os.getenv('GithubPAT')}"},
+    headers={"Authographene graphql clienthttps://www.google.com/search?client=firefox-b-d&q=Graphene+graphql+client+tutorial&uds=G0gA-I3EdDuLDBN-OBGp26o8vlgXoi0YysJR4agOrCO6roSTeSbSDKjAxCiusdL_o8X0OsQ7YwfwJb42F4iCAQ&sa=X&ved=2ahUKEwjJnrOpzZeAAxUUZ2wGHWWBCPQQxKsJegQICxAB&ictx=0rization": f"Bearer {os.getenv('GithubPAT')}"},
     )
     request = GraphQLRequest(
     query=f"""

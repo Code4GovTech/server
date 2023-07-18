@@ -152,7 +152,6 @@ async def event_handler():
         if supabase_client.checkUnlisted(issue["id"]):
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)
-        recordIssue(issue)
         if supabase_client.checkIsTicket(issue["id"]):
             
             await TicketEventHandler().onTicketEdit(data)
