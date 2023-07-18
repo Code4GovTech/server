@@ -1,5 +1,9 @@
 from utils.db import SupabaseInterface
 import sys
+def hasCommunityLabel(labels):
+    if any([label["name"].lower() == "c4gt community" for label in labels]):
+        return True
+    return False
 
 def recordIssue(issue):
     currentTickets = SupabaseInterface().readAll(table="community_program_tickets")
@@ -21,6 +25,8 @@ def recordIssue(issue):
             "created_at": issue["created_at"] if issue.get("created_at") else None,
             "updated_at": issue["updated_at"] if issue.get("updated_at") else None,
             "closed_at":issue["closed_at"] if issue.get("closed_at") else None,
+            "community_label": hasCommunityLabel(issue["lables"])
+
             }
     
     if iss["id"] in [ticket["id"] for ticket in currentTickets]:

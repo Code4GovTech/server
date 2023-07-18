@@ -50,7 +50,6 @@ class TicketFeedbackHandler:
                 mandatoryHeaders+=f'- {headerMessages[header]}\n'
             else:
                 optionalHeaders+=f'- {headerMessages[header]}\n'
-        print("Error", markdown_dict.get("Complexity"), file=sys.stderr)
         if markdown_dict.get("Complexity") and markdown_dict.get("Complexity").lower() not in ['low', 'medium', 'high']:
             mandatoryHeaders+=f'- {headerMessages["Complexity"]}' 
         mandatoryHeaderText = f'''\nMandatory Details - The following details essential to submit tickets to C4GT Community Program are missing. Please add them!

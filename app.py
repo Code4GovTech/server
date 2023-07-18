@@ -95,9 +95,13 @@ async def addIssues():
     #             if pr["repository_url"]+f'/issues/{issue}' in ticketUrls:
     #                 SupabaseInterface().update("mentorship_program_pull_request", {"linked_ticket":pr["repository_url"]+f'/issues/{issue}' }, "pr_id", pr["pr_id"])
     # return "Hello World"
+
+    # await recordIssue({})
+    return '' 
         
 
-    await getNewPRs()
+    # await getNewPRs()
+    # return ""
     
 
 @app.route("/already_authenticated")
@@ -149,6 +153,7 @@ async def event_handler():
     supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
+        recordIssue(issue)
         if supabase_client.checkUnlisted(issue["id"]):
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)
