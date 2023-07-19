@@ -7,7 +7,6 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
-import minio
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
