@@ -7,6 +7,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
+from githubdatapipeline.issues.processor import get_url
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -84,6 +85,16 @@ async def hello_world():
 
 @app.route("/misc_actions")
 async def addIssues():
+    tickets = SupabaseInterface().readAll("ccbp_tickets")
+    count =1
+    for ticket in tickets:
+        print(f'{count}/{len(tickets)}')
+        count+=1
+        if ticket["status"] == "closed":
+            # if ticket["api_endpoint_url"] in ["https://api.github.com/repos/glific/glific/issues/2824"]:
+            await TicketEventHandler().onTicketClose({"issue":await get_url(ticket["api_endpoint_url"])})
+    
+
     # prs = SupabaseInterface().readAll("mentorship_program_pull_request")
     # tickets = SupabaseInterface().readAll("mentorship_program_tickets")
     # ticketUrls = [ticket["html_url"] for ticket in tickets]
@@ -147,6 +158,7 @@ async def register(discord_userdata):
 
 @app.route("/github/events", methods = ['POST'])
 async def event_handler():
+
     supabase_client = SupabaseInterface()
     data = await request.json
     supabase_client.add_event_data(data=data)
@@ -157,7 +169,6 @@ async def event_handler():
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)
         if supabase_client.checkIsTicket(issue["id"]):
-            
             await TicketEventHandler().onTicketEdit(data)
             if data["action"] == "closed":
                 await TicketEventHandler().onTicketClose(data)

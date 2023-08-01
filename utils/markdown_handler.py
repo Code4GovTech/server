@@ -76,7 +76,7 @@ class MarkdownHeaders:
         dummyHeader = "## Header\n\n"
         markdown(dummyHeader+rawMarkdown)
         markdownDict = markdown.renderer.data
-        # print(markdownDict)
+        print(markdownDict, file=sys.stderr)
         flatDict = flatdict.FlatDict(markdownDict, delimiter=".")
         # print(flatDict)
         dataDict = {}
@@ -87,7 +87,6 @@ class MarkdownHeaders:
                     dataDict[header] = remove_special_characters(flatDict[key])
             if f'{header}.text' in flatDict.keys():
                 dataDict[header] = remove_special_characters(flatDict[f'{header}.text'])
-                print("special char check", dataDict[header], file=sys.stderr)
         return dataDict
 
 # test = """## Description

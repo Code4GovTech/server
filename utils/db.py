@@ -59,8 +59,8 @@ class SupabaseInterface:
     
     def checkIsTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
-        unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
-        if len(data.data)>0 or len(unlisted_data.data)>0:
+        # unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data.data)>0:
             return True
         else:
             return False
@@ -101,6 +101,7 @@ class SupabaseInterface:
     def addPr(self, data, issue_id):
         if issue_id:
             ticket = self.getTicket(issue_id)
+            # print(ticket, type(ticket), file=sys.stderr)
         data = {
                     "api_url":data["url"],
                     "html_url":data["html_url"],
@@ -109,11 +110,11 @@ class SupabaseInterface:
                     "raised_at":data["created_at"],
                     "raised_by_username":data["user"]["login"],
                     "status":data["state"],
-                    "is_merged":data["merged"] if data.get("meged") else None,
+                    "is_merged":data["merged"] if data.get("merged") else None,
                     "merged_by":data["merged_by"]["id"] if data["merged"] else None,
                     "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
                     "merged_at":data["merged_at"] if data["merged"] else None,
-                    "points": ticket["ticket_points"] if issue_id else 10
+                    "points": ticket[0]["ticket_points"] if issue_id else 0
                 }
         data = self.client.table("pull_requests").insert(data).execute()
         return data.data

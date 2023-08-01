@@ -9,7 +9,9 @@ from utils.github_api import GithubAPI
 from utils.jwt_generator import GenerateJWT
 from aiographql.client import GraphQLClient, GraphQLRequest
 from events.ticketFeedbackHandler import TicketFeedbackHandler
+# from githubdatapipeline.issues.processor import closing_pr
 import postgrest
+from githubdatapipeline.issues.processor import get_closing_pr
 from fuzzywuzzy import fuzz
 
 def matchProduct(enteredProductName):
@@ -69,7 +71,7 @@ def matchProduct(enteredProductName):
 
 
 
-async def send_message(message):
+async def send_message(ticket_data):
     discord_channels = SupabaseInterface().readAll("discord_channels")
     products = SupabaseInterface().readAll("product")
 
@@ -82,11 +84,14 @@ async def send_message(message):
     #                     url = channel["webhook"]
 
     webhook_url = 'https://discord.com/api/webhooks/1126709789876043786/TF_IdCbooRo7_Y3xLzwSExdpvyFcoUGzxBGS_oqCH7JcVq0mzYbu6Av0dbVWjgqYUoNM'
-    message = f'''Hey!
-A new project has been listed under {message["product"]}.
-Project Link: {message["url"]}
-Complexity: {message["complexity"]}
-Tech Skills Required: {message["reqd_skills"]}'''
+    message = f'''Hey! 
+A new project has been listed under {ticket_data["product"]} 💻 
+🗃️ Project Link - {ticket_data["url"]}
+📈 Complexity - {ticket_data["complexity"]}
+⚒️ Tech Skills Required - {ticket_data["reqd_skills"]}
+📄 Category - {ticket_data["project_category"]}
+🏅 Points - {ticket_data["ticket_points"]}
+Check out this project, get coding and earn more DPG points🥳'''
     headers = {
         "Content-Type": 'application/json'
     }
@@ -123,49 +128,6 @@ async def get_pull_request(owner, repo, number):
             else:
                 return None
 
-async def get_closing_pr(repo, owner, num):
-    client = GraphQLClient(
-    endpoint="https://api.github.com/graphql",
-    headers={"Authorization": f"Bearer {os.getenv('GithubPAT')}"},
-    )
-    request = GraphQLRequest(
-    query=f"""
-query {{
-  repository(name: "{repo}", owner: "{owner}") {{
-    issue(number: {num}) {{
-      timelineItems(itemTypes: CLOSED_EVENT, last: 1) {{
-        nodes {{
-          ... on ClosedEvent {{
-            createdAt
-            closer {{
-               __typename
-              ... on PullRequest {{
-                baseRefName
-                url
-                baseRepository {{
-                  nameWithOwner
-                }}
-                headRefName
-                headRepository {{
-                  nameWithOwner
-                }}
-              }}
-            }}
-          }}
-        }}
-      }}
-    }}
-  }}
-}}
-    """
-    )
-    response = await client.query(request=request)
-    data = response.data
-    if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]:
-        if data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["__typename"] == "PullRequest":
-            return data["repository"]["issue"]["timelineItems"]["nodes"][0]["closer"]["url"]
-        else: 
-            return None
 
 class TicketEventHandler:
     def __init__(self):
@@ -312,11 +274,15 @@ class TicketEventHandler:
     async def onTicketClose(self, eventData):
         issue = eventData["issue"]
         [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
-        pull_request_url = await get_closing_pr(repo, owner, issue_number)
-        if pull_request_url:
-            pull_number=pull_request_url.split('/')[-1]
-            pull_data = await get_pull_request(owner, repo, pull_number)
-            self.supabase_client.addPr(pull_data, issue["id"])
+        pull_request_urls = await get_closing_pr(issue)
+
+        print("PULL REQUEST",pull_request_url, file = sys.stderr)
+        if pull_request_urls:
+            for pull_request_url in pull_request_urls:
+                pull_number=pull_request_url.split('/')[-1]
+                pull_data = await get_pull_request(owner, repo, pull_number)
+                if pull_data["merged"]:
+                    self.supabase_client.addPr(pull_data, issue["id"])
         return
     
     async def updateInstallation(self, installation):
