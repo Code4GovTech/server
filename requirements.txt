@@ -10,3 +10,5 @@ flatdict==4.0.1
 aiographql-client==1.0.3
 python-Levenshtein==0.21.1
 minio==7.1.15
+opencv-python-headless==4.8.0.74 
+numpy==1.25.2
