@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Successful Response!</title>
+    <style>
+        /* General styles */
+        body {
+            color: #adbac7;
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji;
+            margin: 0;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1c2128;
+            border-bottom: 1px solid #adbac7;
+            height: 10vh;
+            padding: 50px;
+        }
+
+        .header-text {
+            font-size: 44px;
+            color: #adbac7;
+            text-align: left;
+            margin-right: auto;
+        }
+
+        .logo {
+            width: 300px;
+            height: auto;
+        }
+
+        #main-content {
+            background-color: #22272e;
+            /* Adjust as per your desired color */
+            /* The height is set to 100vh minus the height of the header and any other top spacing you might have */
+            min-height: 100vh;
+            padding: 15px;
+            padding-left: 10%; /* Add left padding */
+        }
+
+        /* Text class for main content */
+        .main-text {
+            font-size: 30px;
+            color: #adbac7;
+            padding-right: 20px;
+        }
+
+        /* Bold text class for main content */
+        .main-text-bold {
+            font-size: 30px;
+            color: #adbac7;
+            font-weight: bold;
+            padding-right: 50px;
+        }
+
+        /* Green tick icon */
+        .green-tick {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+            margin-right: 10px;
+            fill: #2ea749; /* Green color */
+        }
+    </style>
+</head>
+
+<body style="background-color: #22272e">
+    <header>
+        <div class="header-text">
+            Product Onboarding Form / C4GT
+        </div>
+        <img class="logo" src="{{ url_for('static', filename='C4GT_Logo.png')}}" alt="Logo">
+    </header>
+    <div style="text-align: center; background-color: #22272e;">
+        <h1 style="font-size: 44px; color: #c3395a;">Thank you</h1>
+    </div>
+
+    <div id="main-content">
+        
+        <br>
+        <div style="font-size: 25px; color: #adbac7;">
+            You have successfully registered your GitHub organisation and completed the product-to-repository mapping!
+        </div>
+        <br>
+        <div style="font-size: 25px; font-weight: bold; color: #adbac7; padding-left: 20px;">
+            Why are we capturing this information?
+        </div>
+        <div style="font-size: 25px; color: #adbac7; padding-left: 40px;">
+            <svg class="green-tick" viewBox="0 0 24 24">
+                <path d="M9 16.17l-2.83-2.83a1 1 0 1 1 1.41-1.41l1.42 1.42 4.24-4.24a1 1 0 0 1 1.41 1.41L9 16.17z"></path>
+            </svg>
+            To ensure verified DPG Builder/Adopter organisations are contributing valid tickets
+        </div>
+        <div style="font-size: 25px; color: #adbac7; padding-left: 40px;">
+            <svg class="green-tick" viewBox="0 0 24 24">
+                <path d="M9 16.17l-2.83-2.83a1 1 0 1 1 1.41-1.41l1.42 1.42 4.24-4.24a1 1 0 0 1 1.41 1.41L9 16.17z"></path>
+            </svg>
+            Product names are standardised and are documented correctly on the C4GT ticket listing.
+        </div>
+        <br>
+        <br>
+        <div style="font-size: 23px; color: #adbac7;">
+            You will receive an email with all the registration details. Additionally, in case of any questions please feel free to write to us at admin@codeforgovtech.in
+        </div>
+    </div>
+
+</body>
+
+</html>

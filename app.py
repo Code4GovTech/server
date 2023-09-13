@@ -7,6 +7,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
+from events.newRegistrationEvent import NewRegistration
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -15,6 +16,8 @@ dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
 app.config['TESTING']= True
+
+
 
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
@@ -77,10 +80,98 @@ async def comment_cleaner():
 # @app.before_serving
 # async def startup():
 #     app.add_background_task(comment_cleaner)
-
+repositories_list = [
+    "KDwevedi/c4gt-docs",
+    "KDwevedi/testing_for_github_app"
+    # Add more repositories as needed
+]
+productList = [
+    "ABDM",
+    "AI Tools",
+    "Avni",
+    "Bahmni",
+    "Beckn DSEP",
+    "Beckn",
+    "CARE",
+    "CORD Network",
+    "cQube",
+    "DDP",
+    "DevOps Pipeline",
+    "DIGIT",
+    "DIKSHA",
+    "Doc Generator",
+    "Farmstack",
+    "Glific",
+    "Health Claims Exchange",
+    "Karmayogi",
+    "ODK Extension Collection",
+    "Quiz Creator",
+    "QuML player for Manage learn",
+    "Solve Ninja Chatbot",
+    "Sunbird DevOps",
+    "Sunbird ED",
+    "Sunbird inQuiry",
+    "Sunbird Knowlg",
+    "Sunbird Lern",
+    "Sunbird Obsrv",
+    "Sunbird RC",
+    "Sunbird Saral",
+    "Sunbird UCI",
+    "Template Creation Portal",
+    "Text2SQL",
+    "TrustBot and POSHpal",
+    "TrustIn",
+    "Unnati",
+    "WarpSQL",
+    "Workflow",
+    "Yaus",
+    "C4GT Tech"
+]
 @app.route("/")
 async def hello_world():
-    return "<p>Hello, World!</p>"
+    if request.method == "POST":
+        product = request.form.get("product")
+        if product:
+            productList.append(product)
+    return await render_template('form.html',repositories=repositories_list,  products=productList)
+
+@app.route("/submission", methods = ['POST'])
+async def formResponse():
+    response = await request.form
+    data = response.to_dict()
+    print(data)
+    email_data = {
+        "organisation": "KDwevedi",
+        "email": data["email"],
+        "repos": [{"name":f'{key[18:]}', "product":f'{value}'} for key,value in data.items() if 'product-selection-' in key],
+        "auth_link": "www.dummylink.com"
+    }
+    data = {
+        "organisation": "KDwevedi",
+        "email": data["email"],
+        "repos": [{"name":f'{key[18:]}', "product":f'{value}'} for key,value in data.items() if 'product-selection-' in key]
+    }
+    NewRegistration().createNewReg(email_data)
+    SupabaseInterface().insert("Onboarding_Dev",data)
+    return data
+
+@app.route("/form/edit/<organisation>")
+async def editForm(organisation):
+    reges = SupabaseInterface().readAll("Onboarding_Dev")
+    for reg in reges:
+        if reg["organisation"]== organisation:
+            mapping = dict()
+            data = reg["repos"]
+            for repo in data:
+                mapping[repo["name"]] = repo["product"]
+            print(mapping)
+            return await render_template('editableForm.html',repositories=repositories_list,  products=productList, email = reg["email"], product_selections=mapping)
+    return 'Installation not found'
+
+
+@app.route("/success")
+async def successResponse():
+    return await render_template('formAknowledgement.html')
 
 @app.route("/misc_actions")
 async def addIssues():

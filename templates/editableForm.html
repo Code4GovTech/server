@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Product Onboarding Form</title>
+        <style>
+            /* General styles */
+            body {
+                color: #adbac7;
+                background-color: #000000;
+                font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji;
+                margin: 0;
+            }
+
+            header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background-color: #1c2128;
+                border-bottom: 1px solid #adbac7;
+                height: 10vh;
+                padding: 50px;
+            }
+
+            .header-text {
+                font-size: 44px;
+                color: #adbac7;
+                text-align: left;
+                margin-right: auto;
+            }
+
+            .logo {
+                width: 300px;
+                height: auto;
+            }
+
+            #repo-product-mapping {
+                background-color: #22272e;
+                padding: 0px;
+            }
+
+            h1, h2 {
+                color: #adbac7;
+            }
+
+            /* Form fields */
+            input, select {
+                padding: 5px 10px;
+                background-color: #1c2128;
+                color: #adbac7;
+                border: 1px solid #1c2128;
+                transition: border 0.3s ease;
+                border-radius: 5px;
+            }
+
+            input:focus, select:focus {
+                border-color: #adbac7;
+            }
+
+            /* Modals */
+            #newProductModal, #confirmProductModal {
+                background-color: #22272e;
+                border: 1px solid #adbac7;
+                display: none;
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                border: 1px solid #ccc;
+                padding: 20px;
+                background-color: #fff;
+                z-index: 1000;
+            }
+
+            /* Buttons */
+            button {
+                padding: 5px 15px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                color: #ffffff;
+                transition: background-color 0.3s ease;
+            }
+
+            #main-content {
+                background-color: #22272e;
+                /* Adjust as per your desired color */
+                /* The height is set to 100vh minus the height of the header and any other top spacing you might have */
+                min-height: 100vh;
+                padding: 15px;
+                padding-left: 5%; /* Add left padding */
+            }
+
+            /* Text class for main content */
+            .main-text {
+                font-size: 30px;
+                color: #adbac7;
+                padding-right: 20px;
+            }
+
+            /* Bold text class for main content */
+            .main-text-bold {
+                font-size: 30px;
+                color: #adbac7;
+                font-weight: bold;
+                padding-right: 50px;
+            }
+
+            button:hover {
+                filter: brightness(1.1);
+            }
+
+            #submitBtn, button[onclick="showConfirmationModal()"], button[onclick="finalAddProduct()"] {
+                background-color: #2ea749;
+            }
+
+            button[onclick="closeAllModals()"], button[onclick="closeModal()"] {
+                background-color: #cf4a19;
+            }
+
+            label {
+                color: #ffffff;  /* Other text color */
+            }
+
+            /* Adjusted modal styles */
+            #newProductModal, #confirmProductModal {
+                background-color: #22272e;
+                color: #ffffff;
+                border: 1px solid #adbac7;
+            }
+
+            /* Adjustments to position the buttons with some spacing */
+            button {
+                margin: 5px;
+            }
+            #submitBtn {
+            background-color: #2ea749;
+            font-size: 150%; /* Increase font size by 50% */
+            padding: 7.5px 22.5px; /* Adjust padding accordingly */
+            display: block; /* Change to block level */
+            margin: 5% 0 0 auto; /* Margin: top 5%, right 0, bottom 0, left auto (align right) */
+        }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="header-text">
+                Product Onboarding Form / C4GT
+            </div>
+            <img class="logo" src="{{ url_for('static', filename='C4GT_Logo.png')}}" alt="Logo">
+        </header>
+
+        <div id="main-content">
+            <form id="productForm" action="/submission" method="POST">
+
+                <div>
+                    <label for="email" class="main-text-bold">Email </label>
+                    <input type="email" id="email" name="email" value="{{ email }}" required>
+                </div>
+
+                <h2 class="main-text-bold">Product <> Repository Mapping</h2>
+
+                <div id="repo-product-mapping">
+                    <table id="repo-table">
+                        <tr>
+                            <th class="main-text">
+                                Repository
+                            </th>
+                            <th class="main-text">
+                                Product
+                            </th>
+                        </tr>
+                        {% for repo in repositories %}
+                        <tr>
+                            <td class="main-text">{{ repo }}:</td>
+                            <td>
+                                <select class="product-dropdown" name="product-selection-{{ repo }}">
+                                    <option value="" disabled selected>  Choose or add a new product name</option>
+                                    <option value="add_new">Add a new product</option>
+                                        {% for product in products %}
+                                            <option value="{{ product }}" {% if product == product_selections[repo] %}selected{% endif %}>{{ product }}</option>
+                                        {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+
+                <button id="submitBtn" type="submit">Submit</button>
+            </form>
+        </div>
+
+
+        <!-- The popup modal for adding a new product -->
+        <div id="newProductModal">
+            <label>Enter name for new product: </label>
+            <input type="text" id="newProductName">
+            <button onclick="showConfirmationModal()">Next</button>
+            <button onclick="closeModal()">Cancel</button>
+        </div>
+
+        <!-- The confirmation modal for the new product -->
+        <div id="confirmProductModal">
+            <p>Are you sure you wish to add <span id="confirmProductName"></span> as a new product?</p>
+            <button onclick="finalAddProduct()">Submit</button>
+            <button onclick="closeAllModals()">Cancel</button>
+        </div>
+
+
+    <!-------------------------JAVASCRIPT--------------------------------------------------------------------------------------->
+
+
+        <script>// Global variable to store the product name
+                let currentProductName = '';
+                
+                // Event listeners for dropdowns
+                let dropdowns = document.querySelectorAll('.product-dropdown');
+                dropdowns.forEach(dropdown => {
+                    dropdown.addEventListener('change', function(e) {
+                        if (e.target.value === "add_new") {
+                            e.target.selectedIndex = 0;  // Resetting dropdown to default value
+                            showModal();
+                        }
+                    });
+                });
+                
+                function showModal() {
+                    document.getElementById('newProductName').value = ''; // Resetting the input
+                    document.getElementById('newProductModal').style.display = 'block';
+                }
+                
+                function showConfirmationModal() {
+                    let productName = document.getElementById('newProductName').value;
+                    if (productName) {
+                        // Store the product name in the global variable
+                        currentProductName = productName;
+                
+                        // Update the text in the confirmation modal
+                        document.getElementById('confirmProductName').textContent = productName;
+                        closeModal();  // Close the first modal
+                        document.getElementById('confirmProductModal').style.display = 'block';  // Open the confirmation modal
+                    }
+                }
+                
+                function finalAddProduct() {
+                    if(!currentProductName) {
+                        console.error('Product name is empty!');
+                        return;
+                    }
+
+                console.log(`Adding product: ${currentProductName}`);
+
+                let dropdowns = document.querySelectorAll('.product-dropdown');
+                    dropdowns.forEach(dropdown => {
+                        // Create new option
+                        let option = document.createElement('option');
+                        option.text = currentProductName;
+                        option.value = currentProductName;
+
+                        // Retrieve all current options excluding the "Choose or Add Product" and "Add New Product"
+                        let options = Array.from(dropdown.options).slice(2);
+                        options.push(option);  // Add the new product option to the list
+                        options.sort((a, b) => a.text.localeCompare(b.text));  // Sort the list
+
+                        // Clear dropdown
+                        dropdown.innerHTML = '';
+
+                        // Add back "Choose or Add Product" and "Add New Product" at the top
+                        let addNewOption = document.createElement('option');
+                        addNewOption.text = 'Choose or Add Product';
+                        addNewOption.value = '';
+                        addNewOption.disabled = true;
+                        addNewOption.selected = true;
+                        dropdown.appendChild(addNewOption);
+
+                        let addNewProductOption = document.createElement('option');
+                        addNewProductOption.text = 'Add New Product';
+                        addNewProductOption.value = 'add_new';
+                        dropdown.appendChild(addNewProductOption);
+
+                        // Add back sorted options
+                        options.forEach(opt => dropdown.appendChild(opt));
+                    });
+
+                    closeAllModals();
+                
+                    // Clear the input after adding the product to dropdowns
+                    document.getElementById('newProductName').value = '';
+                    currentProductName = '';  // Reset the global variable
+                }
+
+
+
+                
+                function closeModal() {
+                    document.getElementById('newProductModal').style.display = 'none';
+                    document.getElementById('newProductName').value = '';
+                }
+                
+                function closeAllModals() {
+                    document.getElementById('newProductModal').style.display = 'none';
+                    document.getElementById('confirmProductModal').style.display = 'none';
+                    document.getElementById('newProductName').value = '';
+                }
+                document.getElementById('productForm').addEventListener('submit', function(event) {
+                    event.preventDefault(); // Prevent the default form submission behaviour
+                
+                    // Capture the form data
+                    const formData = new FormData(this);
+
+                    // Send the form data to your endpoint
+                    fetch('/submission', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if(response.ok) {
+                            // If submission was successful, redirect to the success page
+                            window.location.href = '/success';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('There was an error!', error);
+                    });
+                });
+                
+        </script>
+    </body>
+</html>
