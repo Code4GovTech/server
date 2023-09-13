@@ -25,7 +25,7 @@ def recordIssue(issue):
             "created_at": issue["created_at"] if issue.get("created_at") else None,
             "updated_at": issue["updated_at"] if issue.get("updated_at") else None,
             "closed_at":issue["closed_at"] if issue.get("closed_at") else None,
-            "community_label": hasCommunityLabel(issue["lables"])
+            "community_label": hasCommunityLabel(issue["labels"])
 
             }
     

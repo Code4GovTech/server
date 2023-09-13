@@ -6,7 +6,7 @@ headers = {
             'Accept': 'application/vnd.github+json',
             'Authorization': f'Bearer {os.getenv("GithubPAT")}'
         }
-def getClosingPr(vars):
+# def getClosingPr(vars):
     
 
 async def get_closing_pr(repo, owner, num):

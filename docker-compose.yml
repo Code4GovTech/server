@@ -2,6 +2,7 @@ version: '3'
 services:
   c4gt-server:
     build: .
+    restart: always
     ports: 
       - 5366:5000
     env_file: .env

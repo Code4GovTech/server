@@ -4,16 +4,17 @@ import aiohttp, sys
 from utils.runtime_vars import MARKDOWN_TEMPLATE_HEADERS
 
 headerMessages = {
-    "Product Name": "Product Name - (Missing/Misspelled)",
+    "Product Name": "Product Name - Please add a heading called Product Name and mention the name of the product below it. ",
     "Project": "Project/Project Name",
     "Project Name": "Project/Project Name",
     "Organization Name": "Organization Name",
     "Domain": "Domain - Area of governance",
-    "Tech Skills Needed": "Tech Skills Needed - Please add relevant tech skills in a comma separated format",
+    "Tech Skills Needed": "Tech Skills Needed - Please add relevant tech skills ",
     "Mentor(s)": "Mentors(s) Please tag the relevant mentors on the ticket",
-    "Complexity": "Complexity - High/Medium/Low",
+    "Complexity": "Complexity - Please mention the complexity only as High/Medium/Low",
     "Category": "Category - Please add one or more of these options [CI/CD], [Integrations], [Performance Improvement], [Security], [UI/UX/Design], [Bug], [Feature], [Documentation], [Deployment], [Test], [PoC]",
-    "Sub Category": "Sub-Category - Please mention the sub-category if any for the ticket"
+    "Sub Category": "Sub-Category - Please mention the sub-category if any for the ticket",
+    "Invalid Complexity": "Complexity must be High/Medium/Low"
 }
 
 class TicketFeedbackHandler:
@@ -51,9 +52,11 @@ class TicketFeedbackHandler:
             else:
                 optionalHeaders+=f'- {headerMessages[header]}\n'
         if markdown_dict.get("Complexity") and markdown_dict.get("Complexity").lower() not in ['low', 'medium', 'high']:
-            mandatoryHeaders+=f'- {headerMessages["Complexity"]}' 
+            mandatoryHeaders+=f'- {headerMessages["Invalid Complexity"]}\n' 
+        if 'Mentor(s)' in markdown_dict and not markdown_dict["Mentor(s)"]:
+            mandatoryHeaders+=f'-Please make sure the Mentor(s) field is not empty\n'
         mandatoryHeaderText = f'''\nMandatory Details - The following details essential to submit tickets to C4GT Community Program are missing. Please add them!
-{mandatoryHeaders}Without these details, the ticket cannot be listed on the C4GT Community Listing.\n'''
+{mandatoryHeaders}\nWithout these details, the ticket cannot be listed on the C4GT Community Listing.\n'''
         optionalHeaderText = f'''\nImportant Details -  These following details are helpful for contributors to effectively identify and contribute to tickets. 
 {optionalHeaders}\n'''
         body = f'''Hi! {mandatoryHeaderText if mandatoryHeaders else ''}{optionalHeaderText if optionalHeaders else ''}
