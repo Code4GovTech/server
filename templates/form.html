@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Onboarding Form</title>
+    <style>
+        body {
+            color: #adbac7;
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji;
+            margin: 0;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1c2128;
+            border-bottom: 1px solid #adbac7;
+            height: 10vh;
+            padding: 50px;
+        }
+
+        .header-text,
+        h1,
+        h2,
+        label {
+            color: #adbac7;
+        }
+
+        .header-text {
+            font-size: 44px;
+            margin-right: auto;
+        }
+
+        .logo {
+            width: 300px;
+            height: auto;
+        }
+
+        .content-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: calc(100vh - 10vh);
+        }
+
+        .main-content {
+            width: 60%;
+            height: 60%;
+            background-color: #22272e;
+            border-radius: 15px;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        input, select {
+            padding: 10px 15px;
+            line-height: 1.4; /* adjusted line-height */
+            background-color: #1c2128;
+            color: #adbac7;
+            border: 1px solid #1c2128;
+            transition: border 0.3s ease;
+            border-radius: 5px;
+            box-sizing: border-box;
+            }
+
+
+        input:focus,
+        select:focus {
+            border-color: #adbac7;
+        }
+
+        .modal {
+            background-color: #22272e;
+            color: #ffffff;
+            border: 1px solid #adbac7;
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        button {
+            padding: 5px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #ffffff;
+            transition: background-color 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-green {
+            background-color: #2ea749;
+        }
+
+        .btn-red {
+            background-color: #cf4a19;
+        }
+
+        button:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-submit {
+            background-color: #2ea749;
+            font-size: 150%;
+            padding: 7.5px 22.5px;
+            display: block;
+            margin: 5% 0 0 auto;
+        }
+
+        .main-text {
+            font-size: 30px;
+            padding-right: 20px;
+        }
+
+        .main-text-bold {
+            font-size: 30px;
+            font-weight: bold;
+            padding-right: 50px;
+        }
+        .product-form > div:first-of-type {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        input[type="email"] {
+            width: 300px; 
+            height: 40px;
+            font-size: 18px; 
+            line-height: 40px;
+        }
+        select.product-dropdown {
+            width: 345px;
+            font-size: 18px;
+            line-height: 1.4; /* adjusted line-height */
+            }
+        table th, table td {
+            text-align: left;
+        }
+
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-text">Product Onboarding Form / C4GT</div>
+        <img class="logo" src="{{ url_for('static', filename='C4GT_Logo.png')}}" alt="Logo">
+    </header>
+
+    <div class="content-container">
+        <div class="main-content">
+            <form class="product-form" action="/submission" method="POST">
+                <div>
+                    <label for="email" class="main-text-bold">Email </label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <h2 class="main-text-bold">Product <> Repository Mapping</h2>
+                <div class="repo-product-mapping">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="main-text">Repository</th>
+                                <th class="main-text">Product</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for repo in repositories %}
+                            <tr>
+                                <td class="main-text">{{ repo }}:</td>
+                                <td>
+                                    <select class="product-dropdown" name="product-selection-{{ repo }}">
+                                        <option value="" disabled selected>Choose or add a new product name</option>
+                                        <option value="add_new">Add a new product</option>
+                                        {% for product in products %}
+                                        <option value="{{ product }}">{{ product }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn-submit" type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="newProductModal">
+        <label>Enter name for new product: </label>
+        <input type="text" class="new-product-name">
+        <button class="btn-green" onclick="showConfirmationModal()">Next</button>
+        <button class="btn-red" onclick="closeModal()">Cancel</button>
+    </div>
+
+    <div class="modal" id="confirmProductModal">
+        <p>Are you sure you wish to add <span class="confirm-product-name"></span> as a new product?</p>
+        <button class="btn-green" onclick="finalAddProduct()">Submit</button>
+        <button class="btn-red" onclick="closeAllModals()">Cancel</button>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        let currentProductName = '';
+            
+        // Event listeners for dropdowns
+        let dropdowns = document.querySelectorAll('.product-dropdown');
+        dropdowns.forEach(dropdown => {
+            dropdown.addEventListener('change', function(e) {
+                if (e.target.value === "add_new") {
+                    e.target.selectedIndex = 0;  // Resetting dropdown to default value
+                    showModal();
+                }
+            });
+        });
+        
+        function showModal() {
+            document.getElementById('newProductName').value = ''; // Resetting the input
+            document.getElementById('newProductModal').style.display = 'block';
+        }
+        
+        function showConfirmationModal() {
+            let productName = document.getElementById('newProductName').value;
+            if (productName) {
+                // Store the product name in the global variable
+                currentProductName = productName;
+        
+                // Update the text in the confirmation modal
+                document.getElementById('confirmProductName').textContent = productName;
+                closeModal();  // Close the first modal
+                document.getElementById('confirmProductModal').style.display = 'block';  // Open the confirmation modal
+            }
+        }
+        
+        function finalAddProduct() {
+            if(!currentProductName) {
+                console.error('Product name is empty!');
+                return;
+            }
+
+        console.log(`Adding product: ${currentProductName}`);
+
+        let dropdowns = document.querySelectorAll('.product-dropdown');
+            dropdowns.forEach(dropdown => {
+                // Create new option
+                let option = document.createElement('option');
+                option.text = currentProductName;
+                option.value = currentProductName;
+
+                // Retrieve all current options excluding the "Choose or Add Product" and "Add New Product"
+                let options = Array.from(dropdown.options).slice(2);
+                options.push(option);  // Add the new product option to the list
+                options.sort((a, b) => a.text.localeCompare(b.text));  // Sort the list
+
+                // Clear dropdown
+                dropdown.innerHTML = '';
+
+                // Add back "Choose or Add Product" and "Add New Product" at the top
+                let addNewOption = document.createElement('option');
+                addNewOption.text = 'Choose or Add Product';
+                addNewOption.value = '';
+                addNewOption.disabled = true;
+                addNewOption.selected = true;
+                dropdown.appendChild(addNewOption);
+
+                let addNewProductOption = document.createElement('option');
+                addNewProductOption.text = 'Add New Product';
+                addNewProductOption.value = 'add_new';
+                dropdown.appendChild(addNewProductOption);
+
+                // Add back sorted options
+                options.forEach(opt => dropdown.appendChild(opt));
+            });
+
+            closeAllModals();
+        
+            // Clear the input after adding the product to dropdowns
+            document.getElementById('newProductName').value = '';
+            currentProductName = '';  // Reset the global variable
+        }
+
+
+
+        
+        function closeModal() {
+            document.getElementById('newProductModal').style.display = 'none';
+            document.getElementById('newProductName').value = '';
+        }
+        
+        function closeAllModals() {
+            document.getElementById('newProductModal').style.display = 'none';
+            document.getElementById('confirmProductModal').style.display = 'none';
+            document.getElementById('newProductName').value = '';
+        }
+        document.getElementById('productForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission behaviour
+        
+            // Capture the form data
+            const formData = new FormData(this);
+
+            // Send the form data to your endpoint
+            fetch('/submission', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if(response.ok) {
+                    // If submission was successful, redirect to the success page
+                    window.location.href = '/success';
+                }
+            })
+            .catch(error => {
+                console.error('There was an error!', error);
+            });
+        });
+    </script>
+</body>
+
+</html>
