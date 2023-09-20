@@ -1,4 +1,5 @@
-from quart import Quart, redirect, render_template, request
+from quart import Quart, redirect, render_template, request, jsonify, current_app
+from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime
 from utils.db import SupabaseInterface
@@ -127,49 +128,50 @@ productList = [
 ]
 @app.route("/")
 async def hello_world():
-    if request.method == "POST":
-        product = request.form.get("product")
-        if product:
-            productList.append(product)
-    return await render_template('form.html',repositories=repositories_list,  products=productList)
+    # if request.method == "POST":
+    #     product = request.form.get("product")
+    #     if product:
+    #         productList.append(product)
+    # return await render_template('form.html',repositories=repositories_list,  products=productList)
+    return "hello world"
 
-@app.route("/submission", methods = ['POST'])
-async def formResponse():
-    response = await request.form
-    data = response.to_dict()
-    print(data)
-    email_data = {
-        "organisation": "KDwevedi",
-        "email": data["email"],
-        "repos": [{"name":f'{key[18:]}', "product":f'{value}'} for key,value in data.items() if 'product-selection-' in key],
-        "auth_link": "www.dummylink.com"
-    }
-    data = {
-        "organisation": "KDwevedi",
-        "email": data["email"],
-        "repos": [{"name":f'{key[18:]}', "product":f'{value}'} for key,value in data.items() if 'product-selection-' in key]
-    }
-    NewRegistration().createNewReg(email_data)
-    SupabaseInterface().insert("Onboarding_Dev",data)
-    return data
+# @app.route("/submission", methods = ['POST'])
+# async def formResponse():
+#     response = await request.form
+#     data = response.to_dict()
+#     print(data)
+#     email_data = {
+#         "organisation": "KDwevedi",
+#         "email": data["email"],
+#         "repos": [{"name":f'{key[18:]}', "product":f'{value}'} for key,value in data.items() if 'product-selection-' in key],
+#         "auth_link": "www.dummylink.com"
+#     }
+#     data = {
+#         "organisation": "KDwevedi",
+#         "email": data["email"],
+#         "repos": [{"name":f'{key[18:]}', "product":f'{value}'} for key,value in data.items() if 'product-selection-' in key]
+#     }
+#     NewRegistration().createNewReg(email_data)
+#     SupabaseInterface().insert("Onboarding_Dev",data)
+#     return data
 
-@app.route("/form/edit/<organisation>")
-async def editForm(organisation):
-    reges = SupabaseInterface().readAll("Onboarding_Dev")
-    for reg in reges:
-        if reg["organisation"]== organisation:
-            mapping = dict()
-            data = reg["repos"]
-            for repo in data:
-                mapping[repo["name"]] = repo["product"]
-            print(mapping)
-            return await render_template('editableForm.html',repositories=repositories_list,  products=productList, email = reg["email"], product_selections=mapping)
-    return 'Installation not found'
+# @app.route("/form/edit/<organisation>")
+# async def editForm(organisation):
+#     reges = SupabaseInterface().readAll("Onboarding_Dev")
+#     for reg in reges:
+#         if reg["organisation"]== organisation:
+#             mapping = dict()
+#             data = reg["repos"]
+#             for repo in data:
+#                 mapping[repo["name"]] = repo["product"]
+#             print(mapping)
+#             return await render_template('editableForm.html',repositories=repositories_list,  products=productList, email = reg["email"], product_selections=mapping)
+#     return 'Installation not found'
 
 
-@app.route("/success")
-async def successResponse():
-    return await render_template('formAknowledgement.html')
+# @app.route("/success")
+# async def successResponse():
+#     return await render_template('formAknowledgement.html')
 
 @app.route("/misc_actions")
 async def addIssues():
@@ -183,33 +185,35 @@ async def addIssues():
             await TicketEventHandler().onTicketClose({"issue":await get_url(ticket["api_endpoint_url"])})
     
 
-    # prs = SupabaseInterface().readAll("mentorship_program_pull_request")
-    # tickets = SupabaseInterface().readAll("mentorship_program_tickets")
-    # ticketUrls = [ticket["html_url"] for ticket in tickets]
-    # for pr in prs:
-    #     if pr.get("body"):
-    #         issues = PrProcessor().getLinkedIssues(pr)
-    #         for issue in issues:
-    #             if pr["repository_url"]+f'/issues/{issue}' in ticketUrls:
-    #                 SupabaseInterface().update("mentorship_program_pull_request", {"linked_ticket":pr["repository_url"]+f'/issues/{issue}' }, "pr_id", pr["pr_id"])
-    # return "Hello World"
-
-    # await recordIssue({})
     return '' 
-        
 
-    # await getNewPRs()
-    # return ""
+
+# @app.route("/image", methods=["GET"])
+# async def serve_image():
+#     try:
+#         # Fetch the image from the Supabase bucket
+#         res = SupabaseInterface().client.storage.from_("c4gt-github-profile").download("RisingStar.png")
+
+#         # Convert the content to a BytesIO object and serve it
+#         return Response(res, mimetype="image/jpeg")
+
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         abort(500)
 
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    GithubProfileDisplay().update(webhook_data)
-    return webhook_data
+    return jsonify(webhook_data)
 
-@app.route("/github_profile/<discord_id>", methods = ["GET"])
-async def renderActivitySummary(discord_id):
-    return discord_id
+@app.before_serving
+async def startup():
+    app.add_background_task(do_update)
+async def do_update():
+    while True:
+        await asyncio.sleep(21600)
+        data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+        GithubProfileDisplay().update(data)
 
 
 @app.route("/already_authenticated")
@@ -259,7 +263,7 @@ async def event_handler():
 
     supabase_client = SupabaseInterface()
     data = await request.json
-    supabase_client.add_event_data(data=data)
+    # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
         recordIssue(issue)
@@ -277,23 +281,6 @@ async def event_handler():
     # if data.
 
     return data
-
-@app.route("/image", methods=["GET"])
-async def get_image():
-    # client = minio.Minio(f"{os.getenv('MINIO_HOST')}:{os.getenv('MINIO_PORT')}", f"{os.getenv('MINIO_ACCESS_KEY')}","m4UcAe3d1omV", secure=False)
-    # bucket = "c4gt-github-profiles"
-    # file = "RisingStar.png"
-
-    # with client.get_object(bucket, file, request_headers= {
-    #     "Content-Type": "image/png"
-    # }) as f:
-    #     image = await f.read()
-
-    res = SupabaseInterface().client.storage.from_("c4gt-github-profile").get_public_url('RisingStar.png')
-
-
-    return res
-
 
 
 @app.route("/metrics/discord", methods = ['POST'])
