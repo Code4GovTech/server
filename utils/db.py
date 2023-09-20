@@ -18,6 +18,52 @@ class SupabaseInterface:
         data = self.client.table(f"{table}").select("*").execute()
         return data.data
     
+    def read(self, table, filters=None, select='*', order=None, limit=None, offset=None):
+        """
+        Reads data from a table in Supabase.
+
+        Parameters:
+        - table (str): Name of the table from which to read data.
+        - filters (dict, optional): Filtering conditions. Values can be simple values for exact matches 
+                                    or tuples like ('gt', value) for greater than conditions.
+        - select (str, optional): The specific columns you want to select. Defaults to '*'.
+        - order (dict, optional): Ordering conditions, with column names as keys and ordering direction ('asc' or 'desc') as values.
+        - limit (int, optional): Maximum number of records to fetch.
+        - offset (int, optional): Number of records to skip.
+
+        Returns:
+        - List[dict]: List of dictionaries representing the rows from the table.
+        """
+        query = self.client.table(table).select(select)
+        
+        if filters:
+            for column, condition in filters.items():
+                # Check if the condition is a tuple (e.g., ('gt', 0))
+                if isinstance(condition, tuple) and len(condition) == 2:
+                    operation, value = condition
+                    if operation == 'gt':
+                        query = query.filter(column, 'gt', value)
+                    # Add more conditions (e.g., 'lt', 'gte', 'lte', etc.) as needed
+                else:
+                    query = query.eq(column, condition)
+        
+        if order:
+            for column, direction in order.items():
+                query = query.order(column, ascending=(direction == 'asc'))
+
+        if limit:
+            query = query.limit(limit)
+
+        if offset:
+            query = query.offset(offset)
+            
+        data = query.execute()
+        return data.data
+
+
+
+
+    
     def insert(self,table, data):
         data = self.client.table(table).insert(data).execute()
         return data.data

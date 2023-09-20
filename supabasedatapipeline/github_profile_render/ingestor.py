@@ -20,6 +20,10 @@ class GithubProfileDisplay:
             template = self.supabase.client.storage.from_(self.storageBucket).download(self.levelOneTemplate)
         elif level == 2:
             template = self.supabase.client.storage.from_(self.storageBucket).download(self.levelTwoTemplate)
+        elif level == 3:
+            template = self.supabase.client.storage.from_(self.storageBucket).download(self.levelTwoTemplate)
+        else:
+            raise Exception("Badge of this rank isn't currently available")
         return template
 
     def getDisplay(self, profile_data):
@@ -57,19 +61,14 @@ class GithubProfileDisplay:
 
         return image_bytes
 
-    def update(self, webhook_data):
-        profile_data = webhook_data["record"] if webhook_data["record"] else webhook_data["old_record"]
-        filename = f'{profile_data["id"]}githubdisplay.jpg'
-        if webhook_data["type"] == 'INSERT':
-            display = self.getDisplay(profile_data)
-            return self.supabase.client.storage.from_(self.storageBucket).upload(filename, display, {"content-type": "image/jpeg"})
-        elif webhook_data["type"] == 'UPDATE':
-            display = self.getDisplay(profile_data)
-            self.supabase.client.storage.from_(self.storageBucket).remove(filename)
-            return self.supabase.client.storage.from_(self.storageBucket).upload(filename, display, {"content-type": "image/jpeg"})
-        elif webhook_data["type"] == 'DELETE':
-            return self.supabase.client.storage.from_(self.storageBucket).remove(filename)
-        else:
-            #Raise HTTPS Exception
-            pass
+    def update(self, data):
+        for profileData in data:
+            filename = f'{profileData["discord_id"]}githubdisplay.jpg'
+            display = self.getDisplay(profileData)
+            try:
+                self.supabase.client.storage.from_(self.storageBucket).remove(filename)
+            except Exception:
+                pass
+            self.supabase.client.storage.from_(self.storageBucket).upload(filename, display, {"content-type": "image/jpeg"})
+        return True
 
