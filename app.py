@@ -17,8 +17,6 @@ dotenv.load_dotenv(".env")
 app = Quart(__name__)
 app.config['TESTING']= True
 
-
-
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
     data = {
@@ -75,7 +73,22 @@ async def comment_cleaner():
                 print(f"Print Delete Task,{comment}", file=sys.stderr)
                 print(SupabaseInterface().deleteComment(issue_id))
 
+async def fetch_github_issues_from_repo(owner, repo):
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+    
+    headers = {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': f'Bearer {os.getenv("GithubPAT")}',
+        'X-GitHub-Api-Version': '2022-11-28'
+    }
 
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                issues = await response.json()
+                return issues
+            else:
+                print(f"Failed to get issues: {response.status}")
 # @app.before_serving
 # async def startup():
 #     app.add_background_task(comment_cleaner)
@@ -262,6 +275,19 @@ async def register(discord_userdata):
 async def event_handler():
 
     supabase_client = SupabaseInterface()
+
+    if request.headers["X-GitHub-Event"] == 'installation':
+        data = await request.json 
+        if data.get("action")=="created":
+            # New installation created
+            repositories = data.get("repositories")
+            for repository in repositories:
+                owner, repository = repository["full_name"].split('/')
+                issues = await fetch_github_issues_from_repo(owner, repository)
+                for issue in issues:
+                    await TicketEventHandler().onTicketCreate({'issue': issue})
+        #on installation event
+
     data = await request.json
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
