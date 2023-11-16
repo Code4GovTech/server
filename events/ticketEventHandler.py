@@ -322,7 +322,7 @@ class TicketEventHandler:
         for repository in repositories:
             issues = await get_issues(repository)
             for issue in issues:
-                self.onTicketCreate({"issue":issue})
+                await self.onTicketCreate({"issue":issue})
 
 
 

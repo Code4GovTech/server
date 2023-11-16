@@ -1,6 +1,9 @@
 import os, sys
 from typing import Any
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
+
+client_options = ClientOptions(postgrest_client_timeout=None)
 import dotenv
 
 dotenv.load_dotenv(".env")
@@ -12,7 +15,7 @@ class SupabaseInterface:
     def __init__(self) -> None:
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
-        self.client: Client = create_client(self.supabase_url, self.supabase_key)
+        self.client: Client = create_client(self.supabase_url, self.supabase_key, options=client_options)
     
     def readAll(self, table):
         data = self.client.table(f"{table}").select("*").execute()
@@ -177,7 +180,6 @@ class SupabaseInterface:
 
     
     def add_contributor(self, userdata):
-        
         data = self.client.table("contributors").insert(userdata).execute()
         # print(data.data)
         return data
@@ -188,6 +190,20 @@ class SupabaseInterface:
             return True
         else:
             return False
+    
+    def register_contributor(self, discord_id, user_data):
+        try:
+            self.client.table("contributors").insert(user_data).execute()
+        except Exception as e:
+            print(e)
+
+        
+        # existing_data = contributors_table.select("*").eq("discord_id", discord_id).execute()
+        
+        # if len(existing_data.data) > 0:
+        #     contributors_table.update(user_data).eq("discord_id", discord_id).execute()
+        # else:
+        #     contributors_table.insert(user_data).execute()
         
     def contributor_exists(self, discord_id):
         data = self.client.table("contributors").select("*").eq("discord_id", discord_id).execute()
