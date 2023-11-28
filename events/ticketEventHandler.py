@@ -30,6 +30,7 @@ def matchProduct(enteredProductName):
     "DIGIT",
     "DIKSHA",
     "Doc Generator",
+    "Dalgo",
     "Farmstack",
     "Glific",
     "Health Claims Exchange",
@@ -46,6 +47,7 @@ def matchProduct(enteredProductName):
     "Sunbird Obsrv",
     "Sunbird RC",
     "Sunbird Saral",
+    "SL-Library",
     "Sunbird UCI",
     "Template Creation Portal",
     "Text2SQL",
@@ -161,7 +163,8 @@ class TicketEventHandler:
             print(2, file=sys.stderr)
             ticket_data = {
                         "name":issue["title"],     #name of ticket
-                        "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
+                        # "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
+                        "product":markdown_contents["Product Name"] if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
                         "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
@@ -179,6 +182,7 @@ class TicketEventHandler:
                     await send_message(ticket_data)
                 print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
             else:
+                print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
                 self.supabase_client.insert("unlisted_tickets", ticket_data)
 
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
@@ -214,7 +218,7 @@ class TicketEventHandler:
         print("MARKDOWN", markdown_contents, file=sys.stderr )
         ticket_data = {
                         "name":issue["title"],     #name of ticket
-                        "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
+                        "product":markdown_contents["Product Name"] if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
                         "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
@@ -322,7 +326,7 @@ class TicketEventHandler:
         for repository in repositories:
             issues = await get_issues(repository)
             for issue in issues:
-                self.onTicketCreate({"issue":issue})
+                await self.onTicketCreate({"issue":issue})
 
 
 

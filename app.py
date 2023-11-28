@@ -1,7 +1,7 @@
 from quart import Quart, redirect, render_template, request, jsonify, current_app
 from io import BytesIO
 import aiohttp, asyncio
-import dotenv, os, json, urllib, sys, dateutil, datetime
+import dotenv, os, json, urllib, sys, dateutil, datetime, sys
 from utils.db import SupabaseInterface
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
@@ -236,10 +236,10 @@ async def isAuthenticated():
 @app.route("/authenticate/<discord_userdata>")
 async def authenticate(discord_userdata):
 
-    redirect_uri = urllib.parse.quote(f'{os.getenv("HOST")}/register/{discord_userdata}')
+    redirect_uri = f'{os.getenv("HOST")}/register/{discord_userdata}'
     # print(redirect_uri)
     github_auth_url = f'https://github.com/login/oauth/authorize?client_id={os.getenv("GITHUB_CLIENT_ID")}&redirect_uri={redirect_uri}&scope=user:email'
-    # print(github_auth_url)
+    print(github_auth_url, file=sys.stderr)
     return redirect(github_auth_url)
 
 @app.route("/installations")
@@ -252,23 +252,38 @@ async def test():
 #Callback url for Github App
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
+    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors'
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
 
+    async def post_to_supabase(json_data):
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f'Bearer {SUPABASE_KEY}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+        }
+
+        # As aiohttp recommends, create a session per application, rather than per function.
+        async with aiohttp.ClientSession() as session:
+            async with session.post(SUPABASE_URL, json=json_data, headers=headers) as response:
+                status = response.status
+                # Depending on your requirements, you may want to process the response here.
+                response_text = await response.text()
+
+        return status, response_text
     discord_id = discord_userdata
 
-    #Check if the user is registered
     supabase_client = SupabaseInterface()
-        
-    user_data =  await get_github_data(request.args.get("code"), discord_id=discord_id)
+    user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
+    # print(user_data, file=sys.stderr)
 
-    if supabase_client.contributor_exists(discord_id=discord_id):
-        supabase_client.update_contributor(discord_id, user_data)
-
-    #adding to the database
-    else:
-        supabase_client.add_contributor(user_data)
+    # data = supabase_client.client.table("contributors").select("*").execute()
+    try:
+        await post_to_supabase(user_data)
+    except Exception as e:
+        print(e)
     
     return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
-
 
 
 @app.route("/github/events", methods = ['POST'])
@@ -276,23 +291,27 @@ async def event_handler():
 
     supabase_client = SupabaseInterface()
 
-    if request.headers["X-GitHub-Event"] == 'installation':
-        data = await request.json 
-        if data.get("action")=="created":
-            # New installation created
-            repositories = data.get("repositories")
-            for repository in repositories:
-                owner, repository = repository["full_name"].split('/')
-                issues = await fetch_github_issues_from_repo(owner, repository)
-                for issue in issues:
-                    await TicketEventHandler().onTicketCreate({'issue': issue})
+    # if request.headers["X-GitHub-Event"] == 'installation' or request.headers["X-GitHub-Event"] == 'installation_repositories':
+    #     data = await request.json 
+    #     if data.get("action")=="created" or data.get("action")=="added":
+    #         # New installation created
+    #         repositories = data.get("repositories") if data.get("repositories") else data.get("repositories_added")
+    #         for repository in repositories:
+    #             owner, repository = repository["full_name"].split('/')
+    #             issues = await fetch_github_issues_from_repo(owner, repository)
+    #             for issue in issues:
+    #                 await TicketEventHandler().onTicketCreate({'issue': issue})
         #on installation event
 
     data = await request.json
+    print(data, file = sys.stderr)
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
-        recordIssue(issue)
+        try:
+            recordIssue(issue)
+        except Exception as e:
+            print(e)
         if supabase_client.checkUnlisted(issue["id"]):
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)
