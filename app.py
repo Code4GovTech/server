@@ -304,10 +304,14 @@ async def event_handler():
         #on installation event
 
     data = await request.json
+    print(data, file = sys.stderr)
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
-        recordIssue(issue)
+        try:
+            recordIssue(issue)
+        except Exception as e:
+            print(e)
         if supabase_client.checkUnlisted(issue["id"]):
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)
