@@ -1,21 +1,22 @@
-from quart import Quart, redirect, render_template, request, jsonify, current_app
-from io import BytesIO
+from quart import Quart, request, jsonify
 import aiohttp, asyncio
-import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+import dotenv, os, json, sys, dateutil, datetime, sys
 from utils.db import SupabaseInterface
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
-from githubdatapipeline.pull_request.scraper import getNewPRs
-from githubdatapipeline.pull_request.processor import PrProcessor
-from githubdatapipeline.issues.destination import recordIssue
+from supabasedatapipeline.github_profile_render.ingestor import GithubProfileDisplay
+from .contributor import contributor
+from .github import github
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
-
 dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
 app.config['TESTING']= True
+app.register_blueprint(contributor)
+app.register_blueprint(github)
+
 
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
@@ -194,8 +195,9 @@ async def addIssues():
         print(f'{count}/{len(tickets)}')
         count+=1
         if ticket["status"] == "closed":
+            print('')
             # if ticket["api_endpoint_url"] in ["https://api.github.com/repos/glific/glific/issues/2824"]:
-            await TicketEventHandler().onTicketClose({"issue":await get_url(ticket["api_endpoint_url"])})
+            # await TicketEventHandler().onTicketClose({"issue":await get_url(ticket["api_endpoint_url"])})
     
 
     return '' 
@@ -228,104 +230,11 @@ async def do_update():
         data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
         GithubProfileDisplay().update(data)
 
-
-@app.route("/already_authenticated")
-async def isAuthenticated():
-    return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
-
-@app.route("/authenticate/<discord_userdata>")
-async def authenticate(discord_userdata):
-
-    redirect_uri = f'{os.getenv("HOST")}/register/{discord_userdata}'
-    # print(redirect_uri)
-    github_auth_url = f'https://github.com/login/oauth/authorize?client_id={os.getenv("GITHUB_CLIENT_ID")}&redirect_uri={redirect_uri}&scope=user:email'
-    print(github_auth_url, file=sys.stderr)
-    return redirect(github_auth_url)
-
 @app.route("/installations")
 async def test():
     # TicketEventHandler().bot_comments()
 
     return await TicketEventHandler().bot_comments()
-
-
-#Callback url for Github App
-@app.route("/register/<discord_userdata>")
-async def register(discord_userdata):
-    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors'
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
-
-    async def post_to_supabase(json_data):
-        headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {SUPABASE_KEY}',
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-        }
-
-        # As aiohttp recommends, create a session per application, rather than per function.
-        async with aiohttp.ClientSession() as session:
-            async with session.post(SUPABASE_URL, json=json_data, headers=headers) as response:
-                status = response.status
-                # Depending on your requirements, you may want to process the response here.
-                response_text = await response.text()
-
-        return status, response_text
-    discord_id = discord_userdata
-
-    supabase_client = SupabaseInterface()
-    user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
-    # print(user_data, file=sys.stderr)
-
-    # data = supabase_client.client.table("contributors").select("*").execute()
-    try:
-        await post_to_supabase(user_data)
-    except Exception as e:
-        print(e)
-    
-    return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
-
-
-@app.route("/github/events", methods = ['POST'])
-async def event_handler():
-
-    supabase_client = SupabaseInterface()
-
-    # if request.headers["X-GitHub-Event"] == 'installation' or request.headers["X-GitHub-Event"] == 'installation_repositories':
-    #     data = await request.json 
-    #     if data.get("action")=="created" or data.get("action")=="added":
-    #         # New installation created
-    #         repositories = data.get("repositories") if data.get("repositories") else data.get("repositories_added")
-    #         for repository in repositories:
-    #             owner, repository = repository["full_name"].split('/')
-    #             issues = await fetch_github_issues_from_repo(owner, repository)
-    #             for issue in issues:
-    #                 await TicketEventHandler().onTicketCreate({'issue': issue})
-        #on installation event
-
-    data = await request.json
-    print(data, file = sys.stderr)
-    # supabase_client.add_event_data(data=data)
-    if data.get("issue"):
-        issue = data["issue"]
-        try:
-            recordIssue(issue)
-        except Exception as e:
-            print(e)
-        if supabase_client.checkUnlisted(issue["id"]):
-            supabase_client.deleteUnlistedTicket(issue["id"])
-        await TicketEventHandler().onTicketCreate(data)
-        if supabase_client.checkIsTicket(issue["id"]):
-            await TicketEventHandler().onTicketEdit(data)
-            if data["action"] == "closed":
-                await TicketEventHandler().onTicketClose(data)
-    if data.get("installation") and data["installation"].get("account"):
-        # if data["action"] not in ["deleted", "suspend"]:
-        await TicketEventHandler().updateInstallation(data.get("installation"))
-    
-    # if data.
-
-    return data
 
 
 @app.route("/metrics/discord", methods = ['POST'])
