@@ -175,12 +175,12 @@ class SupabaseInterface:
         return data
     
     def update_contributor(self, discord_id, user_data):
-        data = self.client.table("contributors").update(user_data).eq("discord_id", discord_id).execute()
+        data = self.client.table("contributors_registration").update(user_data).eq("discord_id", discord_id).execute()
         return data
 
     
     def add_contributor(self, userdata):
-        data = self.client.table("contributors").insert(userdata).execute()
+        data = self.client.table("contributors_registration").insert(userdata).execute()
         # print(data.data)
         return data
     
@@ -193,7 +193,7 @@ class SupabaseInterface:
     
     def register_contributor(self, discord_id, user_data):
         try:
-            self.client.table("contributors").insert(user_data).execute()
+            self.client.table("contributors_registration").insert(user_data).execute()
         except Exception as e:
             print(e)
 
@@ -206,7 +206,7 @@ class SupabaseInterface:
         #     contributors_table.insert(user_data).execute()
         
     def contributor_exists(self, discord_id):
-        data = self.client.table("contributors").select("*").eq("discord_id", discord_id).execute()
+        data = self.client.table("contributors_registration").select("*").eq("discord_id", discord_id).execute()
         if len(data.data)>0:
             return True
         else:

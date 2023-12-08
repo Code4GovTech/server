@@ -252,7 +252,7 @@ async def test():
 #Callback url for Github App
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
-    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors'
+    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
     SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
 
     async def post_to_supabase(json_data):
@@ -288,8 +288,27 @@ async def register(discord_userdata):
 
 @app.route("/github/events", methods = ['POST'])
 async def event_handler():
+    data = await request.json
 
     supabase_client = SupabaseInterface()
+
+    # Hanlding Labels being edited:
+    if request.headers["X-GitHub-Event"] == 'label':
+        if data.get("action") == 'edited':
+            if 'name' in data.get("changes"):
+                if 'c4gt' in data["label"]["name"].lower():
+                    if data["label"]["name"].lower() != 'c4gt community':
+                        tickets = supabase_client.readAll("ccbp_tickets")
+                        for ticket in tickets:
+                            ticketUrlElements = ticket["url"].split('/')
+                            repositoryUrlElements = ticketUrlElements[:-2]
+                            repositoryUrl = '/'.join(repositoryUrlElements)
+                            if repositoryUrl == data["repository"]["html_url"]:
+                                supabase_client.deleteTicket(ticket["issue_id"])
+
+
+
+        
 
     # if request.headers["X-GitHub-Event"] == 'installation' or request.headers["X-GitHub-Event"] == 'installation_repositories':
     #     data = await request.json 
@@ -303,8 +322,8 @@ async def event_handler():
     #                 await TicketEventHandler().onTicketCreate({'issue': issue})
         #on installation event
 
-    data = await request.json
-    print(data, file = sys.stderr)
+    
+    print("EVENT", data, file = sys.stderr)
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
