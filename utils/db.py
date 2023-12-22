@@ -147,26 +147,28 @@ class SupabaseInterface:
         else:
             return False
     
-    def addPr(self, data, issue_id):
+    def addPr(self, prData, issue_id):
         if issue_id:
             ticket = self.getTicket(issue_id)
             # print(ticket, type(ticket), file=sys.stderr)
-        data = {
-                    "api_url":data["url"],
-                    "html_url":data["html_url"],
-                    "pr_id":data["id"],
-                    "raised_by":data["user"]["id"],
-                    "raised_at":data["created_at"],
-                    "raised_by_username":data["user"]["login"],
-                    "status":data["state"],
-                    "is_merged":data["merged"] if data.get("merged") else None,
-                    "merged_by":data["merged_by"]["id"] if data["merged"] else None,
-                    "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
-                    "merged_at":data["merged_at"] if data["merged"] else None,
-                    "points": ticket[0]["ticket_points"] if issue_id else 0
-                }
-        data = self.client.table("pull_requests").insert(data).execute()
-        return data.data
+        for pr in prData:
+            data = {
+                        # "api_url":data["url"],
+                        "html_url":pr["html_url"],
+                        "pr_id":pr["pr_id"],
+                        "raised_by":pr["raised_by"],
+                        "raised_at":pr["raised_at"],
+                        "raised_by_username":pr["raised_by_username"],
+                        "status":pr["status"],
+                        "is_merged":pr["is_merged"] if pr.get("is_merged") else None,
+                        "merged_by":pr["merged_by"] if pr["merged_by"] else None,
+                        "merged_by_username":pr["merged_by_username"] if pr.get("merged_by_username") else None,
+                        "merged_at":pr["merged_at"] if pr.get("merged_at") else None,
+                        "points": ticket[0]["ticket_points"] if issue_id else 0,
+                        "ticket_url":ticket[0]["api_endpoint_url"]
+                    }
+            resp = self.client.table("connected_prs").insert(data).execute()
+        return
 
     def add_mentor(self, userdata):
         

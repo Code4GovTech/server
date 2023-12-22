@@ -11,7 +11,7 @@ from aiographql.client import GraphQLClient, GraphQLRequest
 from events.ticketFeedbackHandler import TicketFeedbackHandler
 # from githubdatapipeline.issues.processor import closing_pr
 import postgrest
-from githubdatapipeline.issues.processor import get_closing_pr
+from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
 
 def matchProduct(enteredProductName):
@@ -278,15 +278,16 @@ class TicketEventHandler:
     async def onTicketClose(self, eventData):
         issue = eventData["issue"]
         [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
-        pull_request_urls = await get_closing_pr(issue)
+        pullData = await returnConnectedPRs(issue)
 
-        print("PULL REQUEST",pull_request_url, file = sys.stderr)
-        if pull_request_urls:
-            for pull_request_url in pull_request_urls:
-                pull_number=pull_request_url.split('/')[-1]
-                pull_data = await get_pull_request(owner, repo, pull_number)
-                if pull_data["merged"]:
-                    self.supabase_client.addPr(pull_data, issue["id"])
+        print("PULL REQUEST",pullData, file = sys.stderr)
+        self.supabase_client.addPr(pullData, issue["id"])
+        # if pull_request_urls:
+        #     for pull_request_url in pull_request_urls:
+        #         pull_number=pull_request_url.split('/')[-1]
+        #         pull_data = await get_pull_request(owner, repo, pull_number)
+        #         if pull_data["merged"]:
+                    
         return
     
     async def updateInstallation(self, installation):
