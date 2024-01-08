@@ -140,12 +140,10 @@ class TicketEventHandler:
                         "high": 30,
                         "medium":20,
                         "low":10,
-                        "beginner":5,
                         "unknown":10
                     }
         
         self.complexity_synonyms = {
-            "beginner": "Beginner",
             "easy": "Low",
             "low": "Low",
             "medium": "Medium",
