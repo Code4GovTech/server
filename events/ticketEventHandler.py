@@ -140,7 +140,8 @@ class TicketEventHandler:
                         "high": 30,
                         "medium":20,
                         "low":10,
-                        "unknown":10
+                        "unknown":10,
+                        "beginner": 5
                     }
         
         self.complexity_synonyms = {
@@ -149,18 +150,17 @@ class TicketEventHandler:
             "medium": "Medium",
             "hard": "High",
             "high": "High",
-            "complex": "High"
+            "complex": "High",
+            "beginner":"Beginner"
 
         }
         return
     
     async def onTicketCreate(self, eventData):
         issue = eventData["issue"]
-        print(1, file=sys.stderr)
         if any(label["name"].lower() == "c4gt community".lower() for label in issue["labels"] ):
             markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
             # print(markdown_contents, file=sys.stderr)
-            print(2, file=sys.stderr)
             ticket_data = {
                         "name":issue["title"],     #name of ticket
                         # "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
@@ -173,6 +173,7 @@ class TicketEventHandler:
                         "status": issue["state"],
                         "api_endpoint_url":issue["url"],
                         "url": issue["html_url"],
+                        "organization": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
@@ -180,7 +181,7 @@ class TicketEventHandler:
             if ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
                 if not self.supabase_client.checkIsTicket(ticket_data["issue_id"]):
                     await send_message(ticket_data)
-                print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
+                self.supabase_client.record_created_ticket(data=ticket_data)
             else:
                 print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
                 self.supabase_client.insert("unlisted_tickets", ticket_data)
@@ -227,11 +228,12 @@ class TicketEventHandler:
                         "status": issue["state"],
                         "api_endpoint_url":issue["url"],
                         "url": issue["html_url"],
+                        "organization": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
         # print("TICKET", ticket_data, file=sys.stderr)
-        print(self.supabase_client.update_recorded_ticket(data=ticket_data))
+        self.supabase_client.update_recorded_ticket(data=ticket_data)
         if SupabaseInterface().commentExists(issue["id"]):
             url_components = issue["url"].split('/')
             repo = url_components[-3]

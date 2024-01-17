@@ -63,6 +63,7 @@ class GithubProfileDisplay:
 
     def update(self, data):
         for profileData in data:
+            print(profileData["github_username"])
             filename = f'{profileData["discord_id"]}githubdisplay.jpg'
             display = self.getDisplay(profileData)
             try:

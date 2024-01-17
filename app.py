@@ -8,6 +8,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
+from supabasedatapipeline.github_profile_render.ingestor import GithubProfileDisplay
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -217,13 +218,16 @@ async def addIssues():
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    return jsonify(webhook_data)
+    data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+    GithubProfileDisplay().update(data)
+    return 'Done'
 
 @app.before_serving
 async def startup():
     app.add_background_task(do_update)
 async def do_update():
     while True:
+        print("Starting Update")
         await asyncio.sleep(21600)
         data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
         GithubProfileDisplay().update(data)
@@ -321,9 +325,6 @@ async def event_handler():
     #             for issue in issues:
     #                 await TicketEventHandler().onTicketCreate({'issue': issue})
         #on installation event
-
-    
-    print("EVENT", data, file = sys.stderr)
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
@@ -341,8 +342,6 @@ async def event_handler():
     if data.get("installation") and data["installation"].get("account"):
         # if data["action"] not in ["deleted", "suspend"]:
         await TicketEventHandler().updateInstallation(data.get("installation"))
-    
-    # if data.
 
     return data
 
