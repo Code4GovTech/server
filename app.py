@@ -1,4 +1,5 @@
 from quart import Quart, redirect, render_template, request, jsonify, current_app
+from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
@@ -16,7 +17,7 @@ sys.path.append(fpath)
 dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
-app.config['TESTING']= True
+app.config['TESTING']= False
 
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
@@ -274,16 +275,22 @@ async def register(discord_userdata):
                 # Depending on your requirements, you may want to process the response here.
                 response_text = await response.text()
 
+                if status != 201:
+                    raise Exception(response_text)
+
         return status, response_text
     discord_id = discord_userdata
 
     supabase_client = SupabaseInterface()
+    if not request.args.get("code"):
+        raise BadRequestKeyError()
     user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
-    # print(user_data, file=sys.stderr)
+    print(user_data, file=sys.stderr)
 
     # data = supabase_client.client.table("contributors").select("*").execute()
     try:
-        await post_to_supabase(user_data)
+        resp = await post_to_supabase(user_data)
+        print(resp)
     except Exception as e:
         print(e)
     
@@ -301,7 +308,7 @@ async def event_handler():
         if data.get("action") == 'edited':
             if 'name' in data.get("changes"):
                 if 'c4gt' in data["label"]["name"].lower():
-                    if data["label"]["name"].lower() != 'c4gt community':
+                    if data["label"]["name"].lower() != 'c4gt community' or data["label"]["name"].lower() != 'dmp 2024':
                         tickets = supabase_client.readAll("ccbp_tickets")
                         for ticket in tickets:
                             ticketUrlElements = ticket["url"].split('/')
@@ -328,10 +335,6 @@ async def event_handler():
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
-        try:
-            recordIssue(issue)
-        except Exception as e:
-            print(e)
         if supabase_client.checkUnlisted(issue["id"]):
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)

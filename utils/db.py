@@ -107,7 +107,17 @@ class SupabaseInterface:
         return
     
     def checkIsTicket(self, issue_id):
-        data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        ccbpResp = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        dmpResp = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
+        data = ccbpResp.data + dmpResp.data
+        # unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data)>0:
+            return True
+        else:
+            return False
+    
+    def checkIsDMPTicket(self, issue_id):
+        data = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
         # unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
         if len(data.data)>0:
             return True
@@ -128,14 +138,21 @@ class SupabaseInterface:
     
     def getTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data.data)==0:
+            data = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
         return data.data
     
     def deleteTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").delete().eq("issue_id", issue_id).execute()
+        data = self.client.table("dmp_tickets").delete().eq("issue_id", issue_id).execute()
         return data.data
     
     def update_recorded_ticket(self, data):
         data = self.client.table("ccbp_tickets").update(data).eq("issue_id", data["issue_id"]).execute()
+        return data.data
+    
+    def updateRecordedDMPTicket(self, data):
+        data = self.client.table("dmp_tickets").update(data).eq("issue_id", data["issue_id"]).execute()
         return data.data
         
 
@@ -230,6 +247,15 @@ class SupabaseInterface:
             # print(issues, file=sys.stderr)
             return issues.data
         data = self.client.table("ccbp_tickets").insert(data).execute()
+        # print(data, file=sys.stderr)
+        return data.data
+    
+    def recordCreatedDMPTicket(self, data):
+        issues = self.client.table("dmp_tickets").select("*").eq("issue_id",data["issue_id"]).execute()
+        if len(issues.data)>0:
+            # print(issues, file=sys.stderr)
+            return issues.data
+        data = self.client.table("dmp_tickets").insert(data).execute()
         # print(data, file=sys.stderr)
         return data.data
     
