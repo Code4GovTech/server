@@ -24,10 +24,10 @@
 <body>
 
 <!-- Image 1: BadgeWithText.jpeg -->
-<img src="assets/BadgeWithText.jpeg" alt="Badge With Text">
+<img src="{{ url_for('static', filename='BadgeWithText.jpeg')}}" alt="Badge With Text">
 
 <!-- Image 2: verified.png -->
-<img src="assets/verified.png" alt="Verified">
+<img src="{{ url_for('static', filename='verified.png')}}" alt="Verified">
 
 </body>
 </html>
