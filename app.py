@@ -150,6 +150,10 @@ async def hello_world():
     # return await render_template('form.html',repositories=repositories_list,  products=productList)
     return "hello world"
 
+@app.route("/verify/<githubUsername>")
+async def verify(githubUsername):
+    return f'{githubUsername} is a Verified Contributor'
+
 # @app.route("/submission", methods = ['POST'])
 # async def formResponse():
 #     response = await request.form
