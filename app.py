@@ -152,7 +152,7 @@ async def hello_world():
 
 @app.route("/verify/<githubUsername>")
 async def verify(githubUsername):
-    return await render_template('ver')
+    return await render_template('verified.html')
 
 # @app.route("/submission", methods = ['POST'])
 # async def formResponse():
