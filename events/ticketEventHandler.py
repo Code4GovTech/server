@@ -11,7 +11,7 @@ from aiographql.client import GraphQLClient, GraphQLRequest
 from events.ticketFeedbackHandler import TicketFeedbackHandler
 # from githubdatapipeline.issues.processor import closing_pr
 import postgrest
-from githubdatapipeline.issues.processor import get_closing_pr
+from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
 
 def matchProduct(enteredProductName):
@@ -140,7 +140,8 @@ class TicketEventHandler:
                         "high": 30,
                         "medium":20,
                         "low":10,
-                        "unknown":10
+                        "unknown":10,
+                        "beginner": 5
                     }
         
         self.complexity_synonyms = {
@@ -149,18 +150,21 @@ class TicketEventHandler:
             "medium": "Medium",
             "hard": "High",
             "high": "High",
-            "complex": "High"
+            "complex": "High",
+            "beginner":"Beginner"
 
         }
         return
     
     async def onTicketCreate(self, eventData):
         issue = eventData["issue"]
-        print(1, file=sys.stderr)
-        if any(label["name"].lower() == "c4gt community".lower() for label in issue["labels"] ):
+        if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024"] for label in issue["labels"] ):
+            if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
+                ticketType = "ccbp"
+            else:
+                ticketType = "dmp"
             markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
             # print(markdown_contents, file=sys.stderr)
-            print(2, file=sys.stderr)
             ticket_data = {
                         "name":issue["title"],     #name of ticket
                         # "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
@@ -168,24 +172,29 @@ class TicketEventHandler:
                         "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
-                        "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
+                        "reqd_skills":[skill for skill in markdown_contents["Tech Skills Needed"].split(',')] if markdown_contents.get("Tech Skills Needed") else None,
                         "issue_id":issue["id"],
                         "status": issue["state"],
                         "api_endpoint_url":issue["url"],
                         "url": issue["html_url"],
+                        "organization": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
             # print(ticket_data, file=sys.stderr)
-            if ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
+            if ticketType == "ccbp" and ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
                 if not self.supabase_client.checkIsTicket(ticket_data["issue_id"]):
                     await send_message(ticket_data)
-                print(self.supabase_client.record_created_ticket(data=ticket_data), file=sys.stderr)
+                self.supabase_client.record_created_ticket(data=ticket_data)
+            elif ticketType == "dmp":
+                if not self.supabase_client.checkIsDMPTicket(ticket_data["issue_id"]):
+                    await send_message(ticket_data)
+                self.supabase_client.recordCreatedDMPTicket(data=ticket_data)
             else:
                 print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
                 self.supabase_client.insert("unlisted_tickets", ticket_data)
 
-            if TicketFeedbackHandler().evaluateDict(markdown_contents):
+            if TicketFeedbackHandler().evaluateDict(markdown_contents) and ticketType == "ccbp":
                 url_components = issue["url"].split('/')
                 issue_number = url_components[-1]
                 repo = url_components[-3]
@@ -210,10 +219,14 @@ class TicketEventHandler:
     async def onTicketEdit(self, eventData):
         issue = eventData["issue"]
         if eventData["action"] == "unlabeled":
-            if (not issue["labels"]) or (not any(label["name"].lower() == "C4GT Community".lower() for label in issue["labels"] )):
+            if (not issue["labels"]) or (not any(label["name"].lower() in ["C4GT Community".lower(), "dmp 2024"] for label in issue["labels"] )):
                 # Delete Ticket
                 self.supabase_client.deleteTicket(issue["id"])
                 return
+        if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
+            ticketType = "ccbp"
+        else:
+            ticketType = "dmp"
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
         print("MARKDOWN", markdown_contents, file=sys.stderr )
         ticket_data = {
@@ -222,17 +235,22 @@ class TicketEventHandler:
                         "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
                         "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
                         "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
-                        "reqd_skills":markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None,
+                        "reqd_skills":[skill for skill in markdown_contents["Tech Skills Needed"].split(',')] if markdown_contents.get("Tech Skills Needed") else None,
                         "issue_id":issue["id"],
                         "status": issue["state"],
                         "api_endpoint_url":issue["url"],
                         "url": issue["html_url"],
+                        "organization": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
                         "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
                         "mentors": [github_handle for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
                     }
         # print("TICKET", ticket_data, file=sys.stderr)
-        print(self.supabase_client.update_recorded_ticket(data=ticket_data))
-        if SupabaseInterface().commentExists(issue["id"]):
+        if ticketType == "ccbp":
+            self.supabase_client.update_recorded_ticket(data=ticket_data)
+        elif ticketType == "dmp":
+            self.supabase_client.updateRecordedDMPTicket(data=ticket_data)
+
+        if SupabaseInterface().commentExists(issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
             repo = url_components[-3]
             owner = url_components[-4]
@@ -251,7 +269,7 @@ class TicketEventHandler:
                     print(SupabaseInterface().deleteComment(issue["id"]))
                 except:
                     print("Error in deletion")
-        else:
+        elif ticketType=="ccbp":
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
                 url_components = issue["url"].split('/')
                 issue_number = url_components[-1]
@@ -273,20 +291,16 @@ class TicketEventHandler:
                 except postgrest.exceptions.APIError:
                     print("Issue already commented")
 
-
         return eventData
+    
     async def onTicketClose(self, eventData):
         issue = eventData["issue"]
         [repo, owner, issue_number] = [issue["url"].split('/')[-3],issue["url"].split('/')[-4],issue["url"].split('/')[-1]]
-        pull_request_urls = await get_closing_pr(issue)
+        pullData = await returnConnectedPRs(issue)
 
-        print("PULL REQUEST",pull_request_url, file = sys.stderr)
-        if pull_request_urls:
-            for pull_request_url in pull_request_urls:
-                pull_number=pull_request_url.split('/')[-1]
-                pull_data = await get_pull_request(owner, repo, pull_number)
-                if pull_data["merged"]:
-                    self.supabase_client.addPr(pull_data, issue["id"])
+        print("PULL REQUEST",pullData, file = sys.stderr)
+        self.supabase_client.addPr(pullData, issue["id"])
+                    
         return
     
     async def updateInstallation(self, installation):

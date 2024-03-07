@@ -1,4 +1,5 @@
 from quart import Quart, redirect, render_template, request, jsonify, current_app
+from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
@@ -8,6 +9,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
+from supabasedatapipeline.github_profile_render.ingestor import GithubProfileDisplay
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -15,7 +17,7 @@ sys.path.append(fpath)
 dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
-app.config['TESTING']= True
+app.config['TESTING']= False
 
 async def get_github_data(code, discord_id):
     github_url_for_access_token = 'https://github.com/login/oauth/access_token'
@@ -148,6 +150,10 @@ async def hello_world():
     # return await render_template('form.html',repositories=repositories_list,  products=productList)
     return "hello world"
 
+@app.route("/verify/<githubUsername>")
+async def verify(githubUsername):
+    return await render_template('verified.html')
+
 # @app.route("/submission", methods = ['POST'])
 # async def formResponse():
 #     response = await request.form
@@ -217,13 +223,16 @@ async def addIssues():
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    return jsonify(webhook_data)
+    data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+    GithubProfileDisplay().update(data)
+    return 'Done'
 
 @app.before_serving
 async def startup():
     app.add_background_task(do_update)
 async def do_update():
     while True:
+        print("Starting Update")
         await asyncio.sleep(21600)
         data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
         GithubProfileDisplay().update(data)
@@ -252,7 +261,7 @@ async def test():
 #Callback url for Github App
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
-    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors'
+    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
     SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
 
     async def post_to_supabase(json_data):
@@ -270,16 +279,22 @@ async def register(discord_userdata):
                 # Depending on your requirements, you may want to process the response here.
                 response_text = await response.text()
 
+                if status != 201:
+                    raise Exception(response_text)
+
         return status, response_text
     discord_id = discord_userdata
 
     supabase_client = SupabaseInterface()
+    if not request.args.get("code"):
+        raise BadRequestKeyError()
     user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
-    # print(user_data, file=sys.stderr)
+    print(user_data, file=sys.stderr)
 
     # data = supabase_client.client.table("contributors").select("*").execute()
     try:
-        await post_to_supabase(user_data)
+        resp = await post_to_supabase(user_data)
+        print(resp)
     except Exception as e:
         print(e)
     
@@ -288,8 +303,27 @@ async def register(discord_userdata):
 
 @app.route("/github/events", methods = ['POST'])
 async def event_handler():
+    data = await request.json
 
     supabase_client = SupabaseInterface()
+
+    # Hanlding Labels being edited:
+    if request.headers["X-GitHub-Event"] == 'label':
+        if data.get("action") == 'edited':
+            if 'name' in data.get("changes"):
+                if 'c4gt' in data["label"]["name"].lower():
+                    if data["label"]["name"].lower() != 'c4gt community' or data["label"]["name"].lower() != 'dmp 2024':
+                        tickets = supabase_client.readAll("ccbp_tickets")
+                        for ticket in tickets:
+                            ticketUrlElements = ticket["url"].split('/')
+                            repositoryUrlElements = ticketUrlElements[:-2]
+                            repositoryUrl = '/'.join(repositoryUrlElements)
+                            if repositoryUrl == data["repository"]["html_url"]:
+                                supabase_client.deleteTicket(ticket["issue_id"])
+
+
+
+        
 
     # if request.headers["X-GitHub-Event"] == 'installation' or request.headers["X-GitHub-Event"] == 'installation_repositories':
     #     data = await request.json 
@@ -302,16 +336,9 @@ async def event_handler():
     #             for issue in issues:
     #                 await TicketEventHandler().onTicketCreate({'issue': issue})
         #on installation event
-
-    data = await request.json
-    print(data, file = sys.stderr)
     # supabase_client.add_event_data(data=data)
     if data.get("issue"):
         issue = data["issue"]
-        try:
-            recordIssue(issue)
-        except Exception as e:
-            print(e)
         if supabase_client.checkUnlisted(issue["id"]):
             supabase_client.deleteUnlistedTicket(issue["id"])
         await TicketEventHandler().onTicketCreate(data)
@@ -322,8 +349,6 @@ async def event_handler():
     if data.get("installation") and data["installation"].get("account"):
         # if data["action"] not in ["deleted", "suspend"]:
         await TicketEventHandler().updateInstallation(data.get("installation"))
-    
-    # if data.
 
     return data
 

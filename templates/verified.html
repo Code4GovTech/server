@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Display</title>
+<style>
+  /* Centering the images and text inside the body */
+  body {
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  img {
+    /* Center the image */
+    margin: 10px 0; /* Add some space above and below each image */
+  }
+</style>
+</head>
+<body>
+
+<!-- Image 1: BadgeWithText.jpeg -->
+<img src="{{ url_for('static', filename='BadgeWithText.jpeg')}}" alt="Badge With Text">
+
+<!-- Image 2: verified.png -->
+<img src="{{ url_for('static', filename='verified.png')}}" alt="Verified">
+
+</body>
+</html>

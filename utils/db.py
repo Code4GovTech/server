@@ -107,7 +107,17 @@ class SupabaseInterface:
         return
     
     def checkIsTicket(self, issue_id):
-        data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        ccbpResp = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        dmpResp = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
+        data = ccbpResp.data + dmpResp.data
+        # unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data)>0:
+            return True
+        else:
+            return False
+    
+    def checkIsDMPTicket(self, issue_id):
+        data = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
         # unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
         if len(data.data)>0:
             return True
@@ -128,14 +138,21 @@ class SupabaseInterface:
     
     def getTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        if len(data.data)==0:
+            data = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
         return data.data
     
     def deleteTicket(self, issue_id):
         data = self.client.table("ccbp_tickets").delete().eq("issue_id", issue_id).execute()
+        data = self.client.table("dmp_tickets").delete().eq("issue_id", issue_id).execute()
         return data.data
     
     def update_recorded_ticket(self, data):
         data = self.client.table("ccbp_tickets").update(data).eq("issue_id", data["issue_id"]).execute()
+        return data.data
+    
+    def updateRecordedDMPTicket(self, data):
+        data = self.client.table("dmp_tickets").update(data).eq("issue_id", data["issue_id"]).execute()
         return data.data
         
 
@@ -147,26 +164,28 @@ class SupabaseInterface:
         else:
             return False
     
-    def addPr(self, data, issue_id):
+    def addPr(self, prData, issue_id):
         if issue_id:
             ticket = self.getTicket(issue_id)
             # print(ticket, type(ticket), file=sys.stderr)
-        data = {
-                    "api_url":data["url"],
-                    "html_url":data["html_url"],
-                    "pr_id":data["id"],
-                    "raised_by":data["user"]["id"],
-                    "raised_at":data["created_at"],
-                    "raised_by_username":data["user"]["login"],
-                    "status":data["state"],
-                    "is_merged":data["merged"] if data.get("merged") else None,
-                    "merged_by":data["merged_by"]["id"] if data["merged"] else None,
-                    "merged_by_username":data["merged_by"]["login"] if data["merged"] else None,
-                    "merged_at":data["merged_at"] if data["merged"] else None,
-                    "points": ticket[0]["ticket_points"] if issue_id else 0
-                }
-        data = self.client.table("pull_requests").insert(data).execute()
-        return data.data
+        for pr in prData:
+            data = {
+                        # "api_url":data["url"],
+                        "html_url":pr["html_url"],
+                        "pr_id":pr["pr_id"],
+                        "raised_by":pr["raised_by"],
+                        "raised_at":pr["raised_at"],
+                        "raised_by_username":pr["raised_by_username"],
+                        "status":pr["status"],
+                        "is_merged":pr["is_merged"] if pr.get("is_merged") else None,
+                        "merged_by":pr["merged_by"] if pr["merged_by"] else None,
+                        "merged_by_username":pr["merged_by_username"] if pr.get("merged_by_username") else None,
+                        "merged_at":pr["merged_at"] if pr.get("merged_at") else None,
+                        "points": ticket[0]["ticket_points"] if issue_id else 0,
+                        "ticket_url":ticket[0]["api_endpoint_url"]
+                    }
+            resp = self.client.table("connected_prs").insert(data).execute()
+        return
 
     def add_mentor(self, userdata):
         
@@ -175,12 +194,12 @@ class SupabaseInterface:
         return data
     
     def update_contributor(self, discord_id, user_data):
-        data = self.client.table("contributors").update(user_data).eq("discord_id", discord_id).execute()
+        data = self.client.table("contributors_registration").update(user_data).eq("discord_id", discord_id).execute()
         return data
 
     
     def add_contributor(self, userdata):
-        data = self.client.table("contributors").insert(userdata).execute()
+        data = self.client.table("contributors_registration").insert(userdata).execute()
         # print(data.data)
         return data
     
@@ -193,7 +212,7 @@ class SupabaseInterface:
     
     def register_contributor(self, discord_id, user_data):
         try:
-            self.client.table("contributors").insert(user_data).execute()
+            self.client.table("contributors_registration").insert(user_data).execute()
         except Exception as e:
             print(e)
 
@@ -206,7 +225,7 @@ class SupabaseInterface:
         #     contributors_table.insert(user_data).execute()
         
     def contributor_exists(self, discord_id):
-        data = self.client.table("contributors").select("*").eq("discord_id", discord_id).execute()
+        data = self.client.table("contributors_registration").select("*").eq("discord_id", discord_id).execute()
         if len(data.data)>0:
             return True
         else:
@@ -228,6 +247,15 @@ class SupabaseInterface:
             # print(issues, file=sys.stderr)
             return issues.data
         data = self.client.table("ccbp_tickets").insert(data).execute()
+        # print(data, file=sys.stderr)
+        return data.data
+    
+    def recordCreatedDMPTicket(self, data):
+        issues = self.client.table("dmp_tickets").select("*").eq("issue_id",data["issue_id"]).execute()
+        if len(issues.data)>0:
+            # print(issues, file=sys.stderr)
+            return issues.data
+        data = self.client.table("dmp_tickets").insert(data).execute()
         # print(data, file=sys.stderr)
         return data.data
     
