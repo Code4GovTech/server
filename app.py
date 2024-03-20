@@ -409,7 +409,7 @@ async def my_scheduled_job_test():
     # Define request headers
     headers = {
         'Accept': 'application/vnd.github+json',
-        'Authorization': 'Bearer'+' '+ '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',
+        'Authorization': 'Bearer'+' '+ os.getenv('API_TOKEN'),
         'X-GitHub-Api-Version': '2022-11-28'
     }
 
