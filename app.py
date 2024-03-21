@@ -10,6 +10,14 @@ from githubdatapipeline.pull_request.scraper import getNewPRs
 from githubdatapipeline.pull_request.processor import PrProcessor
 from githubdatapipeline.issues.destination import recordIssue
 from supabasedatapipeline.github_profile_render.ingestor import GithubProfileDisplay
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from quart_trio import QuartTrio  # Required for Quart with APScheduler
+import httpx
+from utils.logging_file import logger
+from utils.connect_db import connect_db
+from utils.helpers import *
+
+scheduler = AsyncIOScheduler()
 
 fpath = os.path.join(os.path.dirname(__file__), 'utils')
 sys.path.append(fpath)
@@ -391,3 +399,83 @@ async def github_metrics():
     supabase_client = SupabaseInterface()
     data = supabase_client.add_github_metrics(github_data)
     return data.data
+
+@app.route('/job_classroom')
+async def my_scheduled_job_test():
+    # Define the GitHub API endpoint URL
+    assignment_id = os.getenv("ASSIGNMENT_ID") 
+    github_api_url = f'https://api.github.com/assignments/{assignment_id}/grades'
+
+    # Define request headers
+    headers = {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer'+' '+ os.getenv('API_TOKEN'),
+        'X-GitHub-Api-Version': '2022-11-28'
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # Make the request to the GitHub API
+            response = await client.get(github_api_url, headers=headers)
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                # Return the response from the GitHub API
+                response = response.json()
+                conn, cur = connect_db()    
+                res =[]
+                create_data = []
+                update_data = []
+                for val in response:
+                    percent = (float(val['points_awarded'])/float(val['points_available'])) * 100
+                    val['c4gt_points']= calculate_points(percent)
+                    if val['c4gt_points'] > 100:
+                        logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
+                        continue
+
+                    val['assignment_id'] = assignment_id
+                    val['updated_at'] = datetime.datetime.now()
+                    git_url = "https://github.com/"+val['github_username']
+                   
+                    sql_query = getdiscord_from_cr()
+                    cur.execute(sql_query, (git_url,))                    
+                    discord_id = cur.fetchone()
+                    val['discord_id'] = discord_id[0] if discord_id else None
+
+                    if val['discord_id']:
+                        # Execute the SQL query
+                        cur.execute(check_assignment_exist(),(str(val['discord_id']),str(assignment_id)))
+                        exist_assignment = cur.fetchone()[0]
+
+                        if exist_assignment:
+                            update_data.append(val)
+                        else:
+                            create_data.append(val)
+                    res.append(val)
+
+                create_rec = save_classroom_records(create_data)
+                update_rec = update_classroom_records(update_data)
+
+                # Close cursor and connection
+                cur.close()
+                conn.close()
+                logger.info(f"{datetime.datetime.now()}---jobs works")
+
+                return res
+            else:
+                # Return an error message if the request failed
+                return {'error': f'Failed to fetch data from GitHub API: {response.status_code}'}, response.status_code
+        except httpx.HTTPError as e:
+            logger.info(e)
+            # Return an error message if an HTTP error occurred
+            return {'error': f'HTTP error occurred: {e}'}, 500
+
+#CRON JOB
+@app.before_serving
+async def start_scheduler():
+    scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
+    scheduler.start()
+
+
+if __name__ == '__main__':
+    app.run()
