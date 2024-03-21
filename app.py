@@ -429,26 +429,30 @@ async def my_scheduled_job_test():
                 for val in response:
                     percent = (float(val['points_awarded'])/float(val['points_available'])) * 100
                     val['c4gt_points']= calculate_points(percent)
+                    if val['c4gt_points'] > 100:
+                        logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
+                        continue
+
                     val['assignment_id'] = assignment_id
                     val['updated_at'] = datetime.datetime.now()
                     git_url = "https://github.com/"+val['github_username']
-
-                    sql_query = "SELECT discord_id FROM public.contributors_registration WHERE github_url = %s"
+                   
+                    sql_query = getdiscord_from_cr()
                     cur.execute(sql_query, (git_url,))                    
                     discord_id = cur.fetchone()
                     val['discord_id'] = discord_id[0] if discord_id else None
 
                     if val['discord_id']:
                         # Execute the SQL query
-                        cur.execute("""SELECT EXISTS (SELECT 1 FROM public.github_classroom_data WHERE  (discord_id IS NULL OR discord_id = %s) AND assignment_id = %s ); """,(str(val['discord_id']),str(assignment_id)))
+                        cur.execute(check_assignment_exist(),(str(val['discord_id']),str(assignment_id)))
                         exist_assignment = cur.fetchone()[0]
 
                         if exist_assignment:
                             update_data.append(val)
                         else:
                             create_data.append(val)
-
                     res.append(val)
+
                 create_rec = save_classroom_records(create_data)
                 update_rec = update_classroom_records(update_data)
 

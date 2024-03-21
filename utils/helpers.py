@@ -12,6 +12,24 @@ def calculate_points(percentage):
     else:
         return 0
     
+def getdiscord_from_cr():
+    try:
+        sql_query = "SELECT discord_id FROM public.contributors_registration WHERE github_url = %s"
+        return sql_query
+
+    except Exception as e:
+        logger.info(f"getdiscord_from_cr -- {e}")
+        raise Exception
+
+ 
+def check_assignment_exist():
+    try:
+        sql_query = """SELECT EXISTS (SELECT 1 FROM public.github_classroom_data WHERE  (discord_id IS NULL OR discord_id = %s) AND assignment_id = %s ); """
+        return sql_query
+
+    except Exception as e:
+        logger.info(f"getdiscord_from_cr -- {e}")
+        raise Exception   
 
 def save_classroom_records(data):
     # Iterate over each object in the JSON array and insert into the database
