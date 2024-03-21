@@ -17,3 +17,7 @@ execute "flask run" in bash to start app
 
 ## Reference
 [Github Webhook Reference](https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads)
+
+#docker compose up --build
+
+
