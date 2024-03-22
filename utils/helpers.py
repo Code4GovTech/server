@@ -34,12 +34,11 @@ def check_assignment_exist():
 def save_classroom_records(data):
     # Iterate over each object in the JSON array and insert into the database
     conn, cur = connect_db()    
-
     for record in data:
         try:
             cur.execute("""
                 INSERT INTO public.github_classroom_data (assignment_id, assignment_name, assignment_url, c4gt_points, discord_id, github_username, points_available, points_awarded, roster_identifier, starter_code_url, student_repository_name, student_repository_url, submission_timestamp,updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """, (
                 record['assignment_id'],
                 record['assignment_name'],
@@ -60,7 +59,7 @@ def save_classroom_records(data):
             print("Record inserted successfully!")
         except Exception as e:
             conn.rollback()
-            logger.info(e)
+            logger.info(f"save_classroom_records -- {e}")
             print("Error inserting record:", e)
 
     # Close the cursor and connection
