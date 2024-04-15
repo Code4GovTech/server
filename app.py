@@ -404,7 +404,7 @@ async def github_metrics():
 async def my_scheduled_job_test():
     # Define the GitHub API endpoint URL
     assignment_id = os.getenv("ASSIGNMENT_ID") 
-    github_api_url = f'https://api.github.com/assignments/{assignment_id}/grades'
+    github_api_url = f'https://api.github.com/assignments/{assignment_id}/accepted_assignments'
 
     # Define request headers
     headers = {
@@ -417,7 +417,6 @@ async def my_scheduled_job_test():
         try:
             # Make the request to the GitHub API
             response = await client.get(github_api_url, headers=headers)
-
             # Check if the request was successful
             if response.status_code == 200:
                 # Return the response from the GitHub API
@@ -427,6 +426,14 @@ async def my_scheduled_job_test():
                 create_data = []
                 update_data = []
                 for val in response:
+                    if val['grade']:
+                        parts = val['grade'].split("/")
+                        # Convert each part into integers
+                        val['points_awarded'] = int(parts[0])
+                        val['points_available'] = int(parts[1])
+                    else:
+                        continue #grade is null 
+
                     percent = (float(val['points_awarded'])/float(val['points_available'])) * 100
                     val['c4gt_points']= calculate_points(percent)
                     if val['c4gt_points'] > 100:
@@ -435,8 +442,13 @@ async def my_scheduled_job_test():
 
                     val['assignment_id'] = assignment_id
                     val['updated_at'] = datetime.datetime.now()
-                    git_url = "https://github.com/"+val['github_username']
-                   
+                    try:
+                        git_url = "https://github.com/"+val['github_username']
+
+                    except:
+                        git_url = val['students'][0]['html_url'] 
+
+                                   
                     sql_query = getdiscord_from_cr()
                     cur.execute(sql_query, (git_url,))                    
                     discord_id = cur.fetchone()
@@ -452,7 +464,6 @@ async def my_scheduled_job_test():
                         else:
                             create_data.append(val)
                     res.append(val)
-
                 create_rec = save_classroom_records(create_data)
                 update_rec = update_classroom_records(update_data)
 
