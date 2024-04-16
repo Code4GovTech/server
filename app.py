@@ -431,10 +431,12 @@ async def my_scheduled_job_test():
                         # Convert each part into integers
                         val['points_awarded'] = int(parts[0])
                         val['points_available'] = int(parts[1])
-                    else:
-                        continue #grade is null 
 
-                    percent = (float(val['points_awarded'])/float(val['points_available'])) * 100
+                    else:
+                        val['points_awarded'] = 0
+                        val['points_available'] = 0
+
+                    percent = (float(val['points_awarded'])/float(val['points_available'])) * 100 if val['grade'] else 0
                     val['c4gt_points']= calculate_points(percent)
                     if val['c4gt_points'] > 100:
                         logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
@@ -466,7 +468,6 @@ async def my_scheduled_job_test():
                     res.append(val)
                 create_rec = save_classroom_records(create_data)
                 update_rec = update_classroom_records(update_data)
-
                 # Close cursor and connection
                 cur.close()
                 conn.close()

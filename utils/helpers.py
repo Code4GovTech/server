@@ -41,18 +41,18 @@ def save_classroom_records(data):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """, (
                 record['assignment_id'],
-                record['assignment_name'],
-                record['assignment_url'],
+                record['assignment']['title'],
+                record['assignment']['classroom']['url'],
                 record['c4gt_points'],
                 record['discord_id'],
-                record['github_username'],
+                record['students'][0]['login'],
                 record['points_available'],
                 record['points_awarded'],
-                record['roster_identifier'],
-                record['starter_code_url'],
-                record['student_repository_name'],
-                record['student_repository_url'],
-                record['submission_timestamp'] if record['submission_timestamp'] else datetime.datetime.now(),
+                record['roster_identifier'] if 'roster_identifier' in record else None, 
+                record['starter_code_url'] if 'starter_code_url' in record else record['repository']['html_url'],
+                record['repository']['full_name'],
+                record['repository']['html_url'],
+                record['submission_timestamp'] if 'submission_timestamp' in record else datetime.datetime.now(),
                 record['updated_at']
             ))
             conn.commit()
@@ -91,17 +91,17 @@ def update_classroom_records(data):
                     assignment_id = %s 
                     AND (discord_id IS NULL OR discord_id = %s);
             """, (
-                record['assignment_name'],
-                record['assignment_url'],
+                record['assignment']['title'],
+                record['assignment']['classroom']['url'],
                 record['c4gt_points'],
-                record['github_username'],
+                record['students'][0]['login'],
                 record['points_available'],
                 record['points_awarded'],
-                record['roster_identifier'],
-                record['starter_code_url'],
-                record['student_repository_name'],
-                record['student_repository_url'],
-                record['submission_timestamp'] if record['submission_timestamp'] else datetime.datetime.now(),
+                record['roster_identifier'] if 'roster_identifier' in record else None, 
+                record['starter_code_url'] if 'starter_code_url' in record else record['repository']['html_url'],
+                record['repository']['full_name'],
+                record['repository']['html_url'],
+                record['submission_timestamp'] if 'submission_timestamp' in record else datetime.datetime.now(),
                 record['updated_at'],
                 str(record['assignment_id']),
                 str(record['discord_id'])
