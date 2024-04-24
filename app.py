@@ -3,8 +3,6 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
-from events.event_handler import handle_installation_event, handle_issue_event, handle_label_event
-from utils.webhook_auth import verify_github_webhook
 from utils.db import SupabaseInterface
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
@@ -315,12 +313,7 @@ async def register(discord_userdata):
 async def event_handler():
     data = await request.json
 
-    secret_key = os.getenv("WEBHOOK_SECRET") 
-
-    verification_result, error_message = await verify_github_webhook(request,secret_key)
-    if not verification_result:
-        return "Webhook verification failed.", 403
-        
+           
     supabase_client = SupabaseInterface()
 
     # Hanlding Labels being edited:
