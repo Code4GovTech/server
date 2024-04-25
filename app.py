@@ -231,7 +231,7 @@ async def addIssues():
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+    data = SupabaseInterface().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
     GithubProfileDisplay().update(data)
     return 'Done'
 
@@ -242,7 +242,7 @@ async def do_update():
     while True:
         print("Starting Update")
         await asyncio.sleep(21600)
-        data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+        data = SupabaseInterface().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
         GithubProfileDisplay().update(data)
 
 
