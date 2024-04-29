@@ -3,6 +3,8 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+from utils.dispatcher import dispatch_event
+from utils.webhook_auth import verify_github_webhook
 from utils.db import SupabaseInterface
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
@@ -311,55 +313,22 @@ async def register(discord_userdata):
 
 @app.route("/github/events", methods = ['POST'])
 async def event_handler():
-    data = await request.json
+    try:
+        data = await request.json
+        secret_key = os.getenv("WEBHOOK_SECRET") 
 
-           
-    supabase_client = SupabaseInterface()
-
-    # Hanlding Labels being edited:
-    if request.headers["X-GitHub-Event"] == 'label':
-        if data.get("action") == 'edited':
-            if 'name' in data.get("changes"):
-                if 'c4gt' in data["label"]["name"].lower():
-                    if data["label"]["name"].lower() != 'c4gt community' or data["label"]["name"].lower() != 'dmp 2024':
-                        tickets = supabase_client.readAll("ccbp_tickets")
-                        for ticket in tickets:
-                            ticketUrlElements = ticket["url"].split('/')
-                            repositoryUrlElements = ticketUrlElements[:-2]
-                            repositoryUrl = '/'.join(repositoryUrlElements)
-                            if repositoryUrl == data["repository"]["html_url"]:
-                                supabase_client.deleteTicket(ticket["issue_id"])
-
-
-
-        
-
-    # if request.headers["X-GitHub-Event"] == 'installation' or request.headers["X-GitHub-Event"] == 'installation_repositories':
-    #     data = await request.json 
-    #     if data.get("action")=="created" or data.get("action")=="added":
-    #         # New installation created
-    #         repositories = data.get("repositories") if data.get("repositories") else data.get("repositories_added")
-    #         for repository in repositories:
-    #             owner, repository = repository["full_name"].split('/')
-    #             issues = await fetch_github_issues_from_repo(owner, repository)
-    #             for issue in issues:
-    #                 await TicketEventHandler().onTicketCreate({'issue': issue})
-        #on installation event
-    # supabase_client.add_event_data(data=data)
-    if data.get("issue"):
-        issue = data["issue"]
-        if supabase_client.checkUnlisted(issue["id"]):
-            supabase_client.deleteUnlistedTicket(issue["id"])
-        await TicketEventHandler().onTicketCreate(data)
-        if supabase_client.checkIsTicket(issue["id"]):
-            await TicketEventHandler().onTicketEdit(data)
-            if data["action"] == "closed":
-                await TicketEventHandler().onTicketClose(data)
-    if data.get("installation") and data["installation"].get("account"):
-        # if data["action"] not in ["deleted", "suspend"]:
-        await TicketEventHandler().updateInstallation(data.get("installation"))
-
-    return data
+        verification_result, error_message = await verify_github_webhook(request,secret_key)
+        if not verification_result:
+            return "Webhook verification failed.", 403
+            
+        supabase_client = SupabaseInterface()
+        event_type = request.headers.get("X-GitHub-Event")
+        await dispatch_event(event_type, data, supabase_client)
+            
+        return data
+    except Exception as e:
+        logger.info(e)
+        return "Server Error"
 
 
 @app.route("/metrics/discord", methods = ['POST'])
@@ -490,7 +459,7 @@ async def my_scheduled_job_test():
             
             page = page + 1
 
-#CRON JOB
+# #CRON JOB
 @app.before_serving
 async def start_scheduler():
     scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
