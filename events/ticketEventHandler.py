@@ -200,18 +200,18 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    SupabaseInterface().recordComment({
+                    SupabaseInterface().add_data({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
+                        },"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
-                        SupabaseInterface().updateComment({
+                        SupabaseInterface().update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
+                        },"issue_id","app_comments")
                 except postgrest.exceptions.APIError:
                     print("Issue already commented")
         return eventData
@@ -246,9 +246,9 @@ class TicketEventHandler:
                     }
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
-            self.supabase_client.update_recorded_ticket(data=ticket_data)
+            self.supabase_client.update_data(ticket_data,"issue_id","ccbp_tickets")
         elif ticketType == "dmp":
-            self.supabase_client.updateRecordedDMPTicket(data=ticket_data)
+            self.supabase_client.update_data(ticket_data,"issue_id","dmp_tickets")
 
         if SupabaseInterface().commentExists(issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
@@ -276,18 +276,18 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    SupabaseInterface().recordComment({
+                    SupabaseInterface().add_data({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
+                        },"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
-                        SupabaseInterface().updateComment({
+                        SupabaseInterface().update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
+                        },"app_comments")
                 except postgrest.exceptions.APIError:
                     print("Issue already commented")
 

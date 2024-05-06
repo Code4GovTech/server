@@ -321,7 +321,7 @@ async def event_handler():
         if not verification_result:
             return "Webhook verification failed.", 403
             
-        supabase_client = SupabaseInterface()
+        supabase_client = SupabaseInterface.get_instance()
         event_type = request.headers.get("X-GitHub-Event")
         await dispatch_event(event_type, data, supabase_client)
             
