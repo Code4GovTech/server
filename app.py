@@ -3,6 +3,7 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
 from utils.webhook_auth import verify_github_webhook
 from utils.db import SupabaseInterface
@@ -387,79 +388,77 @@ async def my_scheduled_job_test():
             'X-GitHub-Api-Version': '2022-11-28'
         }
 
-        async with httpx.AsyncClient() as client:
-            try:
-                # Make the request to the GitHub API
-                response = await client.get(github_api_url, headers=headers)
-                # Check if the request was successful
-                if response.status_code == 200:
-                    # Return the response from the GitHub API
-                    response = response.json()
-                    if response == [] or len(response)==0:
-                        break
+        try:
+            # Make the request to the GitHub API
+            response,code = await GithubAdapter.get_calssroom_data(assignment_id,page)
+            # Check if the request was successful
+            if code == 200:
+                # Return the response from the GitHub API
+                if response == [] or len(response)==0:
+                    break
 
-                    conn, cur = connect_db()    
-                    res =[]
-                    create_data = []
-                    update_data = []
-                    for val in response:
-                        if val['grade']:
-                            parts = val['grade'].split("/")
-                            # Convert each part into integers
-                            val['points_awarded'] = int(parts[0])
-                            val['points_available'] = int(parts[1])
+                conn, cur = connect_db()    
+                res =[]
+                create_data = []
+                update_data = []
+                for val in response:
+                    if val['grade']:
+                        parts = val['grade'].split("/")
+                        # Convert each part into integers
+                        val['points_awarded'] = int(parts[0])
+                        val['points_available'] = int(parts[1])
 
+                    else:
+                        val['points_awarded'] = 0
+                        val['points_available'] = 0
+
+                    percent = (float(val['points_awarded'])/float(val['points_available'])) * 100 if val['grade'] else 0
+                    val['c4gt_points']= calculate_points(percent)
+                    if val['c4gt_points'] > 100:
+                        logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
+                        continue
+
+                    val['assignment_id'] = assignment_id
+                    val['updated_at'] = datetime.datetime.now()
+                    try:
+                        git_url = "https://github.com/"+val['github_username']
+
+                    except:
+                        git_url = val['students'][0]['html_url'] 
+
+                                
+                    sql_query = getdiscord_from_cr()
+                    cur.execute(sql_query, (git_url,))                    
+                    discord_id = cur.fetchone()
+                    val['discord_id'] = discord_id[0] if discord_id else None
+
+                    if val['discord_id']:
+                        # Execute the SQL query
+                        cur.execute(check_assignment_exist(),(str(val['discord_id']),str(assignment_id)))
+                        exist_assignment = cur.fetchone()[0]
+
+                        if exist_assignment:
+                            update_data.append(val)
                         else:
-                            val['points_awarded'] = 0
-                            val['points_available'] = 0
+                            create_data.append(val)
+                    res.append(val)
+                create_rec = save_classroom_records(create_data)
+                update_rec = update_classroom_records(update_data)
+                # Close cursor and connection
+                cur.close()
+                conn.close()
+                logger.info(f"{datetime.datetime.now()}---jobs works")
 
-                        percent = (float(val['points_awarded'])/float(val['points_available'])) * 100 if val['grade'] else 0
-                        val['c4gt_points']= calculate_points(percent)
-                        if val['c4gt_points'] > 100:
-                            logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
-                            continue
-
-                        val['assignment_id'] = assignment_id
-                        val['updated_at'] = datetime.datetime.now()
-                        try:
-                            git_url = "https://github.com/"+val['github_username']
-
-                        except:
-                            git_url = val['students'][0]['html_url'] 
-
-                                    
-                        sql_query = getdiscord_from_cr()
-                        cur.execute(sql_query, (git_url,))                    
-                        discord_id = cur.fetchone()
-                        val['discord_id'] = discord_id[0] if discord_id else None
-
-                        if val['discord_id']:
-                            # Execute the SQL query
-                            cur.execute(check_assignment_exist(),(str(val['discord_id']),str(assignment_id)))
-                            exist_assignment = cur.fetchone()[0]
-
-                            if exist_assignment:
-                                update_data.append(val)
-                            else:
-                                create_data.append(val)
-                        res.append(val)
-                    create_rec = save_classroom_records(create_data)
-                    update_rec = update_classroom_records(update_data)
-                    # Close cursor and connection
-                    cur.close()
-                    conn.close()
-                    logger.info(f"{datetime.datetime.now()}---jobs works")
-
-                    # return res
-                else:
-                    # Return an error message if the request failed
-                    return {'error': f'Failed to fetch data from GitHub API: {response.status_code}'}, response.status_code
-            except httpx.HTTPError as e:
-                logger.info(e)
-                # Return an error message if an HTTP error occurred
-                return {'error': f'HTTP error occurred: {e}'}, 500
+                # return res
+            else:
+                # Return an error message if the request failed
+                return {'error': f'Failed to fetch data from GitHub API: {response.status_code}'}, response.status_code
+        except httpx.HTTPError as e:
+            logger.info(e)
+            # Return an error message if an HTTP error occurred
+            return {'error': f'HTTP error occurred: {e}'}, 500
             
-            page = page + 1
+        page = page + 1
 
 # #CRON JOB
 @app.before_serving

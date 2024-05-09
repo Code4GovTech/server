@@ -1,7 +1,7 @@
 from utils.github_api import GithubAPI
 import aiohttp, sys,os,httpx
 from utils.jwt_generator import GenerateJWT
-
+from events.ticketFeedbackHandler import TicketFeedbackHandler
 
 
 
@@ -26,12 +26,12 @@ class GithubAdapter:
                 # Check if the request was successful
                 if response.status_code == 200:
                     # Return the response from the GitHub API
-                    response = response.json()
+                    response,code = response.json(),200
                     
             except :
-                response = []
+                response = [],400
                 
-            return response
+            return response,code
     
     async def createComment(self, owner, repo, issue_number, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
@@ -43,7 +43,7 @@ class GithubAdapter:
             'X-GitHub-Api-Version': '2022-11-28'
         }
         data = {
-            'body': f'{self.feedBackMessageCreator(markdown_dict=markdown_dict)}'
+            'body': f'{TicketFeedbackHandler.feedBackMessageCreator(markdown_dict=markdown_dict)}'
         }
 
         async with aiohttp.ClientSession() as session:
@@ -65,7 +65,7 @@ class GithubAdapter:
             'X-GitHub-Api-Version': '2022-11-28'
         }
         data = {
-            'body': f'{self.feedBackMessageCreator(markdown_dict)}'
+            'body': f'{TicketFeedbackHandler.feedBackMessageCreator(markdown_dict)}'
         }
 
         async with aiohttp.ClientSession() as session:
