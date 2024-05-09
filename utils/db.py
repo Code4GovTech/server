@@ -159,9 +159,8 @@ class SupabaseInterface():
             self.supabase_key = os.getenv("SUPABASE_KEY")
             self.client: Client = create_client(self.supabase_url, self.supabase_key, options=client_options)
             SupabaseInterface._instance = self
-        else:
-            # If an instance already exists, return the existing instance
-            return SupabaseInterface._instance
+        else:          
+            SupabaseInterface._instance = self._instance
         
     
 
@@ -447,7 +446,7 @@ class SupabaseInterface():
     
     def add_data(self, data,table_name):
         data = self.client.table(table_name).insert(data).execute()
-        return data
+        return data.data
     
     
     def update_data(self, data,col_name,table_name):
@@ -492,5 +491,6 @@ class SupabaseInterface():
                     query = query.eq(column, condition)
         data = query.execute()
         return data.data
-        
+    
+    
     

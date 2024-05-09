@@ -74,8 +74,8 @@ def matchProduct(enteredProductName):
 
 
 async def send_message(ticket_data):
-    discord_channels = SupabaseInterface().readAll("discord_channels")
-    products = SupabaseInterface().readAll("product")
+    discord_channels = SupabaseInterface.get_instance().readAll("discord_channels")
+    products = SupabaseInterface.get_instance().readAll("product")
 
     url = None
     # for product in products:
@@ -133,7 +133,7 @@ async def get_pull_request(owner, repo, number):
 
 class TicketEventHandler:
     def __init__(self):
-        self.supabase_client = SupabaseInterface()
+        self.supabase_client = SupabaseInterface.get_instance()
         self.ticket_points = {
                         "hard":30,
                         "easy":10,
@@ -200,13 +200,13 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    SupabaseInterface().add_data({
+                    SupabaseInterface.get_instance().add_data({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         },"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
-                        SupabaseInterface().update_data({
+                        SupabaseInterface.get_instance().update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
@@ -250,15 +250,15 @@ class TicketEventHandler:
         elif ticketType == "dmp":
             self.supabase_client.update_data(ticket_data,"issue_id","dmp_tickets")
 
-        if SupabaseInterface().commentExists(issue["id"]) and ticketType=="ccbp":
+        if SupabaseInterface.get_instance().commentExists(issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
             repo = url_components[-3]
             owner = url_components[-4]
-            comment_id = SupabaseInterface().readCommentData(issue["id"])[0]["comment_id"]
+            comment_id = SupabaseInterface.get_instance().readCommentData(issue["id"])[0]["comment_id"]
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
                 comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
                 if comment:
-                    SupabaseInterface().updateComment({
+                    SupabaseInterface.get_instance().updateComment({
                         "updated_at": datetime.datetime.utcnow().isoformat(),
                         "issue_id": issue["id"]
                     })
@@ -266,7 +266,7 @@ class TicketEventHandler:
                 try:
                     comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                     print(f"Print Delete Task,{comment}", file=sys.stderr)
-                    print(SupabaseInterface().deleteComment(issue["id"]))
+                    print(SupabaseInterface.get_instance().deleteComment(issue["id"]))
                 except:
                     print("Error in deletion")
         elif ticketType=="ccbp":
@@ -276,13 +276,13 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    SupabaseInterface().add_data({
+                    SupabaseInterface.get_instance().add_data({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         },"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
-                        SupabaseInterface().update_data({
+                        SupabaseInterface.get_instance().update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],

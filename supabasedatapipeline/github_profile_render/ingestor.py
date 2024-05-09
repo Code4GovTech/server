@@ -15,7 +15,7 @@ class GithubProfileDisplay:
         self.levelOneTemplate = "EnthusiastBadgeTemplate.jpg"
         self.levelTwoTemplate = "RisingStarBadgeTemplate.jpg"
         self.storageBucket = "c4gt-github-profile"
-        self.supabase = SupabaseInterface()
+        self.supabase = SupabaseInterface.get_instance()
     def getDisplayTemplate(self, level):
         template = None
         if level == 1:

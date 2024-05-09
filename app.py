@@ -71,7 +71,7 @@ async def get_github_data(code, discord_id):
 async def comment_cleaner():
     while True:
         await asyncio.sleep(5)
-        comments = SupabaseInterface().readAll("app_comments")
+        comments = SupabaseInterface.get_instance().readAll("app_comments")
         for comment in comments:
             utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
@@ -83,7 +83,7 @@ async def comment_cleaner():
                 issue_id = comment["issue_id"]
                 comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                 print(f"Print Delete Task,{comment}", file=sys.stderr)
-                print(SupabaseInterface().deleteComment(issue_id))
+                print(SupabaseInterface.get_instance().deleteComment(issue_id))
 
 async def fetch_github_issues_from_repo(owner, repo):
     url = f"https://api.github.com/repos/{owner}/{repo}/issues"
@@ -101,6 +101,8 @@ async def fetch_github_issues_from_repo(owner, repo):
                 return issues
             else:
                 print(f"Failed to get issues: {response.status}")
+                
+                
 # @app.before_serving
 # async def startup():
 #     app.add_background_task(comment_cleaner)
@@ -204,7 +206,7 @@ async def verify(githubUsername):
 
 @app.route("/misc_actions")
 async def addIssues():
-    tickets = SupabaseInterface().readAll("ccbp_tickets")
+    tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
     count =1
     for ticket in tickets:
         print(f'{count}/{len(tickets)}')
@@ -233,7 +235,7 @@ async def addIssues():
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    data = SupabaseInterface().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
+    data = SupabaseInterface.get_instance().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
     GithubProfileDisplay().update(data)
     return 'Done'
 
@@ -244,7 +246,7 @@ async def do_update():
     while True:
         print("Starting Update")
         await asyncio.sleep(21600)
-        data = SupabaseInterface().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
+        data = SupabaseInterface.get_instance().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
         GithubProfileDisplay().update(data)
 
 
@@ -295,7 +297,7 @@ async def register(discord_userdata):
         return status, response_text
     discord_id = discord_userdata
 
-    supabase_client = SupabaseInterface()
+    supabase_client = SupabaseInterface.get_instance()
     if not request.args.get("code"):
         raise BadRequestKeyError()
     user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
@@ -346,7 +348,7 @@ async def discord_metrics():
         }
         discord_data.append(data)
 
-    supabase_client = SupabaseInterface()
+    supabase_client = SupabaseInterface.get_instance()
     data = supabase_client.add_discord_metrics(discord_data)
     return data.data
 
@@ -366,7 +368,7 @@ async def github_metrics():
         }
         github_data.append(data)
 
-    supabase_client = SupabaseInterface()
+    supabase_client = SupabaseInterface.get_instance()
     data = supabase_client.add_github_metrics(github_data)
     return data.data
 
