@@ -30,44 +30,40 @@ dotenv.load_dotenv(".env")
 app = Quart(__name__)
 app.config['TESTING']= False
 
+
 async def get_github_data(code, discord_id):
-    github_url_for_access_token = 'https://github.com/login/oauth/access_token'
-    data = {
-        "client_id": os.getenv("GITHUB_CLIENT_ID"),
-        "client_secret": os.getenv("GITHUB_CLIENT_SECRET"),
-        "code": code
-    }
+   
     headers = {
         "Accept": "application/json"
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(github_url_for_access_token, data=data, headers=headers) as response:
-            r = await response.json()
-            auth_token = (r)["access_token"]
-            headers = {
-                "Authorization": f"Bearer {auth_token}"
+        r = await GithubAdapter.get_github_data(code)
+
+        auth_token = (r)["access_token"]
+        headers = {
+            "Authorization": f"Bearer {auth_token}"
+        }
+        async with session.get("https://api.github.com/user", headers=headers) as user_response:
+            user = await user_response.json()
+            github_id = user["id"]
+            github_username = user["login"]
+
+            # Fetching user's private emails
+            if "user:email" in r["scope"]:
+                async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
+                    emails = await email_response.json()
+                    private_emails = [email["email"] for email in emails if email["verified"]]
+            else:
+                private_emails = []
+
+            user_data = {
+                "discord_id": int(discord_id),
+                "github_id": github_id,
+                "github_url": f"https://github.com/{github_username}",
+                "email": ','.join(private_emails)
             }
-            async with session.get("https://api.github.com/user", headers=headers) as user_response:
-                user = await user_response.json()
-                github_id = user["id"]
-                github_username = user["login"]
-
-                # Fetching user's private emails
-                if "user:email" in r["scope"]:
-                    async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
-                        emails = await email_response.json()
-                        private_emails = [email["email"] for email in emails if email["verified"]]
-                else:
-                    private_emails = []
-
-                user_data = {
-                    "discord_id": int(discord_id),
-                    "github_id": github_id,
-                    "github_url": f"https://github.com/{github_username}",
-                    "email": ','.join(private_emails)
-                }
-                return user_data
+            return user_data
             
 async def comment_cleaner():
     while True:
@@ -87,22 +83,18 @@ async def comment_cleaner():
                 print(SupabaseInterface.get_instance().deleteComment(issue_id))
 
 async def fetch_github_issues_from_repo(owner, repo):
-    url = f"https://api.github.com/repos/{owner}/{repo}/issues"
-    
-    headers = {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': f'Bearer {os.getenv("GithubPAT")}',
-        'X-GitHub-Api-Version': '2022-11-28'
-    }
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                issues = await response.json()
-                return issues
-            else:
-                print(f"Failed to get issues: {response.status}")
+    try:
+        response = await GithubAdapter.fetch_github_issues_from_repo(owner,repo)
+        if response:
+            return response
+        else:
+            print(f"Failed to get issues: {response}")
                 
+    except Exception as e:
+        logger.info(e)
+        pass
+    
+          
                 
 # @app.before_serving
 # async def startup():
@@ -379,15 +371,6 @@ async def my_scheduled_job_test():
     assignment_id = os.getenv("ASSIGNMENT_ID") 
     page = 1
     while True:
-        github_api_url = f'https://api.github.com/assignments/{assignment_id}/accepted_assignments?page={page}'
-        
-        # Define request headers
-        headers = {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': 'Bearer'+' '+ os.getenv('API_TOKEN'),
-            'X-GitHub-Api-Version': '2022-11-28'
-        }
-
         try:
             # Make the request to the GitHub API
             response,code = await GithubAdapter.get_calssroom_data(assignment_id,page)
@@ -396,7 +379,6 @@ async def my_scheduled_job_test():
                 # Return the response from the GitHub API
                 if response == [] or len(response)==0:
                     break
-
                 conn, cur = connect_db()    
                 res =[]
                 create_data = []

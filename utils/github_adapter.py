@@ -2,6 +2,7 @@ from utils.github_api import GithubAPI
 import aiohttp, sys,os,httpx
 from utils.jwt_generator import GenerateJWT
 from events.ticketFeedbackHandler import TicketFeedbackHandler
+from utils.logging_file import logger
 
 
 
@@ -9,6 +10,51 @@ class GithubAdapter:
     def __init__(self):
         return
     
+    async def get_github_data(code):
+        try:
+            github_url_for_access_token = 'https://github.com/login/oauth/access_token'
+            data = {
+                "client_id": os.getenv("GITHUB_CLIENT_ID"),
+                "client_secret": os.getenv("GITHUB_CLIENT_SECRET"),
+                "code": code
+            }
+            headers = {
+                "Accept": "application/json"
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(github_url_for_access_token, data=data, headers=headers) as response:
+                    r = await response.json()                    
+                    return r
+                
+        except Exception as e:
+            return []
+        
+        
+    async def fetch_github_issues_from_repo(owner,repo):
+        try:
+            url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+    
+            headers = {
+                'Accept': 'application/vnd.github+json',
+                'Authorization': f'Bearer {os.getenv("GithubPAT")}',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        issues = await response.json()
+                        return issues
+                    else:
+                        print(f"Failed to get issues: {response.status}")
+                        return None
+                        
+        except Exception as e:
+            logger.info(e)
+            return None
+            
+        
     async def get_calssroom_data(assignment_id,page):
         github_api_url = f'https://api.github.com/assignments/{assignment_id}/accepted_assignments?page={page}'
         
