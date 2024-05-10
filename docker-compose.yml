@@ -4,5 +4,5 @@ services:
     build: .
     restart: always
     ports: 
-      - 5366:5000
+      - 5367:5000
     env_file: .env
