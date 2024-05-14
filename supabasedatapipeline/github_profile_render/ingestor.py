@@ -44,7 +44,7 @@ class GithubProfileDisplay:
         prsRaised = str(profile_data["prs_raised"])
         prsReviewed = str(profile_data["prs_reviewed"])
         prsMerged = str(profile_data["prs_merged"])
-        dpgPoints = str(profile_data["points"])
+        dpgPoints = str(profile_data["dpg_points"])
 
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_size = 1.7
