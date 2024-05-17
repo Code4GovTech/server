@@ -13,5 +13,5 @@ class InstallationHandler(EventHandler):
 
         except Exception as e:        
             logging.info(e)
-            pass
+            raise Exception
     

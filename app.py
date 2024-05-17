@@ -34,36 +34,35 @@ app.config['TESTING']= False
 async def get_github_data(code, discord_id):
    
     headers = {
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "Authorization": f"Bearer {auth_token}"
+
     }
 
     async with aiohttp.ClientSession() as session:
-        r = await GithubAdapter.get_github_data(code)
+        github_resposne = await GithubAdapter.get_github_data(code)
+        auth_token = (github_resposne)["access_token"]
+       
+        user_response = await GithubAdapter.get_github_user(headers)
+        user = user_response
+        github_id = user["id"]
+        github_username = user["login"]
 
-        auth_token = (r)["access_token"]
-        headers = {
-            "Authorization": f"Bearer {auth_token}"
+        # Fetching user's private emails
+        if "user:email" in github_resposne["scope"]:
+            async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
+                emails = await email_response.json()
+                private_emails = [email["email"] for email in emails if email["verified"]]
+        else:
+            private_emails = []
+
+        user_data = {
+            "discord_id": int(discord_id),
+            "github_id": github_id,
+            "github_url": f"https://github.com/{github_username}",
+            "email": ','.join(private_emails)
         }
-        async with session.get("https://api.github.com/user", headers=headers) as user_response:
-            user = await user_response.json()
-            github_id = user["id"]
-            github_username = user["login"]
-
-            # Fetching user's private emails
-            if "user:email" in r["scope"]:
-                async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
-                    emails = await email_response.json()
-                    private_emails = [email["email"] for email in emails if email["verified"]]
-            else:
-                private_emails = []
-
-            user_data = {
-                "discord_id": int(discord_id),
-                "github_id": github_id,
-                "github_url": f"https://github.com/{github_username}",
-                "email": ','.join(private_emails)
-            }
-            return user_data
+        return user_data
             
 async def comment_cleaner():
     while True:
@@ -92,7 +91,7 @@ async def fetch_github_issues_from_repo(owner, repo):
                 
     except Exception as e:
         logger.info(e)
-        pass
+        raise Exception
     
           
                 

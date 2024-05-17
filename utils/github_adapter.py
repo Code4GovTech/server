@@ -30,6 +30,16 @@ class GithubAdapter:
         except Exception as e:
             return []
         
+    async def get_github_user(header):
+        try:          
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://api.github.com/user", headers=header) as user_response:
+                    response = await user_response.json()                    
+                    return response
+                
+        except Exception as e:
+            return []
+        
         
     async def fetch_github_issues_from_repo(owner,repo):
         try:
