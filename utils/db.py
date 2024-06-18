@@ -2,6 +2,7 @@ import os, sys
 from typing import Any
 from supabase import create_client, Client
 from supabase.lib.client_options import ClientOptions
+from abc import ABC, abstractmethod
 
 client_options = ClientOptions(postgrest_client_timeout=None)
 import dotenv
@@ -11,12 +12,34 @@ dotenv.load_dotenv(".env")
 # url: str = os.getenv("SUPABASE_URL")
 # key: str = os.getenv("SUPABASE_KEY")
 
-class SupabaseInterface:
-    def __init__(self) -> None:
-        self.supabase_url = os.getenv("SUPABASE_URL")
-        self.supabase_key = os.getenv("SUPABASE_KEY")
-        self.client: Client = create_client(self.supabase_url, self.supabase_key, options=client_options)
+
+
+
+class SupabaseInterface():
     
+    _instance = None
+    
+    def __init__(self):
+        # Initialize Supabase client upon first instantiation
+        if not SupabaseInterface._instance:
+            self.supabase_url = os.getenv("SUPABASE_URL")
+            self.supabase_key = os.getenv("SUPABASE_KEY")
+            self.client: Client = create_client(self.supabase_url, self.supabase_key, options=client_options)
+            SupabaseInterface._instance = self
+        else:          
+            SupabaseInterface._instance = self._instance
+        
+    
+
+    @staticmethod
+    def get_instance():
+        # Static method to retrieve the singleton instance
+        if not SupabaseInterface._instance:
+            # If no instance exists, create a new one
+            SupabaseInterface._instance = SupabaseInterface()
+        return SupabaseInterface._instance
+    
+       
     def readAll(self, table):
         data = self.client.table(f"{table}").select("*").execute()
         return data.data
@@ -282,4 +305,73 @@ class SupabaseInterface:
             else:
                 data = self.client.table("github_metrics").insert(metric).execute()
         return data
-                    
+    
+    #Generic function for CRUD                    
+    def delete_record(self, table, column, value):
+        try:
+            data = self.client.table(table).delete().eq(column, value).execute()
+            return data.data
+        except Exception as e:
+            return None
+                   
+            
+    def add_data(self, data,table_name):
+        try:
+            data = self.client.table(table_name).insert(data).execute()
+            return data.data
+        except Exception as e:
+            return None
+              
+        
+    def update_data(self, data,col_name,table_name):
+        try:
+            data = self.client.table(table_name).update(data).eq(col_name, data[col_name]).execute()
+            return data.data
+        except Exception as e:
+            return None
+               
+
+    def get_data(self, col_name,table_name,value,condition):
+        try:
+            if condition == None:
+                condition = "*"
+            data = self.client.table(table_name).select(condition).eq(col_name, value).execute()        
+            return data.data
+        except Exception as e:
+            return None
+        
+       
+    
+    def check_record_exists(self,table_name,col_name,col_value,condition):
+        unlisted_data = self.client.table(table_name).select(condition).eq(col_name, col_value).execute()
+        if len(unlisted_data.data)>0:
+            return True
+        else:
+            return False
+            
+    def multiple_update(self, table, update_data, filters):
+        query = self.client.table(table).update(update_data)
+        if filters:
+            for column, condition in filters.items():
+                if isinstance(condition, tuple) and len(condition) == 2:
+                    operation, value = condition
+                    query = query.filter(column, operation, value)
+                else:
+                    query = query.eq(column, condition)
+        data = query.execute()
+        return data.data
+    
+    def multiple_delete(self, table, filters):
+        query = self.client.table(table).delete()
+        if filters:
+            for column, condition in filters.items():
+                if isinstance(condition, tuple) and len(condition) == 2:
+                    operation, value = condition
+                    query = query.filter(column, operation, value)
+                else:
+                    query = query.eq(column, condition)
+        data = query.execute()
+        return data.data
+    
+    
+    

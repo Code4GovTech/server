@@ -16,3 +16,4 @@ numpy==1.25.2
 APScheduler==3.10.4
 quart-trio==0.11.0
 psycopg2-binary==2.9.9
+segno==1.6.1

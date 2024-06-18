@@ -401,7 +401,7 @@ mentorship_repos = [
 
 repositories = list(set(mentorship_repos))
 
-tickets = SupabaseInterface().readAll("ccbp_tickets")
+tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
 closedTickets = []
 for ticket in tickets:
       if ticket["status"] == "closed":
@@ -471,7 +471,7 @@ async def getNewPRs():
     #                         "number_of_files_changed": pull["changed_files"] 
 
     #                 }
-    #                         SupabaseInterface().insert("mentorship_program_pull_request", p)
+    #                         SupabaseInterface.get_instance().insert("mentorship_program_pull_request", p)
     #                 except Exception as e:
     #                     print("Exception", e, file=sys.stderr)
     #                     break

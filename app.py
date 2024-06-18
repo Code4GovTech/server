@@ -3,6 +3,9 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+from utils.github_adapter import GithubAdapter
+from utils.dispatcher import dispatch_event
+from utils.webhook_auth import verify_github_webhook
 from utils.db import SupabaseInterface
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
@@ -27,49 +30,44 @@ dotenv.load_dotenv(".env")
 app = Quart(__name__)
 app.config['TESTING']= False
 
+
 async def get_github_data(code, discord_id):
-    github_url_for_access_token = 'https://github.com/login/oauth/access_token'
-    data = {
-        "client_id": os.getenv("GITHUB_CLIENT_ID"),
-        "client_secret": os.getenv("GITHUB_CLIENT_SECRET"),
-        "code": code
-    }
+   
     headers = {
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "Authorization": f"Bearer {auth_token}"
+
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(github_url_for_access_token, data=data, headers=headers) as response:
-            r = await response.json()
-            auth_token = (r)["access_token"]
-            headers = {
-                "Authorization": f"Bearer {auth_token}"
-            }
-            async with session.get("https://api.github.com/user", headers=headers) as user_response:
-                user = await user_response.json()
-                github_id = user["id"]
-                github_username = user["login"]
+        github_resposne = await GithubAdapter.get_github_data(code)
+        auth_token = (github_resposne)["access_token"]
+       
+        user_response = await GithubAdapter.get_github_user(headers)
+        user = user_response
+        github_id = user["id"]
+        github_username = user["login"]
 
-                # Fetching user's private emails
-                if "user:email" in r["scope"]:
-                    async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
-                        emails = await email_response.json()
-                        private_emails = [email["email"] for email in emails if email["verified"]]
-                else:
-                    private_emails = []
+        # Fetching user's private emails
+        if "user:email" in github_resposne["scope"]:
+            async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
+                emails = await email_response.json()
+                private_emails = [email["email"] for email in emails if email["verified"]]
+        else:
+            private_emails = []
 
-                user_data = {
-                    "discord_id": int(discord_id),
-                    "github_id": github_id,
-                    "github_url": f"https://github.com/{github_username}",
-                    "email": ','.join(private_emails)
-                }
-                return user_data
+        user_data = {
+            "discord_id": int(discord_id),
+            "github_id": github_id,
+            "github_url": f"https://github.com/{github_username}",
+            "email": ','.join(private_emails)
+        }
+        return user_data
             
 async def comment_cleaner():
     while True:
         await asyncio.sleep(5)
-        comments = SupabaseInterface().readAll("app_comments")
+        comments = SupabaseInterface.get_instance().readAll("app_comments")
         for comment in comments:
             utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
@@ -81,24 +79,22 @@ async def comment_cleaner():
                 issue_id = comment["issue_id"]
                 comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                 print(f"Print Delete Task,{comment}", file=sys.stderr)
-                print(SupabaseInterface().deleteComment(issue_id))
+                print(SupabaseInterface.get_instance().deleteComment(issue_id))
 
 async def fetch_github_issues_from_repo(owner, repo):
-    url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+    try:
+        response = await GithubAdapter.fetch_github_issues_from_repo(owner,repo)
+        if response:
+            return response
+        else:
+            print(f"Failed to get issues: {response}")
+                
+    except Exception as e:
+        logger.info(e)
+        raise Exception
     
-    headers = {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': f'Bearer {os.getenv("GithubPAT")}',
-        'X-GitHub-Api-Version': '2022-11-28'
-    }
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                issues = await response.json()
-                return issues
-            else:
-                print(f"Failed to get issues: {response.status}")
+          
+                
 # @app.before_serving
 # async def startup():
 #     app.add_background_task(comment_cleaner)
@@ -202,7 +198,7 @@ async def verify(githubUsername):
 
 @app.route("/misc_actions")
 async def addIssues():
-    tickets = SupabaseInterface().readAll("ccbp_tickets")
+    tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
     count =1
     for ticket in tickets:
         print(f'{count}/{len(tickets)}')
@@ -231,7 +227,7 @@ async def addIssues():
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+    data = SupabaseInterface.get_instance().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
     GithubProfileDisplay().update(data)
     return 'Done'
 
@@ -242,7 +238,7 @@ async def do_update():
     while True:
         print("Starting Update")
         await asyncio.sleep(21600)
-        data = SupabaseInterface().read("github_profile_data", filters={"points": ("gt", 0)})
+        data = SupabaseInterface.get_instance().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
         GithubProfileDisplay().update(data)
 
 
@@ -293,7 +289,7 @@ async def register(discord_userdata):
         return status, response_text
     discord_id = discord_userdata
 
-    supabase_client = SupabaseInterface()
+    supabase_client = SupabaseInterface.get_instance()
     if not request.args.get("code"):
         raise BadRequestKeyError()
     user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
@@ -311,55 +307,22 @@ async def register(discord_userdata):
 
 @app.route("/github/events", methods = ['POST'])
 async def event_handler():
-    data = await request.json
+    try:
+        data = await request.json
+        secret_key = os.getenv("WEBHOOK_SECRET") 
 
-           
-    supabase_client = SupabaseInterface()
-
-    # Hanlding Labels being edited:
-    if request.headers["X-GitHub-Event"] == 'label':
-        if data.get("action") == 'edited':
-            if 'name' in data.get("changes"):
-                if 'c4gt' in data["label"]["name"].lower():
-                    if data["label"]["name"].lower() != 'c4gt community' or data["label"]["name"].lower() != 'dmp 2024':
-                        tickets = supabase_client.readAll("ccbp_tickets")
-                        for ticket in tickets:
-                            ticketUrlElements = ticket["url"].split('/')
-                            repositoryUrlElements = ticketUrlElements[:-2]
-                            repositoryUrl = '/'.join(repositoryUrlElements)
-                            if repositoryUrl == data["repository"]["html_url"]:
-                                supabase_client.deleteTicket(ticket["issue_id"])
-
-
-
-        
-
-    # if request.headers["X-GitHub-Event"] == 'installation' or request.headers["X-GitHub-Event"] == 'installation_repositories':
-    #     data = await request.json 
-    #     if data.get("action")=="created" or data.get("action")=="added":
-    #         # New installation created
-    #         repositories = data.get("repositories") if data.get("repositories") else data.get("repositories_added")
-    #         for repository in repositories:
-    #             owner, repository = repository["full_name"].split('/')
-    #             issues = await fetch_github_issues_from_repo(owner, repository)
-    #             for issue in issues:
-    #                 await TicketEventHandler().onTicketCreate({'issue': issue})
-        #on installation event
-    # supabase_client.add_event_data(data=data)
-    if data.get("issue"):
-        issue = data["issue"]
-        if supabase_client.checkUnlisted(issue["id"]):
-            supabase_client.deleteUnlistedTicket(issue["id"])
-        await TicketEventHandler().onTicketCreate(data)
-        if supabase_client.checkIsTicket(issue["id"]):
-            await TicketEventHandler().onTicketEdit(data)
-            if data["action"] == "closed":
-                await TicketEventHandler().onTicketClose(data)
-    if data.get("installation") and data["installation"].get("account"):
-        # if data["action"] not in ["deleted", "suspend"]:
-        await TicketEventHandler().updateInstallation(data.get("installation"))
-
-    return data
+        verification_result, error_message = await verify_github_webhook(request,secret_key)
+        if not verification_result:
+            return "Webhook verification failed.", 403
+            
+        supabase_client = SupabaseInterface.get_instance()
+        event_type = request.headers.get("X-GitHub-Event")
+        await dispatch_event(event_type, data, supabase_client)
+            
+        return data
+    except Exception as e:
+        logger.info(e)
+        return "Server Error"
 
 
 @app.route("/metrics/discord", methods = ['POST'])
@@ -377,7 +340,7 @@ async def discord_metrics():
         }
         discord_data.append(data)
 
-    supabase_client = SupabaseInterface()
+    supabase_client = SupabaseInterface.get_instance()
     data = supabase_client.add_discord_metrics(discord_data)
     return data.data
 
@@ -397,7 +360,7 @@ async def github_metrics():
         }
         github_data.append(data)
 
-    supabase_client = SupabaseInterface()
+    supabase_client = SupabaseInterface.get_instance()
     data = supabase_client.add_github_metrics(github_data)
     return data.data
 
@@ -407,90 +370,78 @@ async def my_scheduled_job_test():
     assignment_id = os.getenv("ASSIGNMENT_ID") 
     page = 1
     while True:
-        github_api_url = f'https://api.github.com/assignments/{assignment_id}/accepted_assignments?page={page}'
-        
-        # Define request headers
-        headers = {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': 'Bearer'+' '+ os.getenv('API_TOKEN'),
-            'X-GitHub-Api-Version': '2022-11-28'
-        }
+        try:
+            # Make the request to the GitHub API
+            response,code = await GithubAdapter.get_classroom_data(assignment_id,page)
+            # Check if the request was successful
+            if code == 200:
+                # Return the response from the GitHub API
+                if response == [] or len(response)==0:
+                    break
+                conn, cur = connect_db()    
+                res =[]
+                create_data = []
+                update_data = []
+                for val in response:
+                    if val['grade']:
+                        parts = val['grade'].split("/")
+                        # Convert each part into integers
+                        val['points_awarded'] = int(parts[0])
+                        val['points_available'] = int(parts[1])
 
-        async with httpx.AsyncClient() as client:
-            try:
-                # Make the request to the GitHub API
-                response = await client.get(github_api_url, headers=headers)
-                # Check if the request was successful
-                if response.status_code == 200:
-                    # Return the response from the GitHub API
-                    response = response.json()
-                    if response == [] or len(response)==0:
-                        break
+                    else:
+                        val['points_awarded'] = 0
+                        val['points_available'] = 0
 
-                    conn, cur = connect_db()    
-                    res =[]
-                    create_data = []
-                    update_data = []
-                    for val in response:
-                        if val['grade']:
-                            parts = val['grade'].split("/")
-                            # Convert each part into integers
-                            val['points_awarded'] = int(parts[0])
-                            val['points_available'] = int(parts[1])
+                    percent = (float(val['points_awarded'])/float(val['points_available'])) * 100 if val['grade'] else 0
+                    val['c4gt_points']= calculate_points(percent)
+                    if val['c4gt_points'] > 100:
+                        logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
+                        continue
 
+                    val['assignment_id'] = assignment_id
+                    val['updated_at'] = datetime.datetime.now()
+                    try:
+                        git_url = "https://github.com/"+val['github_username']
+
+                    except:
+                        git_url = val['students'][0]['html_url'] 
+
+                                
+                    sql_query = getdiscord_from_cr()
+                    cur.execute(sql_query, (git_url,))                    
+                    discord_id = cur.fetchone()
+                    val['discord_id'] = discord_id[0] if discord_id else None
+
+                    if val['discord_id']:
+                        # Execute the SQL query
+                        cur.execute(check_assignment_exist(),(str(val['discord_id']),str(assignment_id)))
+                        exist_assignment = cur.fetchone()[0]
+
+                        if exist_assignment:
+                            update_data.append(val)
                         else:
-                            val['points_awarded'] = 0
-                            val['points_available'] = 0
+                            create_data.append(val)
+                    res.append(val)
+                create_rec = save_classroom_records(create_data)
+                update_rec = update_classroom_records(update_data)
+                # Close cursor and connection
+                cur.close()
+                conn.close()
+                logger.info(f"{datetime.datetime.now()}---jobs works")
 
-                        percent = (float(val['points_awarded'])/float(val['points_available'])) * 100 if val['grade'] else 0
-                        val['c4gt_points']= calculate_points(percent)
-                        if val['c4gt_points'] > 100:
-                            logger.info(f"OBJECT DISCORDED DUE TO MAX POINT LIMIT --- {val['github_username']} -- {assignment_id}")
-                            continue
-
-                        val['assignment_id'] = assignment_id
-                        val['updated_at'] = datetime.datetime.now()
-                        try:
-                            git_url = "https://github.com/"+val['github_username']
-
-                        except:
-                            git_url = val['students'][0]['html_url'] 
-
-                                    
-                        sql_query = getdiscord_from_cr()
-                        cur.execute(sql_query, (git_url,))                    
-                        discord_id = cur.fetchone()
-                        val['discord_id'] = discord_id[0] if discord_id else None
-
-                        if val['discord_id']:
-                            # Execute the SQL query
-                            cur.execute(check_assignment_exist(),(str(val['discord_id']),str(assignment_id)))
-                            exist_assignment = cur.fetchone()[0]
-
-                            if exist_assignment:
-                                update_data.append(val)
-                            else:
-                                create_data.append(val)
-                        res.append(val)
-                    create_rec = save_classroom_records(create_data)
-                    update_rec = update_classroom_records(update_data)
-                    # Close cursor and connection
-                    cur.close()
-                    conn.close()
-                    logger.info(f"{datetime.datetime.now()}---jobs works")
-
-                    # return res
-                else:
-                    # Return an error message if the request failed
-                    return {'error': f'Failed to fetch data from GitHub API: {response.status_code}'}, response.status_code
-            except httpx.HTTPError as e:
-                logger.info(e)
-                # Return an error message if an HTTP error occurred
-                return {'error': f'HTTP error occurred: {e}'}, 500
+                # return res
+            else:
+                # Return an error message if the request failed
+                return {'error': f'Failed to fetch data from GitHub API: {response.status_code}'}, response.status_code
+        except httpx.HTTPError as e:
+            logger.info(e)
+            # Return an error message if an HTTP error occurred
+            return {'error': f'HTTP error occurred: {e}'}, 500
             
-            page = page + 1
+        page = page + 1
 
-#CRON JOB
+# #CRON JOB
 @app.before_serving
 async def start_scheduler():
     scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
