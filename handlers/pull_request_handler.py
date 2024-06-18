@@ -28,11 +28,12 @@ class Pull_requestHandler(EventHandler):
             pr_data['points'] = points[0]['ticket_points'] if points else 0
             
             save_data = supabase_client.add_data(pr_data,"pr_history")            
-           
-            pass
+            if save_data == None:
+                logging.info("Failed to save data in pr_history")
+            
         except Exception as e:
             logging.info(e)
-            pass
+            raise Exception
         
         
 

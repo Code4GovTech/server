@@ -23,10 +23,12 @@ class Issue_commentHandler(EventHandler):
                 
             }
             
-            save_data = supabase_client.add_data(comment_data,"ticket_comments")
+            save_data = supabase_client.add_data(comment_data,"ticket_comments")            
+            if save_data == None:
+                logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
                      
         except Exception as e:
-            logger.info(f"{datetime.now()}---jobs works")
-            pass
+            logger.info(f"{datetime.now()}---{e}")
+            raise Exception 
         
         

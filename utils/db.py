@@ -308,25 +308,39 @@ class SupabaseInterface():
     
     #Generic function for CRUD                    
     def delete_record(self, table, column, value):
-        data = self.client.table(table).delete().eq(column, value).execute()
-        return data.data
-    
+        try:
+            data = self.client.table(table).delete().eq(column, value).execute()
+            return data.data
+        except Exception as e:
+            return None
+                   
+            
     def add_data(self, data,table_name):
-        data = self.client.table(table_name).insert(data).execute()
-        return data.data
-    
-    
+        try:
+            data = self.client.table(table_name).insert(data).execute()
+            return data.data
+        except Exception as e:
+            return None
+              
+        
     def update_data(self, data,col_name,table_name):
-        data = self.client.table(table_name).update(data).eq(col_name, data[col_name]).execute()
-
-        return data.data
+        try:
+            data = self.client.table(table_name).update(data).eq(col_name, data[col_name]).execute()
+            return data.data
+        except Exception as e:
+            return None
+               
 
     def get_data(self, col_name,table_name,value,condition):
-        if condition == None:
-            condition = "*"
-        data = self.client.table(table_name).select(condition).eq(col_name, value).execute()
+        try:
+            if condition == None:
+                condition = "*"
+            data = self.client.table(table_name).select(condition).eq(col_name, value).execute()        
+            return data.data
+        except Exception as e:
+            return None
+        
        
-        return data.data
     
     def check_record_exists(self,table_name,col_name,col_value,condition):
         unlisted_data = self.client.table(table_name).select(condition).eq(col_name, col_value).execute()

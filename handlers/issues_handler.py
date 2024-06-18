@@ -15,7 +15,7 @@ class IssuesHandler(EventHandler):
                     await TicketEventHandler().onTicketEdit(data)
                     if data["action"] == "closed":
                         await TicketEventHandler().onTicketClose(data)
-            pass
+            
         except Exception as e:
             logging.info(e)
-            pass
+            raise Exception

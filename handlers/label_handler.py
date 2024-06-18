@@ -16,8 +16,8 @@ class LabelHandler(EventHandler):
                         if repository_url == data["repository"]["html_url"]:
                             supabase_client.deleteTicket(ticket["issue_id"])
 
-            pass
+            
 
         except Exception as e:
             logging.info(e)
-            pass
+            raise Exception

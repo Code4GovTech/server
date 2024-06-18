@@ -372,7 +372,7 @@ async def my_scheduled_job_test():
     while True:
         try:
             # Make the request to the GitHub API
-            response,code = await GithubAdapter.get_calssroom_data(assignment_id,page)
+            response,code = await GithubAdapter.get_classroom_data(assignment_id,page)
             # Check if the request was successful
             if code == 200:
                 # Return the response from the GitHub API

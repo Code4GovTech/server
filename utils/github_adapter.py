@@ -24,11 +24,11 @@ class GithubAdapter:
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(github_url_for_access_token, data=data, headers=headers) as response:
-                    r = await response.json()                    
-                    return r
+                    res = await response.json()                    
+                    return res
                 
         except Exception as e:
-            return []
+            raise Exception
         
     async def get_github_user(header):
         try:          
@@ -65,7 +65,7 @@ class GithubAdapter:
             return None
             
         
-    async def get_calssroom_data(assignment_id,page):
+    async def get_classroom_data(assignment_id,page):
         github_api_url = f'https://api.github.com/assignments/{assignment_id}/accepted_assignments?page={page}'
         
         # Define request headers
