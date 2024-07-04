@@ -13,6 +13,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 import postgrest
 from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
+import logging
 
 def matchProduct(enteredProductName):
     products = [
@@ -444,6 +445,35 @@ class TicketEventHandler:
                         # print(5,file=sys.stderr)
                         # print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
                         # return data
+
+
+
+    async def onTicketOpened(self, eventData):
+        try:
+            action = eventData["action"]
+            issue = eventData["issue"]
+            if action == 'opened':
+                markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+            # print(markdown_contents, file=sys.stderr)
+                ticket_data = {
+                            "name":issue["title"],     #name of ticket
+                            # "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
+                            "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
+                            "skills":[skill for skill in markdown_contents["Tech Skills Needed"].split(',')] if markdown_contents.get("Tech Skills Needed") else None,
+                            "issue_id":issue["id"],
+                            "status": issue["state"],
+                            "api_endpoint_url":issue["url"],
+                            "link": issue["html_url"],
+                            "org": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
+                            "lables":issue["labels"]
+                        }
+                print(ticket_data)
+                return ticket_data
+
+        except Exception as e:
+            logging.info(e)
+            raise Exception
+
     
 
 
