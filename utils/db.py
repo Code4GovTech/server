@@ -373,5 +373,10 @@ class SupabaseInterface():
         data = query.execute()
         return data.data
     
+    def get_org(self, org_name):
+        data = self.client.table("dmp_orgs").select("*").like("name", org_name).execute()
+        return data.data
+
+    
     
     

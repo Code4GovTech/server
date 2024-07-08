@@ -14,6 +14,9 @@ import postgrest
 from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
 import logging
+from urllib.parse import urlparse
+import markdown2
+import re
 
 def matchProduct(enteredProductName):
     products = [
@@ -446,33 +449,51 @@ class TicketEventHandler:
                         # print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
                         # return data
 
-
-
+    def extract_section(self, content, section_title):
+        pattern = rf"<.*?> {section_title}\s*(.*?)\s<.*?>"
+       
+        match = re.findall(pattern, content)
+        if match:
+            return match.group(1).strip()
+        return None
+    
     async def onTicketOpened(self, eventData):
         try:
             action = eventData["action"]
             issue = eventData["issue"]
             if action == 'opened':
                 markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+                print(markdown_contents)
             # print(markdown_contents, file=sys.stderr)
+                parsed_url = urlparse(issue["url"])
+                path_segments = parsed_url.path.split('/')
+                repository_owner = path_segments[2]
+                org = self.supabase_client.get_org(repository_owner)
+                complexity = markdown_contents.get("Complexity")
+                print(complexity)
                 ticket_data = {
-                            "name":issue["title"],     #name of ticket
-                            # "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
-                            "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
-                            "skills":[skill for skill in markdown_contents["Tech Skills Needed"].split(',')] if markdown_contents.get("Tech Skills Needed") else None,
-                            "issue_id":issue["id"],
+                            "title":issue["title"],     #name of ticket
+                            "description":  markdown_contents,
+                            "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
+                            "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
                             "status": issue["state"],
-                            "api_endpoint_url":issue["url"],
                             "link": issue["html_url"],
-                            "org": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
-                            "lables":issue["labels"]
+                            "org_id": org[0]["id"],
+                            "labels":issue["labels"],
+                            "issue_id": issue["id"]
                         }
                 print(ticket_data)
+                self.supabase_client.insert("issues", ticket_data)
                 return ticket_data
+            
+            print('ticket was not opened')
 
         except Exception as e:
+            print(e)
             logging.info(e)
             raise Exception
+        
+
 
     
 

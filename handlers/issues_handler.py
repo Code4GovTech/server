@@ -74,3 +74,16 @@ class IssuesHandler(EventHandler):
         except Exception as e:
             logging.info(e)
             raise Exception
+
+
+    async def handle_issue_closed(self, data, supabase_client):
+        try:
+            issue = data["issue"]
+            issue = SupabaseInterface.get_data('issue_id', 'issues', issue["id"])
+            if issue:
+                issue["status"] = "closed"
+                SupabaseInterface.update_data(issue, 'id', 'issues')
+            return "success"
+        except Exception as e:
+            logging.info(e)
+            raise Exception
