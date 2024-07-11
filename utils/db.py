@@ -3,7 +3,6 @@ from typing import Any
 from supabase import create_client, Client
 from supabase.lib.client_options import ClientOptions
 from abc import ABC, abstractmethod
-
 client_options = ClientOptions(postgrest_client_timeout=None)
 import dotenv
 
@@ -377,6 +376,107 @@ class SupabaseInterface():
         data = self.client.table("dmp_orgs").select("*").like("name", org_name).execute()
         return data.data
 
+        
+    #PHASE 2.0 DATABSE RELATED FUNCTIONS
     
+    def get_issue_from_issue_id(self,issue):
+        try:
+            data = self.client.table("issues").select("*").eq("issue_id", issue).execute()        
+            return data.data[0] if data else None
+        
+        except Exception as e:
+            return None
+        
+    def get_contributors_from_issue_id(self,issue):
+        try:
+            data = self.client.table("issue_contributors").select("*").eq("issue_id", issue).execute()        
+            return data.data[0] if data else None
+        
+        except Exception as e:
+            return None
+        
+    def get_default_points(self,type):
+        try:
+            data = self.client.table("points_mapping").select("*").ilike("complexity", type).execute()        
+            return data.data[0] if data else 0
+        
+        except Exception as e:
+            return {"points":0}
+        
+    def add_userpoints(self, user_id, issue_id, points, type=None):
+        try:
+            #CREATE NEW POINTS TO USER BELONGS TO USER
+            exist = self.client.table("point_transactions").select("*").eq("user_id",user_id).eq("issue_id",issue_id).execute()
+            if not exist.data:                
+                data = self.client.table("point_transactions").insert({
+                    "user_id": user_id,
+                    "issue_id": issue_id,
+                    "point": points,
+                    "type": type
+                }).execute()
+                      
+                return data.data[0] if data else None
+            else:   
+                # RETURN OLDER POINTS
+                return exist.data[0] if exist else None
+        
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+
+    def add_contributor_points(self,cont,points,level):
+        try:
+            dict_= {
+                "contributor":cont,
+                "points":points,
+                "level":level
+            }
+            
+            exist = self.client.table("contributor_points_mapping").select("*").eq("contributor",cont).execute()
+            if exist.data:
+                new_point = exist.data[0]['points'] + points
+                data = self.client.table("contributor_points_mapping").update({"points":new_point}).eq("contributor",cont).execute()
+            else:
+                data = self.client.table("contributor_points_mapping").insert(dict_).execute()
+            
+            return data.data[0] if data else {}
+            
+        except Exception as e:
+            raise Exception
+        
+        
+    def manage_user_activity(self,user_id,issue_id,action):
+        
+        dict_ = {
+            "user_id":user_id,
+            "issue_id":issue_id,
+            "activity":action
+        }
+        # exist = self.client.table("user_activity").select('*').eq("user_id",user_id).eq("issue_id",issue_id).execute()
+        data = self.client.table("user_activity").insert(dict_).execute()
+        
+        return data
+        
+    def add_user(self,user_data):
+        try:
+            user_data = user_data[0]
+            dict_ = {
+                "name":user_data['name'],
+                "discord":user_data['discord_id'],
+                "github":user_data['github_url'],
+                "points":0,
+                "level":None
+            }
+            data = self.client.table("users").upsert(dict_,on_conflict="discord").execute()
+            
+            return data
+
+        except Exception as e:
+            print(e)
+            return None
+            
+        
+    
+        
     
     

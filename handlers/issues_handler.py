@@ -78,11 +78,39 @@ class IssuesHandler(EventHandler):
 
     async def handle_issue_closed(self, data, supabase_client):
         try:
-            issue = data["issue"]
-            issue = SupabaseInterface.get_data('issue_id', 'issues', issue["id"])
-            if issue:
-                issue["status"] = "closed"
-                SupabaseInterface.update_data(issue, 'id', 'issues')
+            issue = data["issue"]           
+            issue_data = supabase_client.get_issue_from_issue_id(issue['id'])                
+            contributors = supabase_client.get_contributors_from_issue_id(issue_data['id']) if issue else None
+            
+            # 1.find points for the closed issue
+            complexity = issue_data['complexity']
+            point_matrix = supabase_client.get_default_points(complexity) if complexity else None
+            points = point_matrix['points'] if point_matrix else 0
+                        
+            #get user info -- will remove after discussion
+            # exist_contributor = SupabaseInterface().get_instance().client.table("contributors_registration").select("*").eq("id",2).execute().data 
+            # if exist_contributor:
+            #     user = SupabaseInterface().get_instance().add_user(exist_contributor)
+            #     user = user.data[0]
+            # else:
+            #     pass
+            
+            #2. save record in point transactions
+            point_transaction = SupabaseInterface().get_instance().add_userpoints(contributors['contributor_id'],issue_data['id'],points,"credit")
+            
+            #3. add an activity
+            user_activity = SupabaseInterface().get_instance().manage_user_activity(contributors['contributor_id'],issue_data['id'],"closed")
+            
+            #3.2 add overall points
+            contributor_points = SupabaseInterface().get_instance().add_contributor_points(contributors['contributor_id'],points,complexity)
+            
+            
+            #4. generate badges
+            
+            #5. generate certificates
+            
+            
+            
             return "success"
         except Exception as e:
             logging.info(e)
