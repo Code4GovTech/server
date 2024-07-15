@@ -394,50 +394,78 @@ class SupabaseInterface():
         
         except Exception as e:
             return None
+    
+    def get_mentors_from_issue_id(self,issue):
+        try:
+            data = self.client.table("issue_mentors").select("*").eq("issue_id", issue).execute()        
+            return data.data[0] if data else None
+        
+        except Exception as e:
+            return None
         
     def get_default_points(self,type):
         try:
             data = self.client.table("points_mapping").select("*").ilike("complexity", type).execute()        
-            return data.data[0] if data else 0
+            return data.data if data else 0
         
         except Exception as e:
             return {"points":0}
         
-    def add_userpoints(self, user_id, issue_id, points, type=None):
+    def add_userpoints(self, user_id,mentor_id,issue_id, points, type=None):
         try:
             #CREATE NEW POINTS TO USER BELONGS TO USER
-            exist = self.client.table("point_transactions").select("*").eq("user_id",user_id).eq("issue_id",issue_id).execute()
-            if not exist.data:                
+            user_created,ment_created = False,False
+            user_exist = self.client.table("point_transactions").select("*").eq("user_id",user_id).eq("issue_id",issue_id).execute()
+            if not user_exist.data:                
                 data = self.client.table("point_transactions").insert({
                     "user_id": user_id,
                     "issue_id": issue_id,
-                    "point": points,
-                    "type": type
+                    "point": points['Contributor'],
+                    "type": type,
+                    "mentor_id":None
                 }).execute()
-                      
-                return data.data[0] if data else None
-            else:   
-                # RETURN OLDER POINTS
-                return exist.data[0] if exist else None
+                
+                user_created = True
+                                  
+            mentor_exist = self.client.table("point_transactions").select("*").eq("mentor_id",mentor_id).eq("issue_id",issue_id).execute()
+
+            if not mentor_exist.data:                
+                data = self.client.table("point_transactions").insert({
+                    "user_id": None,
+                    "issue_id": issue_id,
+                    "point": points['Mentor'],
+                    "type": type,
+                    "mentor_id":mentor_id
+                }).execute()
+                
+                ment_created = True
+                                  
+            return user_created,ment_created
+ 
         
         except Exception as e:
             print(f"Error: {e}")
-            return None
+            return False,False
 
-    def add_contributor_points(self,cont,points,level):
+    def add_contributor_points(self,user,user_type,points,level):
         try:
+            if user_type =="mentor":      
+                update_column = "mentor_id"
+            else:
+                update_column = "contributor"      
+                    
             dict_= {
-                "contributor":cont,
+                "{}".format(update_column):user,
                 "points":points,
                 "level":level
             }
             
-            exist = self.client.table("contributor_points_mapping").select("*").eq("contributor",cont).execute()
+            exist = self.client.table("user_points_mapping").select("*").eq(update_column,user).execute()
             if exist.data:
                 new_point = exist.data[0]['points'] + points
-                data = self.client.table("contributor_points_mapping").update({"points":new_point}).eq("contributor",cont).execute()
+                data = self.client.table("user_points_mapping").update({"points":new_point}).eq(update_column,user).execute()
             else:
-                data = self.client.table("contributor_points_mapping").insert(dict_).execute()
+                data = self.client.table("user_points_mapping").insert(dict_).execute()
             
             return data.data[0] if data else {}
             
@@ -445,10 +473,11 @@ class SupabaseInterface():
             raise Exception
         
         
-    def manage_user_activity(self,user_id,issue_id,action):
+    def manage_user_activity(self,contributor_id,mentor_id,issue_id,action):
         
         dict_ = {
-            "user_id":user_id,
+            "contributor_id":contributor_id,
+            "mentor_id":mentor_id,
             "issue_id":issue_id,
             "activity":action
         }

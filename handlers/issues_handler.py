@@ -4,6 +4,19 @@ from handlers.EventHandler import EventHandler
 from events.ticketEventHandler import TicketEventHandler
 from utils.db import SupabaseInterface
 
+
+
+def filter_points(data):
+    try:
+        result = {}
+        for value in data:
+            result.update({value['role']:value['points']})
+        
+        return result
+    except Exception as e:
+        print(e)
+        return {}
+    
 class IssuesHandler(EventHandler):
     async def handle_event(self, data, supabase_client):
         # Implement your logic for handling issue events here
@@ -81,33 +94,26 @@ class IssuesHandler(EventHandler):
             issue = data["issue"]           
             issue_data = supabase_client.get_issue_from_issue_id(issue['id'])                
             contributors = supabase_client.get_contributors_from_issue_id(issue_data['id']) if issue else None
+            mentors = supabase_client.get_mentors_from_issue_id(issue_data['id']) if issue else None
             
-            # 1.find points for the closed issue
+            # find points for the closed issue
             complexity = issue_data['complexity']
             point_matrix = supabase_client.get_default_points(complexity) if complexity else None
-            points = point_matrix['points'] if point_matrix else 0
-                        
-            #get user info -- will remove after discussion
-            # exist_contributor = SupabaseInterface().get_instance().client.table("contributors_registration").select("*").eq("id",2).execute().data 
-            # if exist_contributor:
-            #     user = SupabaseInterface().get_instance().add_user(exist_contributor)
-            #     user = user.data[0]
-            # else:
-            #     pass
+            points = filter_points(point_matrix) if point_matrix else 0
             
-            #2. save record in point transactions
-            point_transaction = SupabaseInterface().get_instance().add_userpoints(contributors['contributor_id'],issue_data['id'],points,"credit")
+            # save record in point transactions
+            user_point_status,ment_point_status = SupabaseInterface().get_instance().add_userpoints(contributors['contributor_id'],mentors['mentor_id'],issue_data['id'],points,"credit")
             
-            #3. add an activity
-            user_activity = SupabaseInterface().get_instance().manage_user_activity(contributors['contributor_id'],issue_data['id'],"closed")
+            # add an activity
+            user_activity = SupabaseInterface().get_instance().manage_user_activity(contributors['contributor_id'],mentors['mentor_id'],issue_data['id'],"closed")
             
-            #3.2 add overall points
-            contributor_points = SupabaseInterface().get_instance().add_contributor_points(contributors['contributor_id'],points,complexity)
+            # add overall points
+            contributor_points = SupabaseInterface().get_instance().add_contributor_points(contributors['contributor_id'],"contributor",points['Contributor'],complexity) if user_point_status else None
+            mentor_points = SupabaseInterface().get_instance().add_contributor_points(mentors['mentor_id'],"mentor",points['Mentor'],complexity) if ment_point_status else None
             
+            #generate badges
             
-            #4. generate badges
-            
-            #5. generate certificates
+            #generate certificates
             
             
             
@@ -115,3 +121,7 @@ class IssuesHandler(EventHandler):
         except Exception as e:
             logging.info(e)
             raise Exception
+
+
+
+    
