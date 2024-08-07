@@ -268,6 +268,7 @@ async def test():
 #Callback url for Github App
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
+    print("🛠️SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER", locals(), file=sys.stderr)
     SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
     SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
 
@@ -291,7 +292,7 @@ async def register(discord_userdata):
 
         return status, response_text
     discord_id = discord_userdata
-
+    print("🛠️SUCCESFULLY DEFINED FUNCTION TO POST TO SUPABASE", locals(), file=sys.stderr)
     supabase_client = SupabaseInterface.get_instance()
     print("🛠️GETTING AUTH CODE FROM GITHUB OAUTH FLOW", locals(), file=sys.stderr)
     if not request.args.get("code"):
