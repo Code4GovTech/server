@@ -50,6 +50,7 @@ async def get_github_data(code, discord_id):
 
         # Fetching user's private emails
         if "user:email" in github_resposne["scope"]:
+            print("🛠️GETTING USER EMAIL", locals(), file=sys.stderr)
             async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
                 emails = await email_response.json()
                 private_emails = [email["email"] for email in emails if email["verified"]]
@@ -62,6 +63,7 @@ async def get_github_data(code, discord_id):
             "github_url": f"https://github.com/{github_username}",
             "email": ','.join(private_emails)
         }
+
         return user_data
             
 async def comment_cleaner():
@@ -248,11 +250,12 @@ async def isAuthenticated():
 
 @app.route("/authenticate/<discord_userdata>")
 async def authenticate(discord_userdata):
-
+    print("🛠️STARTING AUTHENTICATION FLOW", locals(), file=sys.stderr)
     redirect_uri = f'{os.getenv("HOST")}/register/{discord_userdata}'
     # print(redirect_uri)
     github_auth_url = f'https://github.com/login/oauth/authorize?client_id={os.getenv("GITHUB_CLIENT_ID")}&redirect_uri={redirect_uri}&scope=user:email'
     print(github_auth_url, file=sys.stderr)
+    print("🛠️REDIRECTION TO GITHUB", locals(), file=sys.stderr)
     return redirect(github_auth_url)
 
 @app.route("/installations")
@@ -290,18 +293,20 @@ async def register(discord_userdata):
     discord_id = discord_userdata
 
     supabase_client = SupabaseInterface.get_instance()
+    print("🛠️GETTING AUTH CODE FROM GITHUB OAUTH FLOW", locals(), file=sys.stderr)
     if not request.args.get("code"):
         raise BadRequestKeyError()
     user_data = await get_github_data(request.args.get("code"), discord_id=discord_id)
-    print(user_data, file=sys.stderr)
+    print("🛠️OBTAINED USER DATA", locals(), file=sys.stderr)
 
     # data = supabase_client.client.table("contributors").select("*").execute()
     try:
         resp = await post_to_supabase(user_data)
-        print(resp)
+        print("🛠️PUSHED USER DETAILS TO SUPABASE", resp, file=sys.stderr)
     except Exception as e:
-        print(e)
+        print("🛠️ENCOUNTERED EXCEPTION PUSHING TO SUPABASE",e, file=sys.stderr)
     
+    print("🛠️FLOW COMPLETED SUCCESSFULLY, REDIRECTING TO DISCORD", file=sys.stderr)
     return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 
