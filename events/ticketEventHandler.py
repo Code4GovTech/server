@@ -204,6 +204,7 @@ class TicketEventHandler:
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         })
+                    print('starting comment creation in ticket create')
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
                         SupabaseInterface().updateComment({
@@ -280,6 +281,7 @@ class TicketEventHandler:
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         })
+                    print('starting comment creation in ticket edit')
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
                         SupabaseInterface().updateComment({
