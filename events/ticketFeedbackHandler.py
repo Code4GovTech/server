@@ -67,6 +67,7 @@ Please update the ticket
     
     async def createComment(self, owner, repo, issue_number, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
+        print('token checked')
 
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments'
         headers = {
@@ -77,6 +78,7 @@ Please update the ticket
         data = {
             'body': f'{self.feedBackMessageCreator(markdown_dict=markdown_dict)}'
         }
+        print('posting data')
 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
