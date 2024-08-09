@@ -67,7 +67,7 @@ Please update the ticket
     
     async def createComment(self, owner, repo, issue_number, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
-        print('token checked')
+        print('token checked ', token)
 
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments'
         headers = {
@@ -92,6 +92,7 @@ Please update the ticket
     
     async def updateComment(self, owner, repo, comment_id, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
+        print('token checked ', token)
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/comments/{comment_id}'
         headers = {
             'Accept': 'application/vnd.github+json',
