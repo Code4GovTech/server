@@ -73,7 +73,7 @@ class SupabaseInterface:
     
     def recordComment(self, data):
         print('recording comments')
-        data = self.client.table("app_comments").upsert(data).execute()
+        data = self.client.table("app_comments").upsert(data, on_conflict=["issue_id"]).execute()
         return data.data
     
     def updateComment(self, data):
