@@ -200,6 +200,7 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
+                    print('recording comments in Tickets creation')
                     SupabaseInterface().recordComment({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
@@ -277,6 +278,7 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
+                    print('inserting comments data')
                     SupabaseInterface().recordComment({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()

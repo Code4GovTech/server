@@ -72,10 +72,12 @@ class SupabaseInterface:
         return data.data
     
     def recordComment(self, data):
+        print('recording comments')
         data = self.client.table("app_comments").insert(data).execute()
         return data.data
     
     def updateComment(self, data):
+        print('updating comments')
         data = self.client.table("app_comments").update(data).eq("issue_id", data["issue_id"]).execute()
         return data.data
     
