@@ -214,8 +214,8 @@ class TicketEventHandler:
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         })
-                except postgrest.exceptions.APIError:
-                    print("Issue already commented")
+                except Exception as e:
+                    print("Issue already commented ", e)
         return eventData
 
     async def onTicketEdit(self, eventData):
@@ -292,8 +292,8 @@ class TicketEventHandler:
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         })
-                except postgrest.exceptions.APIError:
-                    print("Issue already commented")
+                except Exception as e:
+                    print("Issue already commented ", e)
 
         return eventData
     
