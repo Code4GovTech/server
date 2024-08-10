@@ -199,23 +199,23 @@ class TicketEventHandler:
                 issue_number = url_components[-1]
                 repo = url_components[-3]
                 owner = url_components[-4]
-                try:
-                    print('recording comments in Tickets creation')
-                    SupabaseInterface().recordComment({
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
-                    print('starting comment creation in ticket create')
-                    comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
-                    if comment:
-                        SupabaseInterface().updateComment({
-                            "api_url":comment["url"],
-                            "comment_id":comment["id"],
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
-                except Exception as e:
-                    print("Issue already commented ", e)
+                # try:
+                #     print('recording comments in Tickets creation')
+                #     SupabaseInterface().recordComment({
+                #             "issue_id":issue["id"],
+                #             "updated_at": datetime.datetime.utcnow().isoformat()
+                #         })
+                #     # print('starting comment creation in ticket create')
+                #     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+                #     if comment:
+                #         SupabaseInterface().updateComment({
+                #             "api_url":comment["url"],
+                #             "comment_id":comment["id"],
+                #             "issue_id":issue["id"],
+                #             "updated_at": datetime.datetime.utcnow().isoformat()
+                #         })
+                # except Exception as e:
+                #     print("Issue already commented ", e)
         return eventData
 
     async def onTicketEdit(self, eventData):
@@ -277,23 +277,23 @@ class TicketEventHandler:
                 issue_number = url_components[-1]
                 repo = url_components[-3]
                 owner = url_components[-4]
-                try:
-                    print('inserting comments data')
-                    SupabaseInterface().recordComment({
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
-                    print('starting comment creation in ticket edit')
-                    comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
-                    if comment:
-                        SupabaseInterface().updateComment({
-                            "api_url":comment["url"],
-                            "comment_id":comment["id"],
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
-                        })
-                except Exception as e:
-                    print("Issue already commented ", e)
+                # try:
+                #     print('inserting comments data')
+                #     SupabaseInterface().recordComment({
+                #             "issue_id":issue["id"],
+                #             "updated_at": datetime.datetime.utcnow().isoformat()
+                #         })
+                #     print('starting comment creation in ticket edit')
+                #     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+                #     if comment:
+                #         SupabaseInterface().updateComment({
+                #             "api_url":comment["url"],
+                #             "comment_id":comment["id"],
+                #             "issue_id":issue["id"],
+                #             "updated_at": datetime.datetime.utcnow().isoformat()
+                #         })
+                # except Exception as e:
+                #     print("Issue already commented ", e)
 
         return eventData
     
