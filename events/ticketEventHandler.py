@@ -158,7 +158,7 @@ class TicketEventHandler:
     
     async def onTicketCreate(self, eventData):
         issue = eventData["issue"]
-        print('ticket creation called')
+        print(f'ticket creation called at {datetime.now()} with {issue}')
         if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024"] for label in issue["labels"] ):
             if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
                 ticketType = "ccbp"
@@ -201,12 +201,12 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    print('recording comments in Tickets creation')
+                    print(f'recording comments in Tickets creation at {datetime.now()}')
                     SupabaseInterface().recordComment({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         })
-                    print('starting comment creation in ticket create')
+                    print(f'starting comment creation in ticket create at {datetime.now()}')
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
                         SupabaseInterface().updateComment({
@@ -221,7 +221,7 @@ class TicketEventHandler:
 
     async def onTicketEdit(self, eventData):
         issue = eventData["issue"]
-        print('edit ticket called')
+        print(f'edit ticket called at {datetime.now()} with {issue}')
         if eventData["action"] == "unlabeled":
             if (not issue["labels"]) or (not any(label["name"].lower() in ["C4GT Community".lower(), "dmp 2024"] for label in issue["labels"] )):
                 # Delete Ticket
@@ -280,12 +280,12 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    print('inserting comments data in ticket edit')
+                    print(f'inserting comments data in ticket edit at {datetime.now()}')
                     SupabaseInterface().recordComment({
                             "issue_id":issue["id"],
                             "updated_at": datetime.datetime.utcnow().isoformat()
                         })
-                    print('starting comment creation in ticket edit')
+                    print(f'starting comment creation in ticket edit at {datetime.now()}')
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
                         SupabaseInterface().updateComment({
