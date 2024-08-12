@@ -325,7 +325,7 @@ async def event_handler():
     supabase_client = SupabaseInterface()
 
     # Hanlding Labels being edited:
-    print('github event called')
+    print(f'github event called at {datetime.now()} with {data}')
     if request.headers["X-GitHub-Event"] == 'label':
         if data.get("action") == 'edited':
             if 'name' in data.get("changes"):
