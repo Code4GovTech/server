@@ -12,7 +12,7 @@ def remove_special_characters(string):
     return re.sub(special_characters, "", string)
 
 
-class HeadingRenderer(mistune.Renderer):
+class HeadingRenderer(mistune.HTMLRenderer):
     def __init__(self):
         super().__init__()
         self.current_heading = None

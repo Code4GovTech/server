@@ -13,6 +13,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 import postgrest
 from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
+from datetime import datetime
 
 def matchProduct(enteredProductName):
     products = [
@@ -204,7 +205,7 @@ class TicketEventHandler:
                     print(f'recording comments in Tickets creation at {datetime.now()}')
                     SupabaseInterface().recordComment({
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
+                            "updated_at": datetime.utcnow().isoformat()
                         })
                     print(f'starting comment creation in ticket create at {datetime.now()}')
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
@@ -213,7 +214,7 @@ class TicketEventHandler:
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
+                            "updated_at": datetime.utcnow().isoformat()
                         })
                 except Exception as e:
                     print("Issue already commented ", e)
@@ -263,7 +264,7 @@ class TicketEventHandler:
                 comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
                 if comment:
                     SupabaseInterface().updateComment({
-                        "updated_at": datetime.datetime.utcnow().isoformat(),
+                        "updated_at": datetime.utcnow().isoformat(),
                         "issue_id": issue["id"]
                     })
             else:
@@ -283,7 +284,7 @@ class TicketEventHandler:
                     print(f'inserting comments data in ticket edit at {datetime.now()}')
                     SupabaseInterface().recordComment({
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
+                            "updated_at": datetime.utcnow().isoformat()
                         })
                     print(f'starting comment creation in ticket edit at {datetime.now()}')
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
@@ -292,7 +293,7 @@ class TicketEventHandler:
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
+                            "updated_at": datetime.utcnow().isoformat()
                         })
                 except Exception as e:
                     print("Issue already commented ", e)
