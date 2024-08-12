@@ -249,16 +249,19 @@ async def do_update():
 
 @app.route("/already_authenticated")
 async def isAuthenticated():
+    print(f'already authenticated at {datetime.now()}')
     return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 @app.route("/authenticate/<discord_userdata>")
 async def authenticate(discord_userdata):
     print("🛠️STARTING AUTHENTICATION FLOW", locals(), file=sys.stderr)
+    print(f'starting authentication at {datetime.now()}')
     redirect_uri = f'{os.getenv("HOST")}/register/{discord_userdata}'
     # print(redirect_uri)
     github_auth_url = f'https://github.com/login/oauth/authorize?client_id={os.getenv("GITHUB_CLIENT_ID")}&redirect_uri={redirect_uri}&scope=user:email'
     print(github_auth_url, file=sys.stderr)
     print("🛠️REDIRECTION TO GITHUB", locals(), file=sys.stderr)
+    print(f'REDIRECTION TO GITHUB {datetime.now()}')
     return redirect(github_auth_url)
 
 @app.route("/installations")
@@ -272,6 +275,7 @@ async def test():
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
     print("🛠️SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER", locals(), file=sys.stderr)
+    print(f'SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER {datetime.now()}')
     SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
     SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
 
@@ -309,6 +313,7 @@ async def register(discord_userdata):
         print("🛠️ENCOUNTERED EXCEPTION PUSHING TO SUPABASE",e, file=sys.stderr)
     
     print("🛠️FLOW COMPLETED SUCCESSFULLY, REDIRECTING TO DISCORD", file=sys.stderr)
+    print(f'rendering success page at {datetime.now()}')
     return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 
@@ -320,6 +325,7 @@ async def event_handler():
     supabase_client = SupabaseInterface()
 
     # Hanlding Labels being edited:
+    print(f'github event called at {datetime.now()} with {data}')
     if request.headers["X-GitHub-Event"] == 'label':
         if data.get("action") == 'edited':
             if 'name' in data.get("changes"):
@@ -494,10 +500,10 @@ async def my_scheduled_job_test():
             page = page + 1
 
 #CRON JOB
-@app.before_serving
-async def start_scheduler():
-    scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
-    scheduler.start()
+# @app.before_serving
+# async def start_scheduler():
+#     scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
+#     scheduler.start()
 
 
 if __name__ == '__main__':
