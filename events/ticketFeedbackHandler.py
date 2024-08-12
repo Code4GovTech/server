@@ -68,6 +68,7 @@ Please update the ticket
     async def createComment(self, owner, repo, issue_number, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
         print('token checked ', token)
+        print('creating comments')
 
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments'
         headers = {
