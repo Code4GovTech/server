@@ -232,6 +232,8 @@ class TicketEventHandler:
             ticketType = "ccbp"
         else:
             ticketType = "dmp"
+        
+        print(f'calling markdown parser with {issue['body']}')
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
         print("MARKDOWN", markdown_contents, file=sys.stderr )
         ticket_data = {
