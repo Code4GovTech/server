@@ -72,11 +72,12 @@ class MarkdownHeaders:
         return
     
     def flattenAndParse(self, rawMarkdown):
+        print(f'inside flatten and parse with {rawMarkdown}')
         markdown = mistune.Markdown(renderer=HeadingRenderer())
         dummyHeader = "## Header\n\n"
         markdown(dummyHeader+rawMarkdown)
         markdownDict = markdown.renderer.data
-        print(markdownDict, file=sys.stderr)
+        print('makrdown content', markdownDict, file=sys.stderr)
         flatDict = flatdict.FlatDict(markdownDict, delimiter=".")
         # print(flatDict)
         dataDict = {}
