@@ -290,7 +290,8 @@ async def register(discord_userdata):
 
         # As aiohttp recommends, create a session per application, rather than per function.
         print(f'saving users data to supabase at {datetime.now()}')
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(SUPABASE_URL, json=json_data, headers=headers) as response:
                 status = response.status
                 # Depending on your requirements, you may want to process the response here.
