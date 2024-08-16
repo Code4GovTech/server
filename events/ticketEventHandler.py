@@ -3,7 +3,7 @@
 
 import aiohttp
 import os, sys, datetime, json
-from utils.db import SupabaseInterface
+from utils.db import PostgresORM
 from utils.markdown_handler import MarkdownHeaders
 from utils.github_api import GithubAPI
 from utils.jwt_generator import GenerateJWT
@@ -13,6 +13,7 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 import postgrest
 from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
+from datetime import datetime
 
 def matchProduct(enteredProductName):
     products = [
@@ -74,8 +75,8 @@ def matchProduct(enteredProductName):
 
 
 async def send_message(ticket_data):
-    discord_channels = SupabaseInterface.get_instance().readAll("discord_channels")
-    products = SupabaseInterface.get_instance().readAll("product")
+    discord_channels = await PostgresORM().readAll("discord_channels")
+    products = await PostgresORM().readAll("product")
 
     url = None
     # for product in products:
@@ -133,7 +134,7 @@ async def get_pull_request(owner, repo, number):
 
 class TicketEventHandler:
     def __init__(self):
-        self.supabase_client = SupabaseInterface.get_instance()
+        self.postgres_client = PostgresORM()
         self.ticket_points = {
                         "hard":30,
                         "easy":10,
@@ -158,6 +159,7 @@ class TicketEventHandler:
     
     async def onTicketCreate(self, eventData):
         issue = eventData["issue"]
+        print(f'ticket creation called at {datetime.now()} with {issue}')
         if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024"] for label in issue["labels"] ):
             if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
                 ticketType = "ccbp"
@@ -183,45 +185,47 @@ class TicketEventHandler:
                     }
             # print(ticket_data, file=sys.stderr)
             if ticketType == "ccbp" and ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
-                if not self.supabase_client.checkIsTicket(ticket_data["issue_id"]):
+                if not await self.postgres_client.checkIsTicket(ticket_data["issue_id"]):
                     await send_message(ticket_data)
-                self.supabase_client.record_created_ticket(data=ticket_data)
+                await self.postgres_client.record_created_ticket(data=ticket_data,table_name="ccbp_tickets")
             elif ticketType == "dmp":
-                if not self.supabase_client.checkIsDMPTicket(ticket_data["issue_id"]):
+                if not await PostgresORM().check_record_exists("dmp_tickets","issue_id",ticket_data["issue_id"]):
                     await send_message(ticket_data)
-                self.supabase_client.recordCreatedDMPTicket(data=ticket_data)
+                await self.postgres_client.record_created_ticket(data=ticket_data,table_name="dmp_tickets")
+
             else:
                 print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
-                self.supabase_client.insert("unlisted_tickets", ticket_data)
+                await self.postgres_client.add_data("unlisted_tickets", ticket_data)
 
             if TicketFeedbackHandler().evaluateDict(markdown_contents) and ticketType == "ccbp":
                 url_components = issue["url"].split('/')
                 issue_number = url_components[-1]
                 repo = url_components[-3]
                 owner = url_components[-4]
-                try:
-                    SupabaseInterface.get_instance().add_data({
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
-                        },"app_comments")
+                try:                    
+                    await PostgresORM().add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
-                        SupabaseInterface.get_instance().update_data({
+                            
+                        await PostgresORM().update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
+                            "updated_at": datetime.utcnow().isoformat()
                         },"issue_id","app_comments")
+                        
                 except postgrest.exceptions.APIError:
                     print("Issue already commented")
         return eventData
 
     async def onTicketEdit(self, eventData):
         issue = eventData["issue"]
+        print(f'edit ticket called at {datetime.now()} with {issue}')
         if eventData["action"] == "unlabeled":
             if (not issue["labels"]) or (not any(label["name"].lower() in ["C4GT Community".lower(), "dmp 2024"] for label in issue["labels"] )):
                 # Delete Ticket
-                self.supabase_client.deleteTicket(issue["id"])
+                await self.postgres_client.delete("ccbp_tickets","issue_id",issue["id"])
+                await self.postgres_client.delete("dmp_tickets","issue_id",issue["id"])
                 return
         if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
             ticketType = "ccbp"
@@ -246,27 +250,28 @@ class TicketEventHandler:
                     }
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
-            self.supabase_client.update_data(ticket_data,"issue_id","ccbp_tickets")
+            await self.postgres_client.update_data(ticket_data,"issue_id","ccbp_tickets")
         elif ticketType == "dmp":
-            self.supabase_client.update_data(ticket_data,"issue_id","dmp_tickets")
+            await self.postgres_client.update_data(ticket_data,"issue_id","dmp_tickets")
 
-        if SupabaseInterface.get_instance().commentExists(issue["id"]) and ticketType=="ccbp":
+        if await PostgresORM().check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
             repo = url_components[-3]
             owner = url_components[-4]
-            comment_id = SupabaseInterface.get_instance().readCommentData(issue["id"])[0]["comment_id"]
+            comment_id = await PostgresORM().get_data("issue_id","app_comments",issue["id"],None)[0]["comment_id"]
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
                 comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
                 if comment:
-                    SupabaseInterface.get_instance().updateComment({
-                        "updated_at": datetime.datetime.utcnow().isoformat(),
+                    
+                    await PostgresORM.get_instance().update_data({
+                        "updated_at": datetime.utcnow().isoformat(),
                         "issue_id": issue["id"]
-                    })
+                    },"issue_id","app_comments")
             else:
                 try:
                     comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                     print(f"Print Delete Task,{comment}", file=sys.stderr)
-                    print(SupabaseInterface.get_instance().deleteComment(issue["id"]))
+                    print(await PostgresORM.get_instance().deleteComment(issue["id"],"app_comments"))
                 except:
                     print("Error in deletion")
         elif ticketType=="ccbp":
@@ -276,18 +281,22 @@ class TicketEventHandler:
                 repo = url_components[-3]
                 owner = url_components[-4]
                 try:
-                    SupabaseInterface.get_instance().add_data({
+                    
+                    
+                    await PostgresORM().add_data({
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
+                            "updated_at": datetime.utcnow().isoformat()
                         },"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
-                        SupabaseInterface.get_instance().update_data({
+                                                
+                        await PostgresORM().update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],
-                            "updated_at": datetime.datetime.utcnow().isoformat()
-                        },"app_comments")
+                            "updated_at": datetime.utcnow().isoformat()
+                        },"issue_id","app_comments")
+                        
                 except postgrest.exceptions.APIError:
                     print("Issue already commented")
 
@@ -299,7 +308,7 @@ class TicketEventHandler:
         pullData = await returnConnectedPRs(issue)
 
         print("PULL REQUEST",pullData, file = sys.stderr)
-        self.supabase_client.addPr(pullData, issue["id"])
+        await self.postgres_client.addPr(pullData, issue["id"])
                     
         return
     

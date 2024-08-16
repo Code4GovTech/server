@@ -4,7 +4,7 @@ from datetime import datetime
 from utils.logging_file import logger
 
 class Issue_commentHandler(EventHandler):
-    async def handle_event(self, data, supabase_client):
+    async def handle_event(self, data, postgres_client):
         try:        
             #generate sample dict for ticket comment table
             comment_data = {
@@ -23,7 +23,7 @@ class Issue_commentHandler(EventHandler):
                 
             }
             
-            save_data = supabase_client.add_data(comment_data,"ticket_comments")            
+            save_data = await postgres_client.add_data(comment_data,"ticket_comments")            
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
                      

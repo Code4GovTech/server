@@ -3,7 +3,7 @@ from handlers.EventHandler import EventHandler
 
 
 class Pull_requestHandler(EventHandler):
-    async def handle_event(self, data, supabase_client):
+    async def handle_event(self, data, postgres_client):
         # Implement your logic for handling issue events here
         try:            
             pr_data = {
@@ -24,10 +24,10 @@ class Pull_requestHandler(EventHandler):
                 "ticket_complexity": "medium"
             }
             
-            points = supabase_client.get_data("url","ccbp_tickets",data['pull_request']['issue_url'],None)  
+            points = await postgres_client.get_data("url","ccbp_tickets",data['pull_request']['issue_url'],None)  
             pr_data['points'] = points[0]['ticket_points'] if points else 0
             
-            save_data = supabase_client.add_data(pr_data,"pr_history")            
+            save_data = await postgres_client.add_data(pr_data,"pr_history")            
             if save_data == None:
                 logging.info("Failed to save data in pr_history")
             
