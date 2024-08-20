@@ -284,4 +284,8 @@ class SupabaseInterface:
             else:
                 data = self.client.table("github_metrics").insert(metric).execute()
         return data
+
+    def add_github_user(self, user):
+        data = self.client.table("contributors_registration").upsert(user, on_conflict=["github_id", "discord_id"]).execute()
+        return data.data
                     
