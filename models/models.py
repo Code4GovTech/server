@@ -263,7 +263,7 @@ class ContributorsRegistration(Base):
     point_transactions = relationship('PointTransactions', back_populates='contributor')
     
     user_activities = relationship('UserActivity', back_populates='contributor')
-    user_points_mappings = relationship('UserPointsMapping', back_populates='contributor')
+    user_points_mappings = relationship('UserPointsMapping', back_populates='contributors')
 
 
     def __repr__(self):
@@ -620,7 +620,7 @@ class IssueContributors(Base):
 
     contributor_id = Column(BigInteger, ForeignKey('contributors_registration.id'), primary_key=True)
     issue_id = Column(BigInteger, ForeignKey('issues.id'), primary_key=True)
-    role_id = Column(BigInteger, ForeignKey('role_master.id'), nullable=True)
+    role = Column(BigInteger, ForeignKey('role_master.id'), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -631,7 +631,7 @@ class IssueContributors(Base):
         return {
             'contributor_id': self.contributor_id,
             'issue_id': self.issue_id,
-            'role_id': self.role_id,
+            'role_id': self.role,
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
@@ -1012,8 +1012,8 @@ class PointTransactions(Base):
     issue_id = Column(BigInteger, ForeignKey('issues.id'), nullable=False)
     point = Column(Integer, nullable=True)
     type = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)  # Set to current time when created
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)  # Updated to current time when record is modified
     mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'), nullable=True)
 
     
@@ -1378,22 +1378,22 @@ class UserCertificates(Base):
 class UserPointsMapping(Base):
     __tablename__ = 'user_points_mapping'
     id = Column(UUID(as_uuid=True), primary_key=True)
-    contributor_id = Column(BigInteger, ForeignKey('contributors_registration.id'), nullable=True)  # Assumes 'ContributorsRegistration' model
+    contributor = Column(BigInteger, ForeignKey('contributors_registration.id'), nullable=True)  # Assumes 'ContributorsRegistration' model
     points = Column(Integer, nullable=False)
     level = Column(String(50), nullable=True)
-    created_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)  # Set to current time when created
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'), nullable=True)  # Assumes 'MentorDetails' model
 
-    contributor = relationship('ContributorsRegistration', back_populates='user_points_mappings')
+    contributors = relationship('ContributorsRegistration', back_populates='user_points_mappings')
     mentor = relationship('MentorDetails', back_populates='user_points_mappings')
 
     def __repr__(self):
-        return f"<UserPointsMapping(contributor_id={self.contributor_id}, points={self.points}, level={self.level})>"
+        return f"<UserPointsMapping(contributor_id={self.contributor}, points={self.points}, level={self.level})>"
 
     def to_dict(self):
         return {
-            'contributor_id': self.contributor_id,
+            'contributor_id': self.contributor,
             'points': self.points,
             'level': self.level,
             'created_at': self.created_at,

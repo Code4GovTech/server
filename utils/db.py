@@ -19,7 +19,7 @@ from sqlalchemy import select, asc, desc,update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
 from datetime import datetime
-from sqlalchemy import cast, String
+from sqlalchemy import cast, String ,and_
 
 dotenv.load_dotenv(".env")
 
@@ -800,7 +800,7 @@ class PostgresORM:
                 return self.convert_dict(new_record)
                     
         except Exception as e:
-            print(f"Error in sk method: {e}")
+            print(f"Error in record_created_ticket method: {e}")
             return None
 
         
@@ -860,3 +860,141 @@ class PostgresORM:
             return None
         
         
+    async def get_issue_from_issue_id(self,issue_id):
+        try:
+            async with self.session() as session:
+                # Dynamically get the ORM class for the table
+                table = self.get_class_by_tablename("issues")
+               
+                # Build and execute the query to check if the issue_id already exists
+                stmt = select(table).where(table.issue_id == issue_id)
+                result = await session.execute(stmt)
+                issues = result.scalars().all()
+                
+                if issues:
+                    return self.convert_dict(issues)
+                return None
+                                    
+        except Exception as e:
+            print(f"Error in get_issue_from_issue_id method: {e}")
+            return None
+        
+    async def get_contributors_from_issue_id(self,issue_id):
+        try:
+            async with self.session() as session:
+                # Dynamically get the ORM class for the table
+                table = self.get_class_by_tablename("issue_contributors")
+                
+                # Build and execute the query to check if the issue_id already exists
+                stmt = select(table).where(table.issue_id == issue_id)
+                result = await session.execute(stmt)
+                issues = result.scalars().all()
+                
+                if issues:
+                    return self.convert_dict(issues)
+                return None
+                                    
+        except Exception as e:
+            print(f"Error in get_contributors_from_issue_id method: {e}")
+            return None
+        
+    async def get_pointsby_complexity(self, complexity_type,type="Contributor"):
+        try:
+            async with self.session() as session:
+                # Dynamically get the ORM class for the table
+                table = self.get_class_by_tablename("points_mapping")
+                
+                # Build and execute the query with multiple conditions
+                stmt = select(table).where(
+                    and_(
+                        table.complexity == complexity_type,
+                        table.role == type
+                    )
+                )
+                result = await session.execute(stmt)
+                points = result.scalars().all()
+                return points[0].points if points else 0
+
+        except Exception as e:
+            print(f"Error in get_pointsby_complexity method: {e}")
+            return None
+        
+    async def upsert_point_transaction(self, issue_id, user_id, points,user_type="Contributor"):
+        try:
+            async with self.session() as session:
+                table = self.get_class_by_tablename("point_transactions")
+                column_map = {
+                "Contributor": table.user_id,
+                "Mentor": table.mentor_id, 
+                }
+                chosen_column = column_map.get(user_type)
+                stmt = select(table).where(
+                    and_(
+                        table.issue_id == issue_id,
+                        chosen_column == user_id
+                    )
+                )
+                
+                result = await session.execute(stmt)
+                transaction = result.scalars().one_or_none()
+
+                if transaction:
+                    # Record exists, so update the points column
+                    update_stmt = (
+                        update(table)
+                        .where(and_(table.issue_id == issue_id, table.user_id == user_id))
+                        .values(point=points)
+                    )
+                    await session.execute(update_stmt)
+                    await session.commit()
+                    return True
+
+                else:
+                    # Record does not exist, so create a new one
+                    new_transaction = table(issue_id=issue_id,point=points)
+                    setattr(new_transaction, chosen_column.key, user_id)
+                    session.add(new_transaction)
+                    await session.commit()
+                    return True
+
+        except Exception as e:
+            print(f"Error in upsert_point_transaction method: {e}")
+            return None
+        
+    async def save_user_points(self, user_id, points,user_type="Contributor"):
+        try:
+            async with self.session() as session:
+                table = self.get_class_by_tablename("user_points_mapping")
+                column_map = {
+                "Contributor": table.contributor,
+                "Mentor": table.mentor_id, 
+                }
+                chosen_column = column_map.get(user_type)
+                stmt = select(table).where(chosen_column == user_id)
+                
+                result = await session.execute(stmt)
+                transaction = result.scalars().one_or_none()
+
+
+                if transaction:
+                    addon_points = points + transaction.points
+                    update_stmt = (
+                        update(table)
+                        .where(chosen_column == user_id)
+                        .values(points=addon_points)
+                    )
+                    await session.execute(update_stmt)
+                    await session.commit()
+                    return True
+
+                else:
+                    # Record does not exist, so create a new one
+                    new_transaction = table(points=points)
+                    setattr(new_transaction, chosen_column.key, user_id)
+                    session.add(new_transaction)
+                    await session.commit()
+                    return True
+
+        except Exception as e:
+            print(f"Error in save_user_points method: {e}")
+            return None

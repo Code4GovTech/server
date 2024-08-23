@@ -22,7 +22,18 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
                 
             }
-            
+                        
+            if data['issue']['state'] == "closed":
+                issue = await postgres_client.get_issue_from_issue_id(data['issue']['id'])                
+                contributors = await postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
+                
+                #FIND POINTS BY ISSUE COMPLEXITY
+                points = await postgres_client.get_pointsby_complexity(issue[0]['complexity'])
+                
+                #SAVE POINT IN POINT_TRANSACTIONS & USER POINTS
+                add_points = await postgres_client.upsert_point_transaction(issue[0]['id'],contributors[0]['contributor_id'],points)
+                add_user_points= await postgres_client.save_user_points(contributors[0]['contributor_id'],points)
+                            
             save_data = await postgres_client.add_data(comment_data,"ticket_comments")            
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
