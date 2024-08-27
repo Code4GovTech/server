@@ -19,6 +19,7 @@ class IssuesHandler(EventHandler):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
                     await handler_method(data, supabase_client)
+                    await self.log_user_activity(data, supabase_client)
                 else:
                     logging.info(f"No handler found for module: {module_name}")
             
@@ -112,3 +113,29 @@ class IssuesHandler(EventHandler):
         except Exception as e:
             logging.info(e)
             raise Exception
+        
+
+    async def log_user_activity(self, data, supabase_client):
+        try:
+            issue = data["issue"]
+            issue = self.supabase_client.get_data('issue_id', 'issues', issue["id"])
+
+            user_id = data['issue']['user']['id']
+            
+            contributor = self.supabase_client.get_data('github_id', 'contributors_registration', user_id, '*')
+            contributor_id = contributor["id"]
+
+            activity_data = {
+                "issue_id": issue["id"],
+                "activity": f"issue_{data['action']}",
+                "created_at": issue['created_at'],
+                "updated_at": issue['updated_at'],
+                "contributor_id": contributor_id,
+                "mentor_id": ""
+            }
+            saved_activity_data = supabase_client.add_data(activity_data,"user_activity")
+
+        except Exception as e:
+            logging.info(e)
+            raise Exception
+
