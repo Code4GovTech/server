@@ -1,15 +1,11 @@
 from handlers.EventHandler import EventHandler
-from utils.db import SupabaseInterface
 from datetime import datetime
 from utils.logging_file import logger
 import logging
 
 class Issue_commentHandler(EventHandler):
-    def __init__(self):
-        self.supabase_client = SupabaseInterface.get_instance()
-        return
      
-    async def handle_event(self, data, supabase_client):
+    async def handle_event(self, data, postgres_client):
         try:        
             module_name = data.get("action")
             print('inside handle events')
@@ -18,7 +14,7 @@ class Issue_commentHandler(EventHandler):
             if next((l for l in labels if l['name'] == 'C4GT Community'), None):
                 handler_method = getattr(self, f'handle_issue_comment{module_name}', None)
                 if handler_method:
-                    await handler_method(data, supabase_client)
+                    await handler_method(data, postgres_client)
                 else:
                     logging.info(f"No handler found for module: {module_name}")
             
@@ -29,7 +25,7 @@ class Issue_commentHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_comment_created(self, data, supabase_client):
+    async def handle_issue_comment_created(self, data, postgres_client):
         try:        
             #generate sample dict for ticket comment table
             print(f'creating comment with {data['issue']}')
@@ -48,8 +44,19 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
                 
             }
-            
-            save_data = supabase_client.add_data(comment_data,"ticket_comments")            
+                        
+            if data['issue']['state'] == "closed":
+                issue = await postgres_client.get_issue_from_issue_id(data['issue']['id'])                
+                contributors = await postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
+                
+                #FIND POINTS BY ISSUE COMPLEXITY
+                points = await postgres_client.get_pointsby_complexity(issue[0]['complexity'])
+                
+                #SAVE POINT IN POINT_TRANSACTIONS & USER POINTS
+                add_points = await postgres_client.upsert_point_transaction(issue[0]['id'],contributors[0]['contributor_id'],points)
+                add_user_points= await postgres_client.save_user_points(contributors[0]['contributor_id'],points)
+                            
+            save_data = await postgres_client.add_data(comment_data,"ticket_comments")            
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
                      
@@ -58,7 +65,7 @@ class Issue_commentHandler(EventHandler):
             raise Exception 
         
     
-    async def handle_issue_comment_edited(self, data, supabase_client):
+    async def handle_issue_comment_edited(self, data, postgres_client):
         try:        
             #generate sample dict for ticket comment table
             print(f'editing comment with {data['issue']}')
@@ -68,7 +75,7 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
             }
             
-            save_data = supabase_client.update_data(comment_data, "id", "ticket_comments")            
+            save_data = postgres_client.update_data(comment_data, "id", "ticket_comments")            
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
                      
@@ -76,11 +83,11 @@ class Issue_commentHandler(EventHandler):
             logger.info(f"{datetime.now()}---{e}")
             raise Exception 
         
-    async def handle_issue_comment_deleted(self, data, supabase_client):
+    async def handle_issue_comment_deleted(self, data, postgres_client):
         try:
             print(f'deleting comment with {data['issue']}')
             comment_id = data['comment']['id']
-            data = supabase_client.deleteIssueComment(comment_id)
+            data = postgres_client.deleteIssueComment(comment_id)
         except Exception as e:
             logger.info(f"{datetime.now()}---{e}")
             raise Exception

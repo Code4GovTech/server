@@ -1,6 +1,6 @@
 from utils.github_api import GithubAPI
-from utils.db import SupabaseInterface
 import aiohttp, sys
+from datetime import datetime
 from utils.runtime_vars import MARKDOWN_TEMPLATE_HEADERS
 
 headerMessages = {
@@ -67,6 +67,8 @@ Please update the ticket
     
     async def createComment(self, owner, repo, issue_number, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
+        print('token checked ', token)
+        print(f'creating comments at {datetime.now()}')
 
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments'
         headers = {
@@ -77,11 +79,12 @@ Please update the ticket
         data = {
             'body': f'{self.feedBackMessageCreator(markdown_dict=markdown_dict)}'
         }
+        print(f'posting data at {datetime.now()} with {data}')
 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 201:
-                    print('Comment created successfully.')
+                    print(f'Comment created successfully. at {datetime.now()}')
                     return await response.json()
                 else:
                     print(f'Error creating comment. Status code: {response.status}', sys.stderr)
@@ -90,6 +93,7 @@ Please update the ticket
     
     async def updateComment(self, owner, repo, comment_id, markdown_dict):
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
+        print('token checked ', token)
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/comments/{comment_id}'
         headers = {
             'Accept': 'application/vnd.github+json',
@@ -99,7 +103,7 @@ Please update the ticket
         data = {
             'body': f'{self.feedBackMessageCreator(markdown_dict)}'
         }
-
+        print(f'updating comments at {datetime.now()} with {data}')
         async with aiohttp.ClientSession() as session:
             async with session.patch(url, headers=headers, json=data) as response:
                 if response.status == 200:

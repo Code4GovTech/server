@@ -1,5 +1,5 @@
 import aiohttp, os, sys
-from utils.db import SupabaseInterface
+from utils.db import PostgresORM
 from aiographql.client import GraphQLClient, GraphQLRequest
 
 headers = {
@@ -401,7 +401,8 @@ mentorship_repos = [
 
 repositories = list(set(mentorship_repos))
 
-tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
+# tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
+tickets = PostgresORM().readAll("ccbp_tickets")
 closedTickets = []
 for ticket in tickets:
       if ticket["status"] == "closed":

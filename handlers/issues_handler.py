@@ -2,13 +2,10 @@ import logging
 import json
 from handlers.EventHandler import EventHandler
 from events.ticketEventHandler import TicketEventHandler
-from utils.db import SupabaseInterface
+from utils.db import PostgresORM
 
 class IssuesHandler(EventHandler):
-    def __init__(self):
-        self.supabase_client = SupabaseInterface.get_instance()
-        return
-    async def handle_event(self, data, supabase_client):
+    async def handle_event(self, data, postgres_client):
         # Implement your logic for handling issue events here
         try:        
             module_name = data.get("action")
@@ -18,8 +15,8 @@ class IssuesHandler(EventHandler):
             if next((l for l in labels if l['name'] == 'C4GT Community'), None):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
-                    await handler_method(data, supabase_client)
-                    await self.log_user_activity(data, supabase_client)
+                    await handler_method(data, postgres_client)
+                    await self.log_user_activity(data, postgres_client)
                 else:
                     logging.info(f"No handler found for module: {module_name}")
             
@@ -30,15 +27,18 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_created(self, data, supabase_client):
+    async def handle_issue_created(self, data, postgres_client):
         # Implement your logic for handling issue events here
         try:        
             if data.get("issue"):
                 issue = data["issue"]
-                if supabase_client.checkUnlisted(issue["id"]):
-                    supabase_client.deleteUnlistedTicket(issue["id"])
+                if postgres_client.checkUnlisted(issue["id"]):
+                    postgres_client.deleteUnlistedTicket(issue["id"])
                 await TicketEventHandler().processDescription(data)
-                if supabase_client.checkIsTicket(issue["id"]):
+                if await postgres_client.check_record_exists("unlisted_tickets","issue_id",issue["id"]):
+                    await postgres_client.delete("unlisted_tickets","issue_id",issue["id"])
+                await TicketEventHandler().onTicketCreate(data)
+                if await postgres_client.checkIsTicket("unlisted_tickets","issue_id",issue["id"]):
                     await TicketEventHandler().onTicketEdit(data)
                     if data["action"] == "closed":
                         await TicketEventHandler().onTicketClose(data)
@@ -47,15 +47,15 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_opened(self, data, supabase_client):
+    async def handle_issue_opened(self, data, postgres_client):
         # Implement your logic for handling issue events here
         try:        
             if data.get("issue"):
                 issue = data["issue"]
-                if supabase_client.checkUnlisted(issue["id"]):
-                    supabase_client.deleteUnlistedTicket(issue["id"])
+                if postgres_client.checkUnlisted(issue["id"]):
+                    postgres_client.deleteUnlistedTicket(issue["id"])
                 await TicketEventHandler().processDescription(data)
-                if supabase_client.checkIsTicket(issue["id"]):
+                if postgres_client.checkIsTicket(issue["id"]):
                     await TicketEventHandler().onTicketEdit(data)
                     if data["action"] == "closed":
                         await TicketEventHandler().onTicketClose(data)
@@ -64,31 +64,31 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_labeled(self, data, supabase_client):
+    async def handle_issue_labeled(self, data, postgres_client):
         try:
             print(json.dumps(data, indent=4))
             issue = data["issue"]
-            db_issue = self.supabase_client.get_data('id', 'issues', issue["id"])
+            db_issue = self.postgres_client.get_data('id', 'issues', issue["id"])
             if not db_issue:
-                await self.handle_issue_opened(data, supabase_client)
+                await self.handle_issue_opened(data, postgres_client)
             labels = issue["labels"]
             print(labels)
             if labels:
                 db_issue["labels"] = labels
-                self.supabase_client.update_data(db_issue, 'id', 'issues')
+                self.postgres_client.update_data(db_issue, 'id', 'issues')
                 
             return "success"
         except Exception as e:
             logging.info(e)
             raise Exception
         
-    async def handle_issue_edited(self, data, supabase_client):
+    async def handle_issue_edited(self, data, postgres_client):
         try:
             print(json.dumps(data, indent=4))
             issue = data["issue"]
-            db_issue = self.supabase_client.get_data('issue_id', 'issues', issue["id"], "*")
+            db_issue = self.postgres_client.get_data('issue_id', 'issues', issue["id"], "*")
             if not db_issue:
-                await self.handle_issue_opened(data, supabase_client)
+                await self.handle_issue_opened(data, postgres_client)
             
             body = issue["body"]
             print(body)
@@ -102,27 +102,27 @@ class IssuesHandler(EventHandler):
             raise Exception
 
 
-    async def handle_issue_closed(self, data, supabase_client):
+    async def handle_issue_closed(self, data, postgres_client):
         try:
             issue = data["issue"]
-            issue = self.supabase_client.get_data('issue_id', 'issues', issue["id"])
+            issue = self.postgres_client.get_data('issue_id', 'issues', issue["id"])
             if issue:
                 issue["status"] = "closed"
-                self.supabase_client.update_data(issue, 'id', 'issues')
+                self.postgres_client.update_data(issue, 'id', 'issues')
             return "success"
         except Exception as e:
             logging.info(e)
             raise Exception
         
 
-    async def log_user_activity(self, data, supabase_client):
+    async def log_user_activity(self, data, postgres_client):
         try:
             issue = data["issue"]
-            issue = self.supabase_client.get_data('issue_id', 'issues', issue["id"])
+            issue = self.postgres_client.get_data('issue_id', 'issues', issue["id"])
 
             user_id = data['issue']['user']['id']
             
-            contributor = self.supabase_client.get_data('github_id', 'contributors_registration', user_id, '*')
+            contributor = self.postgres_client.get_data('github_id', 'contributors_registration', user_id, '*')
             contributor_id = contributor["id"]
 
             activity_data = {
@@ -133,7 +133,7 @@ class IssuesHandler(EventHandler):
                 "contributor_id": contributor_id,
                 "mentor_id": ""
             }
-            saved_activity_data = supabase_client.add_data(activity_data,"user_activity")
+            saved_activity_data = postgres_client.add_data(activity_data,"user_activity")
 
         except Exception as e:
             logging.info(e)
