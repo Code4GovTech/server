@@ -443,7 +443,7 @@ async def my_scheduled_job_test():
 async def get_role_master():
     # x = SupabaseInterface().get_instance()
     # role_masters = x.client.table(f"role_master").select("*").execute()
-    role_masters = await PostgresORM().readAll(f"role_master")
+    role_masters = await PostgresORM().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
 
