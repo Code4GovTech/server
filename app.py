@@ -277,32 +277,32 @@ async def test():
 async def register(discord_userdata):
     print("🛠️SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER", locals(), file=sys.stderr)
     print(f'SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER {datetime.now()}')
-    # SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
-    # SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
+    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
 
-    # async def post_to_supabase(json_data):
-    #     headers = {
-    #         'apikey': SUPABASE_KEY,
-    #         'Authorization': f'Bearer {SUPABASE_KEY}',
-    #         'Content-Type': 'application/json',
-    #         'Prefer': 'return=minimal',
-    #     }
+    async def post_to_supabase(json_data):
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f'Bearer {SUPABASE_KEY}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+        }
 
-    #     # As aiohttp recommends, create a session per application, rather than per function.
-    #     print(f'saving users data to supabase at {datetime.now()}')
-    #     timeout = aiohttp.ClientTimeout(total=60)
-    #     async with aiohttp.ClientSession(timeout=timeout) as session:
-    #         async with session.post(SUPABASE_URL, json=json_data, headers=headers) as response:
-    #             status = response.status
-    #             # Depending on your requirements, you may want to process the response here.
-    #             print(f'user data saved to contributors registration table at {datetime.now()}')
-    #             response_text = await response.text()
-    #             print('user data saved to contributors registration table with data ',response_text)
+        # As aiohttp recommends, create a session per application, rather than per function.
+        print(f'saving users data to supabase at {datetime.now()}')
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(SUPABASE_URL, json=json_data, headers=headers) as response:
+                status = response.status
+                # Depending on your requirements, you may want to process the response here.
+                print(f'user data saved to contributors registration table at {datetime.now()}')
+                response_text = await response.text()
+                print('user data saved to contributors registration table with data ',response_text)
 
-    #             if status != 201:
-    #                 raise Exception(response_text)
+                if status != 201:
+                    raise Exception(response_text)
 
-    #     return status, response_text
+        return status, response_text
     
 
     discord_id = discord_userdata
@@ -315,7 +315,7 @@ async def register(discord_userdata):
     # data = supabase_client.client.table("contributors").select("*").execute()
     try:
         print(f'inserting github user data {user_data} into db at {datetime.now()}')
-        resp = await SupabaseInterface().add_github_user(user_data)
+        resp = await post_to_supabase(user_data)
         print("🛠️PUSHED USER DETAILS TO SUPABASE", resp, file=sys.stderr)
     except Exception as e:
         print("🛠️ENCOUNTERED EXCEPTION PUSHING TO SUPABASE",e, file=sys.stderr)
