@@ -448,10 +448,10 @@ async def get_role_master():
     return role_masters.data
 
 # #CRON JOB
-@app.before_serving
-async def start_scheduler():
-    scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
-    scheduler.start()
+# @app.before_serving
+# async def start_scheduler():
+#     scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
+#     scheduler.start()
 
 
 if __name__ == '__main__':
