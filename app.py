@@ -20,6 +20,8 @@ from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
 from datetime import datetime
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import time
 
 scheduler = AsyncIOScheduler()
 
@@ -30,6 +32,24 @@ dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
 app.config['TESTING']= False
+
+# Create Prometheus metrics
+REQUEST_COUNT = Counter('flask_app_request_count', 'Total HTTP requests', ['method', 'endpoint', 'status_code'])
+REQUEST_LATENCY = Histogram('flask_app_request_latency_seconds', 'Request latency', ['method', 'endpoint'])
+
+# Record metrics for each request
+@app.before_request
+def before_request():
+    request.start_time = time.time()
+
+@app.after_request
+def after_request(response):
+    # Calculate request latency
+    latency = time.time() - request.start_time
+    # Record metrics
+    REQUEST_LATENCY.labels(request.method, request.path).observe(latency)
+    REQUEST_COUNT.labels(request.method, request.path, response.status_code).inc()
+    return response
 
 
 
@@ -445,6 +465,11 @@ async def start_scheduler():
     scheduler.add_job(my_scheduled_job_test, 'interval', hours=1)
     scheduler.start()
 
+
+# Metrics route for Prometheus scraping
+@app.route('/metrics')
+def metrics():
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 if __name__ == '__main__':
     app.run()
