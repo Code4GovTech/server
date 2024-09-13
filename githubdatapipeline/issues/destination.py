@@ -1,12 +1,13 @@
-from utils.db import SupabaseInterface
+from utils.db import SupabaseInterface, PostgresORM
 import sys
 def hasCommunityLabel(labels):
     if any([label["name"].lower() == "c4gt community" for label in labels]):
         return True
     return False
 
-def recordIssue(issue):
-    currentTickets = SupabaseInterface.get_instance().readAll(table="community_program_tickets")
+async def recordIssue(issue):
+    # currentTickets = SupabaseInterface.get_instance().readAll(table="community_program_tickets")
+    currentTickets = await PostgresORM().readAll(table="community_program_tickets")
     iss = {
             "url": issue["url"] if issue.get("url") else None,
             "repository_url": issue["repository_url"] if issue.get("repository_url") else None,
@@ -30,10 +31,12 @@ def recordIssue(issue):
             }
     
     if iss["id"] in [ticket["id"] for ticket in currentTickets]:
-        SupabaseInterface.get_instance().update(table="community_program_tickets", update=iss, query_key="id", query_value=iss["id"])
+        # SupabaseInterface.get_instance().update(table="community_program_tickets", update=iss, query_key="id", query_value=iss["id"])
+        await PostgresORM().update_data(data=iss, col_name="id", table="community_program_tickets")
         print("updated", file = sys.stderr)
     else:
-        SupabaseInterface.get_instance().insert(table="community_program_tickets", data=iss)
+        # SupabaseInterface.get_instance().insert(table="community_program_tickets", data=iss)
+        await PostgresORM().add_data(data=iss, table="community_program_tickets")
         print("created", file = sys.stderr)
     
     

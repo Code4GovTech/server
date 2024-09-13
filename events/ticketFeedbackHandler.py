@@ -1,5 +1,4 @@
 from utils.github_api import GithubAPI
-from utils.db import SupabaseInterface
 import aiohttp, sys
 from datetime import datetime
 from utils.runtime_vars import MARKDOWN_TEMPLATE_HEADERS

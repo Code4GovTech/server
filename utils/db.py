@@ -140,6 +140,10 @@ class SupabaseInterface():
     def deleteComment(self, issue_id):
         data = self.client.table("app_comments").delete().eq("issue_id", issue_id).execute()
         return data.data
+    
+    def deleteIssueComment(self, id):
+        data = self.client.table("ticket_comments").delete().eq("id", id).execute()
+        return data.data
 
     def dump_dev_data(self, data):
         data = self.client.table("dev_data").insert(data).execute()
@@ -388,6 +392,11 @@ class SupabaseInterface():
                     query = query.eq(column, condition)
         data = query.execute()
         return data.data
+    
+    def get_org(self, org_name):
+        data = self.client.table("dmp_orgs").select("*").like("name", org_name).execute()
+        return data.data
+
     
 
 

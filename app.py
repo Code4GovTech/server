@@ -285,7 +285,7 @@ async def register(discord_userdata):
 
         # As aiohttp recommends, create a session per application, rather than per function.
         async with aiohttp.ClientSession() as session:
-            async with session.post(SUPABASE_URL, json=json_data, headers=headers) as response:
+            async with session.put(SUPABASE_URL, json=json_data, headers=headers) as response:
                 status = response.status
                 # Depending on your requirements, you may want to process the response here.
                 response_text = await response.text()
@@ -296,7 +296,7 @@ async def register(discord_userdata):
         return status, response_text
     discord_id = discord_userdata
     print("🛠️SUCCESFULLY DEFINED FUNCTION TO POST TO SUPABASE", locals(), file=sys.stderr)
-    supabase_client = SupabaseInterface.get_instance()
+    # supabase_client = SupabaseInterface.get_instance()
     print("🛠️GETTING AUTH CODE FROM GITHUB OAUTH FLOW", locals(), file=sys.stderr)
     if not request.args.get("code"):
         raise BadRequestKeyError()
@@ -320,8 +320,8 @@ async def event_handler():
         secret_key = os.getenv("WEBHOOK_SECRET") 
 
         verification_result, error_message = await verify_github_webhook(request,secret_key)
-        if not verification_result:
-            return "Webhook verification failed.", 403
+        # if not verification_result:
+        #     return "Webhook verification failed.", 403
             
         postgres_client = PostgresORM.get_instance()
         event_type = request.headers.get("X-GitHub-Event")
@@ -438,6 +438,14 @@ async def my_scheduled_job_test():
             return {'error': f'HTTP error occurred: {e}'}, 500
             
         page = page + 1
+
+@app.route("/role-master")
+async def get_role_master():
+    # x = SupabaseInterface().get_instance()
+    # role_masters = x.client.table(f"role_master").select("*").execute()
+    role_masters = await PostgresORM().readAll("role_master")
+    print('role master ', role_masters)
+    return role_masters.data
 
 # #CRON JOB
 @app.before_serving

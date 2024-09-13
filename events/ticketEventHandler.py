@@ -13,6 +13,10 @@ from events.ticketFeedbackHandler import TicketFeedbackHandler
 import postgrest
 from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
+import logging
+from urllib.parse import urlparse
+import markdown2
+import re
 from datetime import datetime
 
 def matchProduct(enteredProductName):
@@ -453,6 +457,53 @@ class TicketEventHandler:
                         # print(5,file=sys.stderr)
                         # print(requests.post(url, json={"body":body}, headers=head).json(), file=sys.stderr)
                         # return data
+
+    def extract_section(self, content, section_title):
+        pattern = rf"<.*?> {section_title}\s*(.*?)\s<.*?>"
+       
+        match = re.findall(pattern, content)
+        if match:
+            return match.group(1).strip()
+        return None
+          
+    async def processDescription(self, eventData):
+        action = eventData["action"]
+        issue = eventData["issue"]
+       
+        markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+        print(markdown_contents)
+    # print(markdown_contents, file=sys.stderr)
+        parsed_url = urlparse(issue["url"])
+        path_segments = parsed_url.path.split('/')
+        repository_owner = path_segments[2]
+        org = self.supabase_client.get_org(repository_owner)
+        complexity = markdown_contents.get("Complexity")
+        print(complexity)
+        ticket_data = {
+                    "title":issue["title"],     #name of ticket
+                    "description":  markdown_contents,
+                    "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
+                    "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                    "status": issue["state"],
+                    "link": issue["html_url"],
+                    "org_id": org[0]["id"],
+                    "labels":issue["labels"],
+                    "issue_id": issue["id"],
+                    "advisor": markdown_contents["Advisor"] if markdown_contents["Advisor"] else None,
+                    "mentor": markdown_contents["Mentor"] if markdown_contents["Mentor"] else None, 
+                    "contributor": markdown_contents["Contributor"] if markdown_contents["Contributor"] else None,
+                    "designer": markdown_contents["Designer"] if markdown_contents["Designer"] else None,
+                    "created_at": issue["created_at"] if issue.get("created_at") else None,
+                    "updated_at": issue["updated_at"] if issue.get("updated_at") else None,
+                }
+        print(ticket_data)
+        self.supabase_client.insert("issues", ticket_data)
+        return ticket_data
+    
+
+        
+
+
     
 
 

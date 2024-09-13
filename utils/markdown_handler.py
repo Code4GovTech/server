@@ -12,7 +12,7 @@ def remove_special_characters(string):
     return re.sub(special_characters, "", string)
 
 
-class HeadingRenderer(mistune.Renderer):
+class HeadingRenderer(mistune.HTMLRenderer):
     def __init__(self):
         super().__init__()
         self.current_heading = None
@@ -20,7 +20,7 @@ class HeadingRenderer(mistune.Renderer):
         self.data = {}
         self.first_class_headers = MARKDOWN_TEMPLATE_HEADERS
 
-    def header(self, text, level, raw=None):
+    def header(self, text, level):
         matched_header = self.match_header(text)
         # print("\n----------header\n",matched_header)
         if level == 2:
