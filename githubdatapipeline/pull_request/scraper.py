@@ -1,6 +1,7 @@
 import aiohttp, os, sys
 from utils.db import PostgresORM
 from aiographql.client import GraphQLClient, GraphQLRequest
+import asyncio
 
 headers = {
             'Accept': 'application/vnd.github+json',
@@ -402,13 +403,25 @@ mentorship_repos = [
 repositories = list(set(mentorship_repos))
 
 # tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
-tickets = PostgresORM().readAll("ccbp_tickets")
-closedTickets = []
-for ticket in tickets:
-      if ticket["status"] == "closed":
-            closedTickets.append(ticket)
+# tickets = await PostgresORM().readAll("ccbp_tickets")
+# closedTickets = []
+# for ticket in tickets:
+#       if ticket["status"] == "closed":
+#             closedTickets.append(ticket)
             
-        
+  
+
+
+async def get_closed_tickets():
+    tickets = await PostgresORM().readAll("ccbp_tickets")
+    if tickets is None:
+        print("No tickets found.")
+        return []
+    
+    closedTickets = [ticket for ticket in tickets if ticket["status"] == "closed"]
+    return closedTickets
+
+closed_tickets = asyncio.run(get_closed_tickets())
 
 async def getNewPRs():
     for ticket in closedTickets:
