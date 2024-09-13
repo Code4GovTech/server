@@ -15,7 +15,6 @@ from githubdatapipeline.issues.processor import returnConnectedPRs
 from fuzzywuzzy import fuzz
 import logging
 from urllib.parse import urlparse
-import markdown2
 import re
 from datetime import datetime
 
