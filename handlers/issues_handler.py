@@ -12,6 +12,7 @@ class IssuesHandler(EventHandler):
             print('inside handle events')
             issue = data["issue"]
             labels = issue["labels"]
+            print(f'inside issue handler with issue data as {issue} and label as {labels}')
             if next((l for l in labels if l['name'] == 'C4GT Community'), None):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
