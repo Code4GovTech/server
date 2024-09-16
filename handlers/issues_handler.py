@@ -69,7 +69,7 @@ class IssuesHandler(EventHandler):
             labels = issue["labels"]
             print(labels)
             if labels:
-                db_issue["labels"] = labels
+                db_issue["labels"] = labels["name"]
                 self.postgres_client.update_data(db_issue, 'id', 'issues')
                 
             return "success"
