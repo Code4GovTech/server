@@ -32,18 +32,17 @@ class IssuesHandler(EventHandler):
         try:        
             if data.get("issue"):
                 issue = data["issue"]
-                if postgres_client.checkUnlisted(issue["id"]):
-                    postgres_client.deleteUnlistedTicket(issue["id"])
-                await TicketEventHandler().processDescription(data)
-                if await postgres_client.check_record_exists("unlisted_tickets","issue_id",issue["id"]):
-                    await postgres_client.delete("unlisted_tickets","issue_id",issue["id"])
+                print('inside issue created with', issue)
+                if postgres_client.get_issue_from_issue_id(issue["id"]):
+                    await postgres_client.delete("issues", "id", issue["id"])
                 await TicketEventHandler().onTicketCreate(data)
-                if await postgres_client.checkIsTicket("unlisted_tickets","issue_id",issue["id"]):
+                if await postgres_client.checkIsTicket("issues","issue_id",issue["id"]):
                     await TicketEventHandler().onTicketEdit(data)
                     if data["action"] == "closed":
                         await TicketEventHandler().onTicketClose(data)
             
         except Exception as e:
+            print('exception', e)
             logging.info(e)
             raise Exception
         
@@ -52,13 +51,8 @@ class IssuesHandler(EventHandler):
         try:        
             if data.get("issue"):
                 issue = data["issue"]
-                if postgres_client.checkUnlisted(issue["id"]):
-                    postgres_client.deleteUnlistedTicket(issue["id"])
+                print('inside issue opened with', issue)
                 await TicketEventHandler().processDescription(data)
-                if postgres_client.checkIsTicket(issue["id"]):
-                    await TicketEventHandler().onTicketEdit(data)
-                    if data["action"] == "closed":
-                        await TicketEventHandler().onTicketClose(data)
             
         except Exception as e:
             logging.info(e)
@@ -68,6 +62,7 @@ class IssuesHandler(EventHandler):
         try:
             print(json.dumps(data, indent=4))
             issue = data["issue"]
+            print('inside issue labeled with', issue)
             db_issue = self.postgres_client.get_data('id', 'issues', issue["id"])
             if not db_issue:
                 await self.handle_issue_opened(data, postgres_client)
@@ -86,6 +81,7 @@ class IssuesHandler(EventHandler):
         try:
             print(json.dumps(data, indent=4))
             issue = data["issue"]
+            print('inside issue edited with', issue)
             db_issue = self.postgres_client.get_data('issue_id', 'issues', issue["id"], "*")
             if not db_issue:
                 await self.handle_issue_opened(data, postgres_client)
@@ -105,6 +101,7 @@ class IssuesHandler(EventHandler):
     async def handle_issue_closed(self, data, postgres_client):
         try:
             issue = data["issue"]
+            print('inside issue closed with', issue)
             issue = self.postgres_client.get_data('issue_id', 'issues', issue["id"])
             if issue:
                 issue["status"] = "closed"
@@ -118,6 +115,7 @@ class IssuesHandler(EventHandler):
     async def log_user_activity(self, data, postgres_client):
         try:
             issue = data["issue"]
+            print('inside user activity', issue)
             issue = self.postgres_client.get_data('issue_id', 'issues', issue["id"])
 
             user_id = data['issue']['user']['id']
@@ -134,7 +132,8 @@ class IssuesHandler(EventHandler):
                 "mentor_id": ""
             }
             saved_activity_data = postgres_client.add_data(activity_data,"user_activity")
-
+            return saved_activity_data
+        
         except Exception as e:
             logging.info(e)
             raise Exception

@@ -10,6 +10,7 @@ class Issue_commentHandler(EventHandler):
             module_name = data.get("action")
             print('inside handle events')
             issue = data["issue"]
+            print('inside issue comment handler ', issue)
             labels = issue["labels"]
             if next((l for l in labels if l['name'] == 'C4GT Community'), None):
                 handler_method = getattr(self, f'handle_issue_comment{module_name}', None)
@@ -56,7 +57,8 @@ class Issue_commentHandler(EventHandler):
                 add_points = await postgres_client.upsert_point_transaction(issue[0]['id'],contributors[0]['contributor_id'],points)
                 add_user_points= await postgres_client.save_user_points(contributors[0]['contributor_id'],points)
                             
-            save_data = await postgres_client.add_data(comment_data,"ticket_comments")            
+            save_data = await postgres_client.add_data(comment_data,"ticket_comments") 
+            print('saved data in comments created ', save_data)           
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
                      
@@ -75,7 +77,8 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
             }
             
-            save_data = postgres_client.update_data(comment_data, "id", "ticket_comments")            
+            save_data = postgres_client.update_data(comment_data, "id", "ticket_comments")   
+            print('saved data in comments edited ', save_data)          
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
                      
@@ -88,6 +91,7 @@ class Issue_commentHandler(EventHandler):
             print(f'deleting comment with {data['issue']}')
             comment_id = data['comment']['id']
             data = postgres_client.deleteIssueComment(comment_id)
+            print('data in comment deleted', data) 
         except Exception as e:
             logger.info(f"{datetime.now()}---{e}")
             raise Exception

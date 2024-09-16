@@ -469,15 +469,16 @@ class TicketEventHandler:
         action = eventData["action"]
         issue = eventData["issue"]
        
+        print('processing description ', issue)
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
         print(markdown_contents)
     # print(markdown_contents, file=sys.stderr)
         parsed_url = urlparse(issue["url"])
         path_segments = parsed_url.path.split('/')
         repository_owner = path_segments[2]
-        org = self.supabase_client.get_org(repository_owner)
+        org = self.postgres_client.get_data("name", "dmp_orgs", repository_owner)
         complexity = markdown_contents.get("Complexity")
-        print(complexity)
+        print("complexity", complexity)
         ticket_data = {
                     "title":issue["title"],     #name of ticket
                     "description":  markdown_contents,
@@ -495,8 +496,8 @@ class TicketEventHandler:
                     "created_at": issue["created_at"] if issue.get("created_at") else None,
                     "updated_at": issue["updated_at"] if issue.get("updated_at") else None,
                 }
-        print(ticket_data)
-        self.supabase_client.insert("issues", ticket_data)
+        print("ticket_data", ticket_data)
+        self.postgres_client.add_data(ticket_data, "issues")
         return ticket_data
     
 
