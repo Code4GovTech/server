@@ -14,12 +14,13 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from models.models import Base,GithubClassroomData
-from sqlalchemy import delete
+from sqlalchemy import delete, insert
 from sqlalchemy import select, asc, desc,update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
 from datetime import datetime
 from sqlalchemy import cast, String ,and_
+from sqlalchemy.dialects.postgresql import ARRAY
 
 dotenv.load_dotenv(".env")
 
@@ -150,7 +151,7 @@ class SupabaseInterface():
         return
     
     def checkIsTicket(self, issue_id):
-        ccbpResp = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        ccbpResp = self.client.table("issues").select("*").eq("issue_id", issue_id).execute()
         dmpResp = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
         data = ccbpResp.data + dmpResp.data
         # unlisted_data = self.client.table("unlisted_tickets").select("*").eq("issue_id", issue_id).execute()
@@ -180,18 +181,18 @@ class SupabaseInterface():
 
     
     def getTicket(self, issue_id):
-        data = self.client.table("ccbp_tickets").select("*").eq("issue_id", issue_id).execute()
+        data = self.client.table("issues").select("*").eq("issue_id", issue_id).execute()
         if len(data.data)==0:
             data = self.client.table("dmp_tickets").select("*").eq("issue_id", issue_id).execute()
         return data.data
     
     def deleteTicket(self, issue_id):
-        data = self.client.table("ccbp_tickets").delete().eq("issue_id", issue_id).execute()
+        data = self.client.table("issues").delete().eq("issue_id", issue_id).execute()
         data = self.client.table("dmp_tickets").delete().eq("issue_id", issue_id).execute()
         return data.data
     
     def update_recorded_ticket(self, data):
-        data = self.client.table("ccbp_tickets").update(data).eq("issue_id", data["issue_id"]).execute()
+        data = self.client.table("issues").update(data).eq("issue_id", data["issue_id"]).execute()
         return data.data
     
     def updateRecordedDMPTicket(self, data):
@@ -285,11 +286,11 @@ class SupabaseInterface():
         return data
     
     def record_created_ticket(self, data):
-        issues = self.client.table("ccbp_tickets").select("*").eq("issue_id",data["issue_id"]).execute()
+        issues = self.client.table("issues").select("*").eq("issue_id",data["issue_id"]).execute()
         if len(issues.data)>0:
             # print(issues, file=sys.stderr)
             return issues.data
-        data = self.client.table("ccbp_tickets").insert(data).execute()
+        data = self.client.table("issues").insert(data).execute()
         # print(data, file=sys.stderr)
         return data.data
     
@@ -763,7 +764,7 @@ class PostgresORM:
         
     async def checkIsTicket(self, issue_id):
         try:
-            tables_to_check = ['issues', 'ccbp_tickets']  
+            tables_to_check = ['issues']  
 
             async with self.session() as session:
                 data = []
@@ -794,19 +795,27 @@ class PostgresORM:
                 table = self.get_class_by_tablename(table_name)
                 
                 # Build and execute the query to check if the issue_id already exists
-                stmt = select(table).where(table.issue_id == data['issue_id'])
+                # stmt = select(table).where(table.issue_id == data['issue_id'])
+
+                stmt = insert(table).values(
+                    link=data['link'],
+                    labels=cast(data['labels'], ARRAY(String)),  # Cast to ARRAY type
+                    complexity=data['complexity'],
+                    technology=data['technology'],
+                    status=data['status'],
+                    created_at=data['created_at'],
+                    title=data['title'],
+                    description=f"{data['description']}",
+                    org_id=data['org_id'],
+                    issue_id=data['issue_id']
+                ).returning(table)
+
                 result = await session.execute(stmt)
-                issues = result.scalars().all()
+            
+                await session.commit()    
+                inserted_record = result.fetchone() 
                 
-                if issues:
-                    return self.convert_dict(issues)
-                
-                new_record = table(**data)
-                session.add(new_record)
-                await session.commit()                
-                await session.refresh(new_record)
-                
-                return self.convert_dict(new_record)
+                return inserted_record
                     
         except Exception as e:
             print(f"Error in record_created_ticket method: {e}")
@@ -841,7 +850,7 @@ class PostgresORM:
     async def addPr(self, prData, issue_id):
         try:
             if issue_id:
-                ticket = await self.get_data("issue_id","ccbp_tickets",issue_id,None)
+                ticket = await self.get_data("issue_id","issues",issue_id,None)
                 if len(ticket) ==0:
                     ticket = await self.get_data("issue_id","dmp_tickets",issue_id,None)
 

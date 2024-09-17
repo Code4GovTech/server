@@ -35,12 +35,8 @@ class IssuesHandler(EventHandler):
                 issue = data["issue"]
                 print('inside issue created with', issue)
                 if await postgres_client.get_issue_from_issue_id(issue["id"]):
-                    await postgres_client.delete("issues", "id", issue["id"])
+                    await postgres_client.delete("issues", "issue_id", issue["id"])
                 await TicketEventHandler().onTicketCreate(data)
-                if await postgres_client.checkIsTicket("issues","issue_id",issue["id"]):
-                    await TicketEventHandler().onTicketEdit(data)
-                    if data["action"] == "closed":
-                        await TicketEventHandler().onTicketClose(data)
             
         except Exception as e:
             print('exception', e)
@@ -53,7 +49,7 @@ class IssuesHandler(EventHandler):
             if data.get("issue"):
                 issue = data["issue"]
                 print('inside issue opened with', issue)
-                await TicketEventHandler().processDescription(data)
+                await TicketEventHandler().onTicketCreate(data)
             
         except Exception as e:
             logging.info(e)
@@ -90,7 +86,7 @@ class IssuesHandler(EventHandler):
             body = issue["body"]
             print(body)
             if body:
-                await TicketEventHandler().processDescription(data)
+                await TicketEventHandler().onTicketCreate(data)
                 
             return "success"
         except Exception as e:

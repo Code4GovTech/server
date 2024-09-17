@@ -170,31 +170,38 @@ class TicketEventHandler:
                 ticketType = "dmp"
             markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
             # print(markdown_contents, file=sys.stderr)
+            parsed_url = urlparse(issue["url"])
+            path_segments = parsed_url.path.split('/')
+            repository_owner = path_segments[2]
+            org = await self.postgres_client.get_data("name", "dmp_orgs", repository_owner)
+            complexity = markdown_contents.get("Complexity")
+            advisor = markdown_contents.get("Advisor")
+            mentor = markdown_contents.get("Mentors")
+            contributor = markdown_contents.get("Contributor")
+            designer = markdown_contents.get("Designer")
+            labels = issue["labels"]
+            print("complexity", complexity)
             ticket_data = {
-                        "name":issue["title"],     #name of ticket
-                        # "product":matchProduct(markdown_contents["Product Name"]) if markdown_contents.get("Product Name") else matchProduct(markdown_contents["Product"]) if markdown_contents.get("Product") else None,
-                        "product":markdown_contents["Product Name"] if markdown_contents.get("Product Name") else markdown_contents["Product"] if markdown_contents.get("Product") else None,
-                        "complexity":self.complexity_synonyms[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") else None ,
-                        "project_category":markdown_contents["Category"].split(',') if markdown_contents.get("Category") else None,
-                        "project_sub_category":markdown_contents["Sub Category"].split(',') if markdown_contents.get("Sub Category") else None,
-                        "reqd_skills":[skill for skill in markdown_contents["Tech Skills Needed"].split(',')] if markdown_contents.get("Tech Skills Needed") else None,
-                        "issue_id":issue["id"],
-                        "status": issue["state"],
-                        "api_endpoint_url":issue["url"],
-                        "url": issue["html_url"],
-                        "organization": markdown_contents["Organisation Name"] if markdown_contents.get("Organisation Name") else None,
-                        "ticket_points":self.ticket_points[markdown_contents["Complexity"].lower()] if markdown_contents.get("Complexity") and markdown_contents.get("Complexity").lower() in self.ticket_points.keys()  else 10,
-                        "mentors": [github_handle for github_handle in markdown_contents["Mentor(s)"].split(' ')] if markdown_contents.get("Mentor(s)") else None
-                    }
+                    "title":issue["title"],     #name of ticket
+                    "description":  markdown_contents,
+                    "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
+                    "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                    "status": issue["state"],
+                    "link": issue["html_url"],
+                    "org_id": org[0]["id"],
+                    "labels": [l['name'] for l in labels],
+                    "issue_id": issue["id"],
+                    "created_at": issue["created_at"] if issue.get("created_at") else None,
+            }
             # print(ticket_data, file=sys.stderr)
-            if ticketType == "ccbp" and ticket_data["product"] and ticket_data["complexity"] and ticket_data["reqd_skills"] and ticket_data["mentors"] and ticket_data["project_category"]:
-                if not await self.postgres_client.checkIsTicket(ticket_data["issue_id"]):
-                    await send_message(ticket_data)
-                await self.postgres_client.record_created_ticket(data=ticket_data,table_name="ccbp_tickets")
-            elif ticketType == "dmp":
-                if not await PostgresORM().check_record_exists("dmp_tickets","issue_id",ticket_data["issue_id"]):
-                    await send_message(ticket_data)
-                await self.postgres_client.record_created_ticket(data=ticket_data,table_name="dmp_tickets")
+            if ticketType == "ccbp":
+                # if not await self.postgres_client.checkIsTicket(ticket_data["issue_id"]):
+                #     await send_message(ticket_data)
+                await self.postgres_client.record_created_ticket(data=ticket_data,table_name="issues")
+            # elif ticketType == "dmp":
+            #     if not await PostgresORM().check_record_exists("dmp_tickets","issue_id",ticket_data["issue_id"]):
+            #         await send_message(ticket_data)
+            #     await self.postgres_client.record_created_ticket(data=ticket_data,table_name="dmp_tickets")
 
             else:
                 print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
@@ -227,7 +234,7 @@ class TicketEventHandler:
         if eventData["action"] == "unlabeled":
             if (not issue["labels"]) or (not any(label["name"].lower() in ["C4GT Community".lower(), "dmp 2024"] for label in issue["labels"] )):
                 # Delete Ticket
-                await self.postgres_client.delete("ccbp_tickets","issue_id",issue["id"])
+                await self.postgres_client.delete("issues","issue_id",issue["id"])
                 await self.postgres_client.delete("dmp_tickets","issue_id",issue["id"])
                 return
         if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
@@ -253,7 +260,7 @@ class TicketEventHandler:
                     }
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
-            await self.postgres_client.update_data(ticket_data,"issue_id","ccbp_tickets")
+            await self.postgres_client.update_data(ticket_data,"issue_id","issues")
         elif ticketType == "dmp":
             await self.postgres_client.update_data(ticket_data,"issue_id","dmp_tickets")
 
@@ -476,7 +483,7 @@ class TicketEventHandler:
         parsed_url = urlparse(issue["url"])
         path_segments = parsed_url.path.split('/')
         repository_owner = path_segments[2]
-        org = self.postgres_client.get_data("name", "dmp_orgs", repository_owner)
+        org = await self.postgres_client.get_data("name", "dmp_orgs", repository_owner)
         complexity = markdown_contents.get("Complexity")
         print("complexity", complexity)
         ticket_data = {
