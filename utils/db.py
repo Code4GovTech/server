@@ -763,7 +763,7 @@ class PostgresORM:
         
     async def checkIsTicket(self, issue_id):
         try:
-            tables_to_check = ['ccbp_tickets', 'dmp_tickets']  
+            tables_to_check = ['issues', 'ccbp_tickets']  
 
             async with self.session() as session:
                 data = []
@@ -878,7 +878,7 @@ class PostgresORM:
                 # Build and execute the query to check if the issue_id already exists
                 stmt = select(table).where(table.issue_id == issue_id)
                 result = await session.execute(stmt)
-                issues = result.scalars().all()
+                issues = result.scalars().first()
                 
                 if issues:
                     return self.convert_dict(issues)
@@ -1007,3 +1007,4 @@ class PostgresORM:
         except Exception as e:
             print(f"Error in save_user_points method: {e}")
             return None
+        
