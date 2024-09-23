@@ -406,7 +406,7 @@ class DmpOrgs(Base):
     link = Column(Text, nullable=False)
     repo_owner = Column(Text, nullable=False)
     
-    issues = relationship('Issues', backref='organization', lazy='joined')
+    # issues = relationship('Issues', backref='organization', lazy='joined')
 
 
     def __repr__(self):
@@ -618,7 +618,8 @@ class GithubOrganisationsToOrganisations(Base):
 class IssueContributors(Base):
     __tablename__ = 'issue_contributors'
 
-    contributor_id = Column(BigInteger, ForeignKey('contributors_registration.id'), primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    contributor_id = Column(BigInteger, ForeignKey('contributors_registration.id'))
     issue_id = Column(BigInteger, ForeignKey('issues.id'), primary_key=True)
     role = Column(BigInteger, ForeignKey('role_master.id'), nullable=True)
     created_at = Column(DateTime, nullable=True)
@@ -669,7 +670,7 @@ class Issues(Base):
     updated_at = Column(DateTime, nullable=True)
     title = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
-    org_id = Column(BigInteger, ForeignKey('dmp_orgs.id'), nullable=True)
+    org_id = Column(BigInteger, ForeignKey('community_orgs.id'), nullable=True)
     issue_id = Column(BigInteger, nullable=True)
     
     point_transactions = relationship('PointTransactions', back_populates='issue')
@@ -1067,7 +1068,7 @@ class PointsMapping(Base):
 class PrHistory(Base):
     __tablename__ = 'pr_history'
 
-    id = Column(String(36), primary_key=True)  # UUID field
+    id = Column(String(36), primary_key=True, autoincrement=True)  # UUID field
     created_at = Column(DateTime, nullable=True)
     api_url = Column(Text, nullable=True)
     html_url = Column(Text, unique=True, nullable=True)
@@ -1478,4 +1479,19 @@ class GitHubProfileData(Base):
             'prs_merged': self.prs_merged,
             'dpg_points': self.dpg_points,
             'milestone': self.milestone,
+        }
+
+class CommunityOrgs(Base):
+    __tablename__ = 'community_orgs'
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=True)
+
+    def __repr__(self):
+        return f"<CommunityOrgs(name={self.name})>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name
         }

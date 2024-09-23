@@ -13,7 +13,7 @@ class IssuesHandler(EventHandler):
             issue = data["issue"]
             labels = issue["labels"]
             print(f'inside issue handler with issue data as {issue} and label as {labels}')
-            if next((l for l in labels if l['name'] == 'C4GT Community'), None):
+            if next((l for l in labels if l['name'].lower() == 'c4gt community'), None):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
                     await handler_method(data, postgres_client)
@@ -25,6 +25,7 @@ class IssuesHandler(EventHandler):
 
             
         except Exception as e:
+            print('exception ',e)
             logging.info(e)
             raise Exception
         
@@ -67,7 +68,7 @@ class IssuesHandler(EventHandler):
             print(labels)
             if labels:
                 db_issue["labels"] = labels["name"]
-                await self.postgres_client.update_data(db_issue, 'id', 'issues')
+                await postgres_client.update_data(db_issue, 'id', 'issues')
                 
             return "success"
         except Exception as e:
@@ -79,14 +80,14 @@ class IssuesHandler(EventHandler):
             print(json.dumps(data, indent=4))
             issue = data["issue"]
             print('inside issue edited with', issue)
-            db_issue = await self.postgres_client.get_data('issue_id', 'issues', issue["id"], "*")
+            db_issue = await postgres_client.get_data('issue_id', 'issues', issue["id"], "*")
             if not db_issue:
                 await self.handle_issue_opened(data, postgres_client)
             
             body = issue["body"]
             print(body)
             if body:
-                await TicketEventHandler().onTicketCreate(data)
+                await TicketEventHandler().onTicketEdit(data)
                 
             return "success"
         except Exception as e:
@@ -99,10 +100,9 @@ class IssuesHandler(EventHandler):
         try:
             issue = data["issue"]
             print('inside issue closed with', issue)
-            issue = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
-            if issue:
-                issue["status"] = "closed"
-                await self.postgres_client.update_data(issue, 'id', 'issues')
+            issue_exist = await postgres_client.get_data('issue_id', 'issues', issue["id"])
+            if issue_exist:
+                await TicketEventHandler().onTicketClose(issue)
             return "success"
         except Exception as e:
             logging.info(e)
@@ -113,7 +113,7 @@ class IssuesHandler(EventHandler):
         try:
             issue = data["issue"]
             print('inside user activity', issue)
-            issue = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
+            issue = await postgres_client.get_data('issue_id', 'issues', issue["id"])
 
             user_id = data['issue']['user']['id']
             
@@ -128,7 +128,7 @@ class IssuesHandler(EventHandler):
                 "contributor_id": contributor_id,
                 "mentor_id": ""
             }
-            saved_activity_data = await self.postgres_client.add_data(activity_data,"user_activity")
+            saved_activity_data = await postgres_client.add_data(activity_data,"user_activity")
             return saved_activity_data
         
         except Exception as e:

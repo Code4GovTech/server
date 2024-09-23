@@ -272,28 +272,20 @@ async def test():
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
     print("🛠️SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER", locals(), file=sys.stderr)
-    SUPABASE_URL = 'https://kcavhjwafgtoqkqbbqrd.supabase.co/rest/v1/contributors_registration'
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Ensure this key is kept secure.
+    postgres_client = PostgresORM()
 
-    async def post_to_supabase(json_data):
-        headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {SUPABASE_KEY}',
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-        }
+    # async def post_to_supabase(json_data):
+    #     # As aiohttp recommends, create a session per application, rather than per function.
+    #     async with aiohttp.ClientSession() as session:
+    #         async with session.put(SUPABASE_URL, json=json_data, headers=headers) as response:
+    #             status = response.status
+    #             # Depending on your requirements, you may want to process the response here.
+    #             response_text = await response.text()
 
-        # As aiohttp recommends, create a session per application, rather than per function.
-        async with aiohttp.ClientSession() as session:
-            async with session.put(SUPABASE_URL, json=json_data, headers=headers) as response:
-                status = response.status
-                # Depending on your requirements, you may want to process the response here.
-                response_text = await response.text()
+    #             if status != 201:
+    #                 raise Exception(response_text)
 
-                if status != 201:
-                    raise Exception(response_text)
-
-        return status, response_text
+    #     return status, response_text
     discord_id = discord_userdata
     print("🛠️SUCCESFULLY DEFINED FUNCTION TO POST TO SUPABASE", locals(), file=sys.stderr)
     # supabase_client = SupabaseInterface.get_instance()
@@ -304,7 +296,8 @@ async def register(discord_userdata):
     print("🛠️OBTAINED USER DATA", locals(), file=sys.stderr)
     # data = supabase_client.client.table("contributors").select("*").execute()
     try:
-        resp = await post_to_supabase(user_data)
+        # resp = await post_to_supabase(user_data)
+        resp = await postgres_client.add_data(user_data, "contributors_registration")
         print("🛠️PUSHED USER DETAILS TO SUPABASE", resp, file=sys.stderr)
     except Exception as e:
         print("🛠️ENCOUNTERED EXCEPTION PUSHING TO SUPABASE",e, file=sys.stderr)
@@ -317,6 +310,7 @@ async def register(discord_userdata):
 async def event_handler():
     try:
         data = await request.json
+        print('data is ', data)
         secret_key = os.getenv("WEBHOOK_SECRET") 
 
         verification_result, error_message = await verify_github_webhook(request,secret_key)

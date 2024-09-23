@@ -712,6 +712,30 @@ class PostgresORM:
         except Exception as e:
             print("Error - add_data:", e)
             return None
+        
+    async def insert_org(self, name):
+        try:
+            async with self.session() as session:
+                table = self.get_class_by_tablename("community_orgs")
+                if not table:
+                    raise ValueError(f"No ORM class found for table community_orgs")
+                
+                stmt = insert(table).values(
+                        name=name
+                    ).returning(table)
+
+                result = await session.execute(stmt)
+            
+                await session.commit()    
+                inserted_record = result.fetchone() 
+                print("inserted_record ", {"id": inserted_record[0], "name": inserted_record[1]})
+                return {"id": inserted_record[0], "name": inserted_record[1]}
+                    
+        except Exception as e:
+            print(f"Error in record_created_ticket method: {e}")
+            return None
+            
+
             
     async def check_record_exists(self, table_name, filter_column, filter_value):
         try:
@@ -812,10 +836,11 @@ class PostgresORM:
 
                 result = await session.execute(stmt)
             
-                await session.commit()    
-                inserted_record = result.fetchone() 
-                
-                return inserted_record
+                await session.commit()
+                    
+                # inserted_record = await result.fetchone() 
+                # print("inserted result ", inserted_record)
+                return result
                     
         except Exception as e:
             print(f"Error in record_created_ticket method: {e}")
@@ -1016,4 +1041,23 @@ class PostgresORM:
         except Exception as e:
             print(f"Error in save_user_points method: {e}")
             return None
+        
+
+    async def deleteIssueComment(self, commentId):
+        try:
+            async with self.session() as session:
+                # Dynamically get the ORM class for the table
+                table = self.get_class_by_tablename("ticket_comments")
+                
+                # Build and execute the query with multiple conditions
+                stmt = delete(table).where(
+                   getattr("ticket_comments", id) == commentId
+                )
+                result = await session.execute(stmt)
+                is_deleted = result.scalars().all()
+                return is_deleted
+        except Exception as e:
+            print(f"Error in deleting issue comments: {e}")
+            return None
+
         
