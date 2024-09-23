@@ -18,8 +18,8 @@ async def dispatch_event(event_type, data, postgres_client):
         handler_instance = handler_class()
         await handler_instance.handle_event(data, postgres_client)
 
-    except ImportError:
-        print(f"No handler found for event type: {event_type}")
+    except Exception as e:
+        print(f"No handler found for event type: {e}")
         return "Import Error"
 
     except :

@@ -12,8 +12,8 @@ class Issue_commentHandler(EventHandler):
             issue = data["issue"]
             print('inside issue comment handler ', issue)
             labels = issue["labels"]
-            if next((l for l in labels if l['name'] == 'C4GT Community'), None):
-                handler_method = getattr(self, f'handle_issue_comment{module_name}', None)
+            if next((l for l in labels if l['name'].lower() == 'c4gt community'), None):
+                handler_method = getattr(self, f'handle_issue_comment_{module_name}', None)
                 if handler_method:
                     await handler_method(data, postgres_client)
                 else:
@@ -29,7 +29,7 @@ class Issue_commentHandler(EventHandler):
     async def handle_issue_comment_created(self, data, postgres_client):
         try:        
             #generate sample dict for ticket comment table
-            print(f'creating comment with {data['issue']}')
+            print(f'creating comment with {data["issue"]}')
             comment_data = {
                 'url':data['issue']['comments_url'],
                 'html_url':data['issue']['html_url'],
@@ -46,17 +46,6 @@ class Issue_commentHandler(EventHandler):
                 
             }
                         
-            if data['issue']['state'] == "closed":
-                issue = await postgres_client.get_issue_from_issue_id(data['issue']['id'])                
-                contributors = await postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
-                
-                #FIND POINTS BY ISSUE COMPLEXITY
-                points = await postgres_client.get_pointsby_complexity(issue[0]['complexity'])
-                
-                #SAVE POINT IN POINT_TRANSACTIONS & USER POINTS
-                add_points = await postgres_client.upsert_point_transaction(issue[0]['id'],contributors[0]['contributor_id'],points)
-                add_user_points= await postgres_client.save_user_points(contributors[0]['contributor_id'],points)
-                            
             save_data = await postgres_client.add_data(comment_data,"ticket_comments") 
             print('saved data in comments created ', save_data)           
             if save_data == None:
@@ -70,7 +59,7 @@ class Issue_commentHandler(EventHandler):
     async def handle_issue_comment_edited(self, data, postgres_client):
         try:        
             #generate sample dict for ticket comment table
-            print(f'editing comment with {data['issue']}')
+            print(f'editing comment with {data["issue"]}')
             comment_data = {
                 'content':data['comment']['body'],
                 'id':data['comment']['id'],
@@ -88,11 +77,12 @@ class Issue_commentHandler(EventHandler):
         
     async def handle_issue_comment_deleted(self, data, postgres_client):
         try:
-            print(f'deleting comment with {data['issue']}')
+            print(f'deleting comment with {data["issue"]}')
             comment_id = data['comment']['id']
             data = postgres_client.deleteIssueComment(comment_id)
             print('data in comment deleted', data) 
         except Exception as e:
+            print('Exception occured ', e)
             logger.info(f"{datetime.now()}---{e}")
             raise Exception
 
