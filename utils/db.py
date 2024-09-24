@@ -9,18 +9,19 @@ import dotenv
 
 ##
 from sqlalchemy.future import select
-from sqlalchemy.orm import sessionmaker      
+from sqlalchemy.orm import sessionmaker, aliased      
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from models.models import Base,GithubClassroomData
 from sqlalchemy import delete, insert
-from sqlalchemy import select, asc, desc,update
+from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
 from datetime import datetime
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
+from models.models import Issues, CommunityOrgs, PointSystem
 
 dotenv.load_dotenv(".env")
 
@@ -1059,5 +1060,72 @@ class PostgresORM:
         except Exception as e:
             print(f"Error in deleting issue comments: {e}")
             return None
-
         
+
+    async def getUserLeaderBoardData(self):
+        try:
+            async with  self.session() as session:
+                orgs_alias = aliased(CommunityOrgs)
+                points_alias = aliased(PointSystem)
+                
+                # Join the Issues table with the CommunityOrgs and PointSystem
+                stmt = (
+                    select(Issues, orgs_alias, points_alias)
+                    .join(orgs_alias, Issues.org_id == orgs_alias.id, isouter=True)  # Left join with CommunityOrgs
+                    .join(points_alias, Issues.complexity == points_alias.complexity, isouter=True)  # Left join with PointSystem
+                )
+                
+                # Execute the statement
+                result = await session.execute(stmt)
+
+                # Fetch all the results
+                records = result.all()
+
+                # Convert to dictionary format for readability (if needed)
+                return [
+                    {
+                        'issue': issue.to_dict(),
+                        'community_org': org.to_dict() if org else None,
+                        'point_system': points.to_dict() if points else None
+                    }
+                    for issue, org, points in records
+                ]
+        except Exception as e:
+            print('Exception occured while getting users leaderboard data ', e)
+            return None
+
+
+    async def get_joined_data_with_filters(self, filters=None):
+        async with self.session() as session:
+            # Aliases for the tables
+            issues = aliased(Issues)
+            orgs = aliased(CommunityOrgs)
+            points = aliased(PointSystem)
+
+            # Base query with the join
+            query = select(
+                issues,
+                orgs,
+                points
+            ).join(
+                orgs, issues.org_id == orgs.id
+            ).join(
+                points, points.complexity == issues.complexity
+            )
+
+            # If dynamic filters are provided, apply them
+            if filters:
+                filter_conditions = []
+                for field, value in filters.items():
+                    filter_conditions.append(getattr(issues, field) == value)
+
+                query = query.where(and_(*filter_conditions))
+
+            # Execute the query and return the results
+            result = await session.execute(query)
+            records = result.all()
+
+            # Convert results to dictionaries if necessary
+            return [dict(issue=record[0].to_dict(), org=record[1].to_dict(), points=record[2].to_dict()) for record in records]
+
+            

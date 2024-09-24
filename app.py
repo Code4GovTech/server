@@ -441,6 +441,52 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
+
+@app.route("/leaderboard-user", methods = ['POST'])
+async def get_leaderboard_user():
+    try:
+        print('getting data for users leader board')
+        request_data = request.body._data
+        filter = json.loads(request_data.decode('utf-8'))
+        postgres_client = PostgresORM.get_instance()
+        # issues and contributors and mentors and their points
+        # all_issues = await postgres_client.getUserLeaderBoardData()
+        all_issues = await postgres_client.get_joined_data_with_filters(filter)
+        print('issues are ', all_issues)
+        issue_result = []
+        for issue in all_issues:
+            res = {
+                "created_at": "2023-11-24T11:36:22.965699+00:00",
+                "name": issue["issue"]["title"],
+                "complexity": issue["issue"]["complexity"],
+                "category": issue["issue"]["labels"],
+                "reqd_skills": issue["issue"]["technology"].split(','),
+                "issue_id": issue["issue"]["issue_id"],
+                "api_endpoint_url": "https://api.github.com/repos/ELEVATE-Project/frontend-utils-library/issues/3",
+                "url": issue["issue"]["link"],
+                "ticket_points": issue["points"]["points"] if issue["points"] else None,
+                "index": 245,
+                "mentors": [
+                    "Amoghavarsh"
+                ],
+                "uuid": "63334ef2-457c-462a-9127-c4a339cdf5f4", #what's the need here
+                "status": issue["issue"]["status"],
+                "community_label": False,
+                "organization": issue["org"]["name"],
+                "closed_at": "2024-08-06T06:59:10+00:00",
+                "assignees": None,
+                "issue_author": [
+                    "kiranharidas187"
+                ],
+                "is_assigned": False
+            }
+            issue_result.append(res)
+
+        return issue_result
+    except Exception as e:
+        print('Exception occured in getting users leaderboard data ', e)
+        return 'failed'
+
 # #CRON JOB
 # @app.before_serving
 # async def start_scheduler():
