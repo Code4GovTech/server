@@ -161,89 +161,90 @@ class TicketEventHandler:
         return
     
     async def onTicketCreate(self, eventData):
-        issue = eventData["issue"]
+        try:
+            issue = eventData["issue"]
 
-        is_issue = await self.postgres_client.get_issue_from_issue_id(issue["id"])
-        if is_issue:
-            return await self.onTicketEdit(eventData)
-        print(f'ticket creation called at {datetime.now()} with {issue}')
-        if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024"] for label in issue["labels"] ):
-            if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
-                ticketType = "ccbp"
-            else:
-                ticketType = "dmp"
-            markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-            # print(markdown_contents, file=sys.stderr)
-            parsed_url = urlparse(issue["url"])
-            path_segments = parsed_url.path.split('/')
-            repository_owner = path_segments[2]
-            org = await self.postgres_client.get_data("name", "community_orgs", repository_owner)
-            if org is None:
-                org = await self.postgres_client.add_data(data={"name":repository_owner}, table_name="community_orgs")
-            complexity = markdown_contents.get("Complexity")
-            advisor = markdown_contents.get("Advisor")
-            mentor = markdown_contents.get("Mentors")
-            contributor = markdown_contents.get("Contributor")
-            designer = markdown_contents.get("Designer")
-            labels = issue["labels"]
-            print("complexity", complexity)
-            ticket_data = {
-                    "title":issue["title"],     #name of ticket
-                    "description":  markdown_contents,
-                    "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
-                    "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
-                    "status": issue["state"],
-                    "link": issue["html_url"],
-                    "org_id": org[0]["id"],
-                    "labels": [l['name'] for l in labels],
-                    "issue_id": issue["id"],
-                    "created_at": issue["created_at"] if issue.get("created_at") else None,
-            }
-            if ticketType == "ccbp":
-                recorded_data = await self.postgres_client.record_created_ticket(data=ticket_data,table_name="issues")
-                print("recorded issue data ", recorded_data)
-                added_contributor = await self.add_contributor(issue)
-                if added_contributor:
-                    print('contributors data added')
+            is_issue = await self.postgres_client.get_issue_from_issue_id(issue["id"])
+            if is_issue:
+                return await self.onTicketEdit(eventData)
+            print(f'ticket creation called at {datetime.now()} with {issue}')
+            if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024"] for label in issue["labels"] ):
+                if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
+                    ticketType = "ccbp"
                 else:
-                    print('could not add contributors data')
-                #add mentor's here
+                    ticketType = "dmp"
+                markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
+                # print(markdown_contents, file=sys.stderr)
+                parsed_url = urlparse(issue["url"])
+                path_segments = parsed_url.path.split('/')
+                repository_owner = path_segments[2]
+                org = await self.postgres_client.get_data("name", "community_orgs", repository_owner)
+                if org is None:
+                    org = await self.postgres_client.add_data(data={"name":repository_owner}, table_name="community_orgs")
+                complexity = markdown_contents.get("Complexity")
+                advisor = markdown_contents.get("Advisor")
+                mentor = markdown_contents.get("Mentors")
+                contributor = markdown_contents.get("Contributor")
+                designer = markdown_contents.get("Designer")
+                labels = issue["labels"]
+                print("complexity", complexity)
+                ticket_data = {
+                        "title":issue["title"],     #name of ticket
+                        "description":  markdown_contents,
+                        "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
+                        "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                        "status": issue["state"],
+                        "link": issue["html_url"],
+                        "org_id": org[0]["id"],
+                        "labels": [l['name'] for l in labels],
+                        "issue_id": issue["id"],
+                        "created_at": issue["created_at"] if issue.get("created_at") else None,
+                }
+                if ticketType == "ccbp":
+                    recorded_data = await self.postgres_client.record_created_ticket(data=ticket_data,table_name="issues")
+                    print("recorded issue data ", recorded_data)
+                    added_contributor = await self.add_contributor(issue)
+                    if added_contributor:
+                        print('contributors data added')
+                    else:
+                        print('could not add contributors data')
+                    #add mentor's here
 
-            
+                
 
-            else:
-                print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
-                await self.postgres_client.add_data("issues", ticket_data)
+                else:
+                    print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
+                    await self.postgres_client.add_data("issues", ticket_data)
 
-            if TicketFeedbackHandler().evaluateDict(markdown_contents) and ticketType == "ccbp":
-                url_components = issue["url"].split('/')
-                issue_number = url_components[-1]
-                repo = url_components[-3]
-                owner = url_components[-4]
-                try:                    
-                    await PostgresORM().add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
-                    comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
-                    if comment:
+                if TicketFeedbackHandler().evaluateDict(markdown_contents) and ticketType == "ccbp":
+                    url_components = issue["url"].split('/')
+                    issue_number = url_components[-1]
+                    repo = url_components[-3]
+                    owner = url_components[-4]
+                    try:                    
+                        await PostgresORM().add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
+                        comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+                        if comment:
+                                
+                            await PostgresORM().update_data({
+                                "api_url":comment["url"],
+                                "comment_id":comment["id"],
+                                "issue_id":issue["id"],
+                                "updated_at": datetime.utcnow().isoformat()
+                            },"issue_id","app_comments")
                             
-                        await PostgresORM().update_data({
-                            "api_url":comment["url"],
-                            "comment_id":comment["id"],
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.utcnow().isoformat()
-                        },"issue_id","app_comments")
-                        
-                except Exception as e:
-                    print("Issue already commented ", e)
-        return eventData
+                    except Exception as e:
+                        print("Issue already commented ", e)
+            return eventData
+        except Exception as e:
+            print('exception occured while creating ticket ', e)
+            
+        
 
     async def onTicketEdit(self, eventData):
         issue = eventData["issue"]
         print(f'edit ticket called at {datetime.now()} with {issue}')
-        if eventData["action"] == "unlabeled":
-            if (not issue["labels"]) or (not any(label["name"].lower() in ["C4GT Community".lower()] for label in issue["labels"] )):
-                # Delete Ticket
-                await self.postgres_client.delete("issues","issue_id",issue["id"])
-                return
+    
         if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
             ticketType = "ccbp"
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
