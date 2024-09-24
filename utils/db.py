@@ -778,9 +778,10 @@ class PostgresORM:
                 # Execute the query
                 result = await session.execute(stmt)
                 exists_result = result.scalar()
-                result = self.convert_dict(exists_result)
-
-                return result
+                if exists_result:
+                    return self.convert_dict(exists_result)
+                else:
+                    return None
             
         except Exception as e:
             print(f"An error occurred - get_data: {e}")
