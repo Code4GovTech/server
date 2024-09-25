@@ -407,7 +407,7 @@ def get_postgres_uri():
     DB_USER = os.getenv('POSTGRES_DB_USER')
     DB_PASS = os.getenv('POSTGRES_DB_PASS')
     
-    return f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}'
+    return os.getenv('DATABASE_URL')
 
     
 class PostgresORM:
