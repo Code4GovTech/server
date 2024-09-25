@@ -447,11 +447,13 @@ async def get_leaderboard_user():
     try:
         print('getting data for users leader board')
         request_data = request.body._data
-        filter = json.loads(request_data.decode('utf-8'))
+        filter = ''
+        if request_data:
+            filter = json.loads(request_data.decode('utf-8'))
         postgres_client = PostgresORM.get_instance()
         # issues and contributors and mentors and their points
         # all_issues = await postgres_client.getUserLeaderBoardData()
-        all_issues = await postgres_client.get_joined_data_with_filters(filter)
+        all_issues = await postgres_client.fetch_filtered_issues(filter)
         print('issues are ', all_issues)
         issue_result = []
         for issue in all_issues:

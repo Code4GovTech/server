@@ -1128,4 +1128,57 @@ class PostgresORM:
             # Convert results to dictionaries if necessary
             return [dict(issue=record[0].to_dict(), org=record[1].to_dict(), points=record[2].to_dict()) for record in records]
 
+    async def fetch_filtered_issues(self, filters):
+        try:
+            async with self.session() as session:
+                # Start building the query by joining tables
+                query = (
+                    select(Issues, CommunityOrgs, PointSystem)
+                    .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
+                    .join(PointSystem, Issues.complexity == PointSystem.complexity)
+                )
+                
+                # Prepare dynamic filter conditions
+                conditions = []
+                
+                # Check if there are filters for Issues table
+                if 'issues' in filters:
+                    for field, value in filters['issues'].items():
+                        conditions.append(getattr(Issues, field) == value)
+                
+                # Check if there are filters for CommunityOrgs table
+                if 'org' in filters:
+                    for field, value in filters['org'].items():
+                        conditions.append(getattr(CommunityOrgs, field) == value)
+                        
+                # Check if there are filters for PointSystem table
+                if 'points' in filters:
+                    for field, value in filters['points'].items():
+                        conditions.append(getattr(PointSystem, field) == value)
+                
+                # Apply filters (if any) to the query
+                if conditions:
+                    query = query.where(and_(*conditions))
+
+                # Execute the query and fetch results
+                result = await session.execute(query)
+                rows = result.fetchall()
+
+                # Process the result into a dictionary or a preferred format
+                data = []
+                for row in rows:
+                    issue = row.Issues.to_dict()
+                    org = row.CommunityOrgs.to_dict()
+                    point_system = row.PointSystem.to_dict()
+                    data.append({
+                        'issue': issue,
+                        'org': org,
+                        'points': point_system
+                    })
+
+                return data
+
+        except Exception as e:
+            print(f"Error in fetch_filtered_issues: {e}")
+            return None
             
