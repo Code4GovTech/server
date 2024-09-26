@@ -40,7 +40,7 @@ class Pull_requestHandler(EventHandler):
             
             pr_exist = await postgres_client.get_data('pr_id', 'pr_history',  data['pull_request']['id'])
             if pr_exist:
-                save_data = await postgres_client.update_pr_data(pr_data, 'pr_history')
+                save_data = await postgres_client.update_pr_history(pr_data["pr_id"],pr_data)
             else:
                 save_data = await postgres_client.add_data(pr_data,"pr_history")
             print('saved data in PR ', save_data)            
