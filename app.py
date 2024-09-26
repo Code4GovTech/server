@@ -20,6 +20,7 @@ from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
 from datetime import datetime
+from quart_cors import cors
 
 scheduler = AsyncIOScheduler()
 
@@ -29,7 +30,10 @@ sys.path.append(fpath)
 dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
+# Enable CORS on all routes
+app = cors(app, allow_origin="*")
 app.config['TESTING']= False
+
 
 
 
@@ -440,6 +444,48 @@ async def get_role_master():
     role_masters = await PostgresORM().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
+
+
+@app.route("/program-tickets-user", methods = ['POST'])
+async def get_program_tickets_user():
+    try:
+        print('getting data for users leader board')
+        request_data = request.body._data
+        filter = ''
+        if request_data:
+            filter = json.loads(request_data.decode('utf-8'))
+        postgres_client = PostgresORM.get_instance()
+        # issues and contributors and mentors and their points
+        # all_issues = await postgres_client.getUserLeaderBoardData()
+        all_issues = await postgres_client.fetch_filtered_issues(filter)
+        print('issues are ', all_issues)
+        issue_result = []
+        for issue in all_issues:
+            res = {
+                "created_at": "2023-11-24T11:36:22.965699+00:00",
+                "name": issue["issue"]["title"],
+                "complexity": issue["issue"]["complexity"],
+                "category": issue["issue"]["labels"],
+                "reqd_skills": issue["issue"]["technology"].split(','),
+                "issue_id": issue["issue"]["issue_id"],
+                "url": issue["issue"]["link"],
+                "ticket_points": issue["points"]["points"] if issue["points"] else None,
+                "mentors": [
+                    "Amoghavarsh"
+                ],
+                "status": issue["issue"]["status"],
+                "organization": issue["org"]["name"],
+                "closed_at": "2024-08-06T06:59:10+00:00",
+                "assignees": None,
+                "project_type": issue["issue"]["project_type"] if issue["issue"]["project_type"] else None,
+                "is_assigned": False
+            }
+            issue_result.append(res)
+
+        return issue_result
+    except Exception as e:
+        print('Exception occured in getting users leaderboard data ', e)
+        return 'failed'
 
 # #CRON JOB
 # @app.before_serving

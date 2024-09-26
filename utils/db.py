@@ -9,18 +9,19 @@ import dotenv
 
 ##
 from sqlalchemy.future import select
-from sqlalchemy.orm import sessionmaker      
+from sqlalchemy.orm import sessionmaker, aliased      
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from models.models import Base,GithubClassroomData
 from sqlalchemy import delete, insert
-from sqlalchemy import select, asc, desc,update
+from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
 from datetime import datetime
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
+from models.models import Issues, CommunityOrgs, PointSystem
 
 dotenv.load_dotenv(".env")
 
@@ -834,7 +835,8 @@ class PostgresORM:
                     title=data['title'],
                     description=f"{data['description']}",
                     org_id=data['org_id'],
-                    issue_id=data['issue_id']
+                    issue_id=data['issue_id'],
+                    project_type=data['project_type']
                 ).returning(table)
 
                 result = await session.execute(stmt)
@@ -907,6 +909,47 @@ class PostgresORM:
                 updated_record = result.scalars().first()
                 # Convert the updated record to a dictionary before returning
                 return self.convert_dict(updated_record) if updated_record else None
+                    
+        except Exception as e:
+            print(f"Error in update_data: {e}")
+            return None
+
+
+    async def update_pr_data(self, data, table_name):
+        try:
+            table_class = self.get_class_by_tablename(table_name)
+            
+            async with self.session() as session:
+                stmt = (
+                    update(table_class)
+                    .where(table_class.pr_id == data['pr_id'])  # Match the existing issue by issue_id
+                    .values(
+                        created_at= data['created_at'],
+                        api_url=data['api_url'],
+                        html_url= data['html_url'],
+                        raised_by= data['raised_by'],
+                        raised_at=  data['raised_at'],
+                        raised_by_username= data['raised_by_username'],
+                        status= data['status'],
+                        is_merged= data['is_merged'],
+                        merged_by= data['merged_by'],
+                        merged_at= data['merged_at'],
+                        merged_by_username=  data['merged_by_username'],
+                        pr_id= data['pr_id']
+                    )
+                    .returning(table_class)  # Return the updated row(s)
+                )
+
+                # Execute the update statement
+                result = await session.execute(stmt)
+
+                # Commit the transaction
+                await session.commit()
+
+                # Optionally fetch the updated record(s)
+                updated_record = result.fetchone()
+                
+                return updated_record if updated_record else None
                     
         except Exception as e:
             print(f"Error in update_data: {e}")
@@ -1101,5 +1144,125 @@ class PostgresORM:
         except Exception as e:
             print(f"Error in deleting issue comments: {e}")
             return None
-
         
+
+    async def getUserLeaderBoardData(self):
+        try:
+            async with  self.session() as session:
+                orgs_alias = aliased(CommunityOrgs)
+                points_alias = aliased(PointSystem)
+                
+                # Join the Issues table with the CommunityOrgs and PointSystem
+                stmt = (
+                    select(Issues, orgs_alias, points_alias)
+                    .join(orgs_alias, Issues.org_id == orgs_alias.id, isouter=True)  # Left join with CommunityOrgs
+                    .join(points_alias, Issues.complexity == points_alias.complexity, isouter=True)  # Left join with PointSystem
+                )
+                
+                # Execute the statement
+                result = await session.execute(stmt)
+
+                # Fetch all the results
+                records = result.all()
+
+                # Convert to dictionary format for readability (if needed)
+                return [
+                    {
+                        'issue': issue.to_dict(),
+                        'community_org': org.to_dict() if org else None,
+                        'point_system': points.to_dict() if points else None
+                    }
+                    for issue, org, points in records
+                ]
+        except Exception as e:
+            print('Exception occured while getting users leaderboard data ', e)
+            return None
+
+
+    async def get_joined_data_with_filters(self, filters=None):
+        async with self.session() as session:
+            # Aliases for the tables
+            issues = aliased(Issues)
+            orgs = aliased(CommunityOrgs)
+            points = aliased(PointSystem)
+
+            # Base query with the join
+            query = select(
+                issues,
+                orgs,
+                points
+            ).join(
+                orgs, issues.org_id == orgs.id
+            ).join(
+                points, points.complexity == issues.complexity
+            )
+
+            # If dynamic filters are provided, apply them
+            if filters:
+                filter_conditions = []
+                for field, value in filters.items():
+                    filter_conditions.append(getattr(issues, field) == value)
+
+                query = query.where(and_(*filter_conditions))
+
+            # Execute the query and return the results
+            result = await session.execute(query)
+            records = result.all()
+
+            # Convert results to dictionaries if necessary
+            return [dict(issue=record[0].to_dict(), org=record[1].to_dict(), points=record[2].to_dict()) for record in records]
+
+    async def fetch_filtered_issues(self, filters):
+        try:
+            async with self.session() as session:
+                # Start building the query by joining tables
+                query = (
+                    select(Issues, CommunityOrgs, PointSystem)
+                    .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
+                    .join(PointSystem, Issues.complexity == PointSystem.complexity)
+                )
+                
+                # Prepare dynamic filter conditions
+                conditions = []
+                
+                # Check if there are filters for Issues table
+                if 'issues' in filters:
+                    for field, value in filters['issues'].items():
+                        conditions.append(getattr(Issues, field) == value)
+                
+                # Check if there are filters for CommunityOrgs table
+                if 'org' in filters:
+                    for field, value in filters['org'].items():
+                        conditions.append(getattr(CommunityOrgs, field) == value)
+                        
+                # Check if there are filters for PointSystem table
+                if 'points' in filters:
+                    for field, value in filters['points'].items():
+                        conditions.append(getattr(PointSystem, field) == value)
+                
+                # Apply filters (if any) to the query
+                if conditions:
+                    query = query.where(and_(*conditions))
+
+                # Execute the query and fetch results
+                result = await session.execute(query)
+                rows = result.fetchall()
+
+                # Process the result into a dictionary or a preferred format
+                data = []
+                for row in rows:
+                    issue = row.Issues.to_dict()
+                    org = row.CommunityOrgs.to_dict()
+                    point_system = row.PointSystem.to_dict()
+                    data.append({
+                        'issue': issue,
+                        'org': org,
+                        'points': point_system
+                    })
+
+                return data
+
+        except Exception as e:
+            print(f"Error in fetch_filtered_issues: {e}")
+            return None
+            

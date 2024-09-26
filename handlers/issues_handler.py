@@ -9,7 +9,7 @@ class IssuesHandler(EventHandler):
         # Implement your logic for handling issue events here
         try:        
             module_name = data.get("action")
-            print('inside handle events')
+            print('inside handle events for ', module_name)
             issue = data["issue"]
             labels = issue["labels"]
             print(f'inside issue handler with issue data as {issue} and label as {labels}')

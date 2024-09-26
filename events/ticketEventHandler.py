@@ -187,6 +187,8 @@ class TicketEventHandler:
                 contributor = markdown_contents.get("Contributor")
                 designer = markdown_contents.get("Designer")
                 labels = issue["labels"]
+                category = markdown_contents.get("Category")
+                sub_category = markdown_contents.get("Sub Category")
                 print("complexity", complexity)
                 ticket_data = {
                         "title":issue["title"],     #name of ticket
@@ -199,7 +201,9 @@ class TicketEventHandler:
                         "labels": [l['name'] for l in labels],
                         "issue_id": issue["id"],
                         "created_at": issue["created_at"] if issue.get("created_at") else None,
+                        "project_type": category+", "+sub_category,
                 }
+                print('ticket_data is ', ticket_data)
                 if ticketType == "ccbp":
                     recorded_data = await self.postgres_client.record_created_ticket(data=ticket_data,table_name="issues")
                     print("recorded issue data ", recorded_data)
@@ -261,6 +265,8 @@ class TicketEventHandler:
         contributor = markdown_contents.get("Contributor")
         designer = markdown_contents.get("Designer")
         labels = issue["labels"]
+        category = markdown_contents.get("Category")
+        sub_category = markdown_contents.get("Sub Category")
         print("complexity", complexity)
         ticket_data = {
                 "title":issue["title"],     #name of ticket
@@ -272,6 +278,7 @@ class TicketEventHandler:
                 "org_id": org[0]["id"],
                 "labels": [l['name'] for l in labels],
                 "issue_id": issue["id"],
+                "project_type": category+", "+sub_category,
                 "created_at": issue["created_at"] if issue.get("created_at") else None,
         }
         # print("TICKET", ticket_data, file=sys.stderr)
