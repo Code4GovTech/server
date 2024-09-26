@@ -20,6 +20,7 @@ from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
 from datetime import datetime
+from quart_cors import cors
 
 scheduler = AsyncIOScheduler()
 
@@ -29,7 +30,10 @@ sys.path.append(fpath)
 dotenv.load_dotenv(".env")
 
 app = Quart(__name__)
+# Enable CORS on all routes
+app = cors(app, allow_origin="*")
 app.config['TESTING']= False
+
 
 
 
