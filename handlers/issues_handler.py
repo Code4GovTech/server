@@ -9,17 +9,22 @@ class IssuesHandler(EventHandler):
         # Implement your logic for handling issue events here
         try:        
             module_name = data.get("action")
-            print('inside handle events')
+            print('inside handle events for ', module_name)
             issue = data["issue"]
             labels = issue["labels"]
             print(f'inside issue handler with issue data as {issue} and label as {labels}')
             if next((l for l in labels if l['name'].lower() == 'c4gt community'), None):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
-                    await handler_method(data, postgres_client)
-                    await self.log_user_activity(data, postgres_client)
+                    await handler_method(data)
+                    await self.log_user_activity(data)
                 else:
                     logging.info(f"No handler found for module: {module_name}")
+            elif module_name == 'unlabeled':
+                handler_method = getattr(self, f'handle_issue_{module_name}', None)
+                if handler_method:
+                    await handler_method(data)
+                    await self.log_user_activity(data)
             
             return 'success'
 
@@ -29,9 +34,10 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_created(self, data, postgres_client):
+    async def handle_issue_created(self, data):
         # Implement your logic for handling issue events here
-        try:        
+        try:      
+            postgres_client = PostgresORM.get_instance()  
             if data.get("issue"):
                 issue = data["issue"]
                 print('inside issue created with', issue)
@@ -44,9 +50,10 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_opened(self, data, postgres_client):
+    async def handle_issue_opened(self, data):
         # Implement your logic for handling issue events here
-        try:        
+        try:   
+            postgres_client = PostgresORM.get_instance()     
             if data.get("issue"):
                 issue = data["issue"]
                 print('inside issue opened with', issue)
@@ -56,14 +63,15 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_labeled(self, data, postgres_client):
+    async def handle_issue_labeled(self, data):
         try:
             print(json.dumps(data, indent=4))
+            postgres_client = PostgresORM.get_instance()
             issue = data["issue"]
             print('inside issue labeled with', issue)
-            db_issue = await self.postgres_client.get_data('id', 'issues', issue["id"])
+            db_issue = await postgres_client.get_data('id', 'issues', issue["id"])
             if not db_issue:
-                await self.handle_issue_opened(data, postgres_client)
+                await self.handle_issue_opened(data)
             labels = issue["labels"]
             print(labels)
             if labels:
@@ -72,11 +80,25 @@ class IssuesHandler(EventHandler):
                 
             return "success"
         except Exception as e:
+            print('exception occured while handling labels ', e)
             logging.info(e)
             raise Exception
         
-    async def handle_issue_edited(self, data, postgres_client):
+    async def handle_issue_unlabeled(self, data):
         try:
+            postgres_client = PostgresORM.get_instance()
+            if data["action"] == "unlabeled":
+                # Delete Ticket
+                await postgres_client.delete("issues","issue_id",data["issue"]["id"])
+                return 'success'
+        except Exception as e:
+            print('exception occured while handling labels ', e)
+            logging.info(e)
+            raise Exception
+        
+    async def handle_issue_edited(self, data):
+        try:
+            postgres_client = PostgresORM.get_instance()
             print(json.dumps(data, indent=4))
             issue = data["issue"]
             print('inside issue edited with', issue)
@@ -96,8 +118,9 @@ class IssuesHandler(EventHandler):
             raise Exception
 
 
-    async def handle_issue_closed(self, data, postgres_client):
+    async def handle_issue_closed(self, data):
         try:
+            postgres_client = PostgresORM.get_instance()
             issue = data["issue"]
             print('inside issue closed with', issue)
             issue_exist = await postgres_client.get_data('issue_id', 'issues', issue["id"])
@@ -109,8 +132,9 @@ class IssuesHandler(EventHandler):
             raise Exception
         
 
-    async def log_user_activity(self, data, postgres_client):
+    async def log_user_activity(self, data):
         try:
+            postgres_client = PostgresORM.get_instance()
             issue = data["issue"]
             print('inside user activity', issue)
             issue = await postgres_client.get_data('issue_id', 'issues', issue["id"])

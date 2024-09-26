@@ -29,7 +29,7 @@ class DateTime(TypeDecorator):
 class AppComments(Base):
     __tablename__ = 'app_comments'
     
-    id = Column(UUID(as_uuid=True), primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     updated_at = Column(DateTime, nullable=True)
     api_url = Column(Text, nullable=True)
     comment_id = Column(BigInteger, nullable=True)
@@ -700,7 +700,8 @@ class Issues(Base):
             'title': self.title,
             'description': self.description,
             'org_id': self.org_id,
-            'issue_id': self.issue_id
+            'issue_id': self.issue_id,
+            'project_type':self.project_type
         }
 
 class MentorDetails(Base):
