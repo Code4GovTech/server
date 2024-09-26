@@ -849,7 +849,46 @@ class PostgresORM:
             print(f"Error in record_created_ticket method: {e}")
             return None
 
-        
+
+    async def record_updated_ticket(self, data, table_name):
+        try:
+            async with self.session() as session:
+                # Dynamically get the ORM class for the table
+                table = self.get_class_by_tablename(table_name)
+
+                # Build the update query
+                stmt = (
+                    update(table)
+                    .where(table.issue_id == data['issue_id'])  # Match the existing issue by issue_id
+                    .values(
+                        link=data['link'],
+                        labels=cast(data['labels'], ARRAY(String)),  # Cast to ARRAY type
+                        complexity=data['complexity'],
+                        technology=data['technology'],
+                        status=data['status'],
+                        created_at=data['created_at'],
+                        title=data['title'],
+                        description=f"{data['description']}",
+                        org_id=data['org_id']
+                    )
+                    .returning(table)  # Return the updated row(s)
+                )
+
+                # Execute the update statement
+                result = await session.execute(stmt)
+
+                # Commit the transaction
+                await session.commit()
+
+                # Optionally fetch the updated record(s)
+                updated_record = await result.fetchone()
+                
+                return updated_record if updated_record else None
+        except Exception as e:
+            print(f"Error in record_updated_ticket method: {e}")
+            return None
+
+
     async def update_data(self, data, col_name, table_name):
         try:
             table_class = self.get_class_by_tablename(table_name)

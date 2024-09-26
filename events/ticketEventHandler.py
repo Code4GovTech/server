@@ -276,13 +276,14 @@ class TicketEventHandler:
         }
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
-            await self.postgres_client.update_data(ticket_data,"issue_id","issues")
+            await self.postgres_client.record_updated_ticket(ticket_data, "issues")
 
         if await PostgresORM().check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
             repo = url_components[-3]
             owner = url_components[-4]
-            comment_id = await PostgresORM().get_data("issue_id","app_comments",issue["id"],None)[0]["comment_id"]
+            comments = await PostgresORM().get_data("issue_id","app_comments",issue["id"],None)
+            comment_id = comments[0]["comment_id"]
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
                 comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
                 if comment:
