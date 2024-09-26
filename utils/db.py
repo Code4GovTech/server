@@ -21,7 +21,7 @@ from sqlalchemy.sql import exists
 from datetime import datetime
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
-from models.models import Issues, CommunityOrgs, PointSystem
+from models.models import Issues, CommunityOrgs, PointSystem, PrHistory
 
 dotenv.load_dotenv(".env")
 
@@ -920,11 +920,8 @@ class PostgresORM:
             table_class = self.get_class_by_tablename(table_name)
             
             async with self.session() as session:
-                stmt = (
-                    update(table_class)
-                    .where(table_class.pr_id == data['pr_id'])  # Match the existing issue by issue_id
-                    .values(
-                        created_at= data['created_at'],
+                new_pr_history = PrHistory(
+                    created_at= data['created_at'],
                         api_url=data['api_url'],
                         html_url= data['html_url'],
                         raised_by= data['raised_by'],
@@ -936,6 +933,12 @@ class PostgresORM:
                         merged_at= data['merged_at'],
                         merged_by_username=  data['merged_by_username'],
                         pr_id= data['pr_id']
+                )
+                stmt = (
+                    update(table_class)
+                    .where(table_class.pr_id == data['pr_id'])  # Match the existing issue by issue_id
+                    .values(
+                        
                     )
                     .returning(table_class)  # Return the updated row(s)
                 )
@@ -955,6 +958,46 @@ class PostgresORM:
             print(f"Error in update_data: {e}")
             return None
 
+
+    async def update_pr_history(self, pr_id, data):
+        try:
+            async with self.session() as session:
+                # Query for the existing record based on pr_id (or some unique identifier)
+                stmt = select(PrHistory).where(PrHistory.pr_id == pr_id)
+                result = await session.execute(stmt)
+                pr_history_record = result.scalars().first()
+
+                if pr_history_record:
+                    # Update the fields with new values from data
+                    pr_history_record.created_at = data['created_at']
+                    pr_history_record.api_url = data['api_url']
+                    pr_history_record.html_url = data['html_url']
+                    pr_history_record.raised_by = data['raised_by']
+                    pr_history_record.raised_at = data['raised_at']
+                    pr_history_record.raised_by_username = data['raised_by_username']
+                    pr_history_record.status = data['status']
+                    pr_history_record.is_merged = data['is_merged']
+                    pr_history_record.merged_by = data['merged_by']
+                    pr_history_record.merged_at = None if data['merged_at'] is None else data['merged_at']
+                    pr_history_record.merged_by_username = data['merged_by_username']
+                    pr_history_record.points = data['points']
+                    pr_history_record.ticket_url = data['ticket_url']
+                    pr_history_record.ticket_complexity = data['ticket_complexity']
+
+                    # Commit the changes to the database
+                    await session.commit()
+
+                    # Optionally refresh the object
+                    await session.refresh(pr_history_record)
+
+                    return pr_history_record
+                else:
+                    print(f"Record with pr_id {pr_id} not found")
+                    return None
+
+        except Exception as e:
+            print(f"Error in update_pr_history: {e}")
+            return None
 
 
     async def addPr(self, prData, issue_id):
