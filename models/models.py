@@ -662,6 +662,7 @@ class Issues(Base):
     id = Column(BigInteger, primary_key=True)
     link = Column(Text, nullable=False)
     labels = Column(Text, nullable=True)
+    project_type = Column(Text, nullable=True)
     complexity = Column(Text, nullable=True)
     skills = Column(Text, nullable=True)
     technology = Column(Text, nullable=True)
@@ -1068,7 +1069,7 @@ class PointsMapping(Base):
 class PrHistory(Base):
     __tablename__ = 'pr_history'
 
-    id = Column(String(36), primary_key=True, autoincrement=True)  # UUID field
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, nullable=True)
     api_url = Column(Text, nullable=True)
     html_url = Column(Text, unique=True, nullable=True)

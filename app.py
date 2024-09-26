@@ -446,8 +446,8 @@ async def get_role_master():
     return role_masters.data
 
 
-@app.route("/leaderboard-user", methods = ['POST'])
-async def get_leaderboard_user():
+@app.route("/program-tickets-user", methods = ['POST'])
+async def get_program_tickets_user():
     try:
         print('getting data for users leader board')
         request_data = request.body._data
@@ -468,22 +468,16 @@ async def get_leaderboard_user():
                 "category": issue["issue"]["labels"],
                 "reqd_skills": issue["issue"]["technology"].split(','),
                 "issue_id": issue["issue"]["issue_id"],
-                "api_endpoint_url": "https://api.github.com/repos/ELEVATE-Project/frontend-utils-library/issues/3",
                 "url": issue["issue"]["link"],
                 "ticket_points": issue["points"]["points"] if issue["points"] else None,
-                "index": 245,
                 "mentors": [
                     "Amoghavarsh"
                 ],
-                "uuid": "63334ef2-457c-462a-9127-c4a339cdf5f4", #what's the need here
                 "status": issue["issue"]["status"],
-                "community_label": False,
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
                 "assignees": None,
-                "issue_author": [
-                    "kiranharidas187"
-                ],
+                "project_type": issue["issue"]["project_type"],
                 "is_assigned": False
             }
             issue_result.append(res)

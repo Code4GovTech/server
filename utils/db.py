@@ -832,7 +832,8 @@ class PostgresORM:
                     title=data['title'],
                     description=f"{data['description']}",
                     org_id=data['org_id'],
-                    issue_id=data['issue_id']
+                    issue_id=data['issue_id'],
+                    project_type=data['project_type']
                 ).returning(table)
 
                 result = await session.execute(stmt)
