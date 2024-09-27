@@ -653,8 +653,8 @@ class IssueMentors(Base):
         return {
             'issue_id': self.issue_id,
             'mentor_id': self.mentor_id,
-            'createdat': self.createdat,
-            'updatedat': self.updatedat
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
         }
 
 class Issues(Base):
