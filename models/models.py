@@ -640,10 +640,11 @@ class IssueContributors(Base):
 class IssueMentors(Base):
     __tablename__ = 'issue_mentors'
 
-    issue_id = Column(BigInteger, ForeignKey('issues.id'), primary_key=True)
-    mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'), primary_key=True)
-    createdat = Column(DateTime, nullable=True)
-    updatedat = Column(DateTime, nullable=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    issue_id = Column(BigInteger, ForeignKey('issues.id'))
+    mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'))
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
 
     def __repr__(self):
         return f"<IssueMentors(issue_id={self.issue_id}, mentor_id={self.mentor_id})>"

@@ -832,6 +832,7 @@ class PostgresORM:
                     technology=data['technology'],
                     status=data['status'],
                     created_at=data['created_at'],
+                    updated_at=data['updated_at'],
                     title=data['title'],
                     description=f"{data['description']}",
                     org_id=data['org_id'],
@@ -869,6 +870,7 @@ class PostgresORM:
                         technology=data['technology'],
                         status=data['status'],
                         created_at=data['created_at'],
+                        updated_at=data['updated_at'],
                         title=data['title'],
                         description=f"{data['description']}",
                         org_id=data['org_id']
@@ -881,11 +883,8 @@ class PostgresORM:
 
                 # Commit the transaction
                 await session.commit()
-
-                # Optionally fetch the updated record(s)
-                updated_record = await result.fetchone()
-                
-                return updated_record if updated_record else None
+ 
+                return result
         except Exception as e:
             print(f"Error in record_updated_ticket method: {e}")
             return None

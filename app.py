@@ -445,7 +445,6 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
-
 @app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
@@ -462,7 +461,7 @@ async def get_program_tickets_user():
         issue_result = []
         for issue in all_issues:
             res = {
-                "created_at": "2023-11-24T11:36:22.965699+00:00",
+                "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": issue["issue"]["labels"],

@@ -16,7 +16,9 @@ from fuzzywuzzy import fuzz
 import logging
 from urllib.parse import urlparse
 import re
+import json
 from datetime import datetime
+import markdown
 
 def matchProduct(enteredProductName):
     products = [
@@ -160,6 +162,9 @@ class TicketEventHandler:
         }
         return
     
+    def convert_to_datetime(self, date_str):
+        return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
+    
     async def onTicketCreate(self, eventData):
         try:
             issue = eventData["issue"]
@@ -183,13 +188,20 @@ class TicketEventHandler:
                     org = await self.postgres_client.add_data(data={"name":repository_owner}, table_name="community_orgs")
                 complexity = markdown_contents.get("Complexity")
                 advisor = markdown_contents.get("Advisor")
-                mentor = markdown_contents.get("Mentors")
+                mentor = markdown_contents.get("Mentor(s)")
                 contributor = markdown_contents.get("Contributor")
                 designer = markdown_contents.get("Designer")
                 labels = issue["labels"]
                 category = markdown_contents.get("Category")
                 sub_category = markdown_contents.get("Sub Category")
                 print("complexity", complexity)
+                created_at =  issue["created_at"] if issue.get("created_at") else None
+                if created_at:
+                    created_at = self.convert_to_datetime(created_at)
+
+                updated_at = issue["updated_at"] if issue.get("updated_at") else None
+                if updated_at:
+                    updated_at = self.convert_to_datetime(updated_at)
                 ticket_data = {
                         "title":issue["title"],     #name of ticket
                         "description":  markdown_contents,
@@ -200,8 +212,9 @@ class TicketEventHandler:
                         "org_id": org[0]["id"],
                         "labels": [l['name'] for l in labels],
                         "issue_id": issue["id"],
-                        "created_at": issue["created_at"] if issue.get("created_at") else None,
+                        "created_at": created_at,
                         "project_type": category+", "+sub_category,
+                        "updated_at": updated_at
                 }
                 print('ticket_data is ', ticket_data)
                 if ticketType == "ccbp":
@@ -268,6 +281,13 @@ class TicketEventHandler:
         category = markdown_contents.get("Category")
         sub_category = markdown_contents.get("Sub Category")
         print("complexity", complexity)
+        created_at =  issue["created_at"] if issue.get("created_at") else None
+        if created_at:
+            created_at = self.convert_to_datetime(created_at)
+
+        updated_at = issue["updated_at"] if issue.get("updated_at") else None
+        if updated_at:
+            updated_at = self.convert_to_datetime(updated_at)
         ticket_data = {
                 "title":issue["title"],     #name of ticket
                 "description":  markdown_contents,
@@ -279,7 +299,8 @@ class TicketEventHandler:
                 "labels": [l['name'] for l in labels],
                 "issue_id": issue["id"],
                 "project_type": category+", "+sub_category,
-                "created_at": issue["created_at"] if issue.get("created_at") else None,
+                "created_at": created_at,
+                "updated_at": updated_at
         }
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
@@ -528,43 +549,29 @@ class TicketEventHandler:
         if match:
             return match.group(1).strip()
         return None
-          
-    async def processDescription(self, eventData):
-        action = eventData["action"]
-        issue = eventData["issue"]
-       
-        print('processing description ', issue)
-        markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
-        print(markdown_contents)
-    # print(markdown_contents, file=sys.stderr)
-        parsed_url = urlparse(issue["url"])
-        path_segments = parsed_url.path.split('/')
-        repository_owner = path_segments[2]
-        org = await self.postgres_client.get_data("name", "community_orgs", repository_owner)
-        complexity = markdown_contents.get("Complexity")
-        print("complexity", complexity)
-        ticket_data = {
-                    "title":issue["title"],     #name of ticket
-                    "description":  markdown_contents,
-                    "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
-                    "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
-                    "status": issue["state"],
-                    "link": issue["html_url"],
-                    "org_id": org[0]["id"],
-                    "labels":issue["labels"],
-                    "issue_id": issue["id"],
-                    "advisor": markdown_contents["Advisor"] if markdown_contents["Advisor"] else None,
-                    "mentor": markdown_contents["Mentor"] if markdown_contents["Mentor"] else None, 
-                    "contributor": markdown_contents["Contributor"] if markdown_contents["Contributor"] else None,
-                    "designer": markdown_contents["Designer"] if markdown_contents["Designer"] else None,
-                    "created_at": issue["created_at"] if issue.get("created_at") else None,
-                    "updated_at": issue["updated_at"] if issue.get("updated_at") else None,
-                }
-        print("ticket_data", ticket_data)
-        self.postgres_client.add_data(ticket_data, "issues")
-        return ticket_data
+ 
+    async def get_mentors_urls(self, body):
+        cleaned_body = body.replace('\\r\\n', '\n')
 
+        # Updated regex to capture the 'Mentor(s)' section, allowing for newlines and text after it
+        mentors_match = re.search(r"## Mentor\(s\)\s*\n\s*\n(.+?)(\n##|$)", cleaned_body, re.DOTALL)
 
+        if mentors_match:
+            mentors_details = mentors_match.group(1).strip()
+            # Extract the URL part only using another regex
+            url_match = re.search(r"\[.*?\]\((https://github\.com/.*?)\)", mentors_details)
+            if url_match:
+                mentor_url = url_match.group(1)
+                print("Mentor(s) URL:", mentor_url)
+                return mentor_url
+            else:
+                print("Mentor(s) URL not found.")
+        else:
+            print("Mentor(s) section not found.")
+        
+        return None
+
+    
     async def add_contributor(self, issue):
         try:
             markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
@@ -574,7 +581,7 @@ class TicketEventHandler:
                 contributors_id = assignee["id"]
             else:
                 contributors_id = markdown_contents.get("Contributor")
-            user = await self.postgres_client.get_data("github_id","contributors_registration", contributors_id, None)
+            user = await self.postgres_client.get_data("github_id","contributors_registration", contributors_id)
             contributors_data = {
                             "issue_id": get_issue[0]["id"],
                             "role": 1,
@@ -583,6 +590,26 @@ class TicketEventHandler:
                             "updated_at":str(datetime.now())
                         }
             inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
+
+            #add mentor's data
+            mentor_urls = await self.get_mentors_urls(issue["body"])
+            if mentor_urls:
+                print('mentor urls ', mentor_urls)
+
+                mentor = await self.postgres_client.get_data("github_url","contributors_registration", mentor_urls)
+                if mentor:
+                    mentor_data = {
+                        "issue_id": get_issue[0]["id"],
+                        "role": 1,
+                        "mentor_id": mentor[0]["id"] if mentor else None,
+                        "created_at":str(datetime.now()),
+                        "updated_at":str(datetime.now())
+                    }
+                    inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+                    if not inserted_mentor:
+                        print('mentor data could not be inserted')
+                else:
+                    print('mentor not found skipping mentors addition')
             return inserted_data
         except Exception as e:
             print('exception while adding contributors data ',e)
