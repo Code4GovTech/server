@@ -600,7 +600,6 @@ class TicketEventHandler:
                 if mentor:
                     mentor_data = {
                         "issue_id": get_issue[0]["id"],
-                        "role": 1,
                         "mentor_id": mentor[0]["id"] if mentor else None,
                         "created_at":str(datetime.now()),
                         "updated_at":str(datetime.now())
