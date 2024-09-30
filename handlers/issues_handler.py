@@ -132,6 +132,18 @@ class IssuesHandler(EventHandler):
             raise Exception
         
 
+    async def handle_issue_assigned(self, data):
+        try:
+            postgres_client = PostgresORM.get_instance()
+            issue = data["issue"]
+            print('inside issue closed with', issue)
+           
+            await TicketEventHandler().add_assignee(issue)
+            return "success"
+        except Exception as e:
+            print('exception occured while assigning an assignee to a ticket ', e)
+            raise Exception
+        
     async def log_user_activity(self, data):
         try:
             postgres_client = PostgresORM.get_instance()
@@ -158,4 +170,7 @@ class IssuesHandler(EventHandler):
         except Exception as e:
             logging.info(e)
             raise Exception
+        
+
+    
 
