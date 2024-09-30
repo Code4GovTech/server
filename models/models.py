@@ -1205,6 +1205,8 @@ class TicketComments(Base):
     html_url = Column(Text, nullable=True)
     issue_url = Column(Text, nullable=True)
     node_id = Column(Text, nullable=True)
+    comment_id = Column(BigInteger, nullable=True)
+    issue_id = Column(BigInteger, nullable=True)
     commented_by = Column(Text, nullable=True)
     commented_by_id = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, nullable=True)

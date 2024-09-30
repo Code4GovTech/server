@@ -356,49 +356,41 @@ class TicketEventHandler:
         return eventData
     
     async def onTicketClose(self, eventData):
-        issue_update = {
-            "status":"closed",
-            "issue_id": eventData["id"]
-        }
-        issue_details = await self.postgres_client.update_data(issue_update, "issue_id", "issues")
+        try:
+            issue_update = {
+                "status":"closed",
+                "issue_id": eventData["id"]
+            }
+            issue_details = await self.postgres_client.update_data(issue_update, "issue_id", "issues")
 
 
-        issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])                
-        contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
+            issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])                
+            contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
+            
+            #FIND POINTS BY ISSUE COMPLEXITY
+            points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'])
+
+            user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
+            mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue[0]['id'], None)
+            point_transaction = {
+                "user_id": user_id[0]['id'],
+                "issue_id": issue[0]["id"],
+                "point": points,
+                "type": "credit",
+                "mentor_id": mentor[0]['mentor_id'],
+                "created_at": str(datetime.now()),
+                "updated_at": str(datetime.now())
+            }  
+            
+            print('points_transaction is ', point_transaction)
+
+            inserted_data = await self.postgres_client.add_data(point_transaction, "point_transactions")
+                        
+            return
+        except Exception as e:
+            print(f"An error occurred - ticket close: {e}")
+            return 'failed'
         
-        #FIND POINTS BY ISSUE COMPLEXITY
-        points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'])
-        
-        #SAVE POINT IN POINT_TRANSACTIONS & USER POINTS
-        add_points = await self.postgres_client.upsert_point_transaction(issue[0]['id'],contributors[0]['contributor_id'],points)
-        add_user_points= await self.postgres_client.save_user_points(contributors[0]['contributor_id'],points)
-                    
-
-        #allot points
-        issue_details = await self.postgres_client.get_data("url","issues", eventData['issue_url'],None)
-        
-        # complexity = issue_details["complexity"]
-        # points = await self.postgres_client.get_data("complexity","point_system", complexity,None)
-
-        # assignee = eventData["assignees"][0]["id"]
-
-        # user_id = await self.postgres_client.get_data("github_id","contributors_registration", assignee,None)
-        # mentor_id = await self.postgres_client.get_data("issue_id", "issue_mentors", issue_details["id"], None)
-        # point_transaction = {
-        #     "user_id": user_id["id"],
-        #     "issue_id": issue_details["id"],
-        #     "point": points["points"],
-        #     "type": "credit",
-        #     "mentor_id": mentor_id,
-        #     "created_at": datetime.now(),
-        #     "updated_at": datetime.now()
-        # }  
-        
-        # print('points_transaction is ', point_transaction)
-
-        # inserted_data = await self.postgres_client.add_data(point_transaction, "point_transactions")
-                    
-        return
     
     async def updateInstallation(self, installation):
         async def get_repositories(installation):
@@ -615,6 +607,32 @@ class TicketEventHandler:
             return None
 
         
+    async def add_assignee(self, issue):
+        try:
+            issue_exist = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
+            if issue_exist:
+                assignee = issue["assignee"]
+                if assignee:
+                    contributors_id = assignee["id"]
+                    user = await self.postgres_client.get_data("github_id","contributors_registration", contributors_id)
+                    contributors_data = {
+                                    "issue_id": issue_exist[0]["id"],
+                                    "role": 1,
+                                    "contributor_id": user[0]["id"] if user else None,
+                                    "created_at":str(datetime.now()),
+                                    "updated_at":str(datetime.now())
+                                }
+                    inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
+                    if inserted_data:
+                        print('assignee added ', inserted_data)
+                        return inserted_data
+            
+            print('could not add assignee')
+            return 'success'
+
+        except Exception as e:
+            print('exception occured while assigning an assignee to a ticket ', e)
+            raise Exception
 
 
     

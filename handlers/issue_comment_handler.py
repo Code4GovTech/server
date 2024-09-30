@@ -34,6 +34,8 @@ class Issue_commentHandler(EventHandler):
                 'url':data['issue']['comments_url'],
                 'html_url':data['issue']['html_url'],
                 'issue_url':data['comment']['issue_url'],
+                'issue_id': data['issue']['id'],
+                'comment_id': data['comment']['id'],
                 'node_id':data['issue']['node_id'],
                 'commented_by':data['comment']['user']['login'],
                 'commented_by_id':data['comment']['user']['id'],
@@ -45,6 +47,8 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
                 
             }
+
+            print('comments data ', comment_data)
                         
             save_data = await postgres_client.add_data(comment_data,"ticket_comments") 
             print('saved data in comments created ', save_data)           
