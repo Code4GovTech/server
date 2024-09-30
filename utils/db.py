@@ -1178,7 +1178,7 @@ class PostgresORM:
                 
                 # Build and execute the query with multiple conditions
                 stmt = delete(table).where(
-                   getattr("ticket_comments", id) == commentId
+                   getattr(table, id) == commentId
                 )
                 result = await session.execute(stmt)
                 is_deleted = result.scalars().all()
