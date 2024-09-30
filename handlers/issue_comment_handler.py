@@ -66,7 +66,7 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
             }
             
-            save_data = postgres_client.update_data(comment_data, "id", "ticket_comments")   
+            save_data = await postgres_client.update_data(comment_data, "id", "ticket_comments")   
             print('saved data in comments edited ', save_data)          
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
@@ -79,7 +79,7 @@ class Issue_commentHandler(EventHandler):
         try:
             print(f'deleting comment with {data["issue"]}')
             comment_id = data['comment']['id']
-            data = postgres_client.deleteIssueComment(comment_id)
+            data = await postgres_client.deleteIssueComment(comment_id)
             print('data in comment deleted', data) 
         except Exception as e:
             print('Exception occured ', e)

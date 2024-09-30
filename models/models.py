@@ -642,7 +642,7 @@ class IssueMentors(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     issue_id = Column(BigInteger, ForeignKey('issues.id'))
-    mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'))
+    mentor_id = Column(BigInteger, ForeignKey('contributors_registration.id'))
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 

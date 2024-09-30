@@ -476,7 +476,7 @@ async def get_program_tickets_user():
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
                 "assignees": None,
-                "project_type": issue["issue"]["project_type"] if issue["issue"]["project_type"] else None,
+                "project_type": issue["issue"]["project_type"].split(',') if issue["issue"]["project_type"] else None,
                 "is_assigned": False
             }
             issue_result.append(res)
