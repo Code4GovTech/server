@@ -79,7 +79,8 @@ class Issue_commentHandler(EventHandler):
         try:
             print(f'deleting comment with {data["issue"]}')
             comment_id = data['comment']['id']
-            data = await postgres_client.deleteIssueComment(comment_id)
+            # data = await postgres_client.deleteIssueComment(comment_id)
+            await postgres_client.delete("ticket_comments","id", comment_id)
             print('data in comment deleted', data) 
         except Exception as e:
             print('Exception occured ', e)
