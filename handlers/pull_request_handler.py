@@ -28,7 +28,7 @@ class Pull_requestHandler(EventHandler):
                 "status": data['action'],
                 "is_merged": data['pull_request']['merged'],
                 "merged_by": merged_by,
-                "merged_at": merged_at,
+                "merged_at": str(merged_at),
                 "merged_by_username":  merged_by_username,
                 "pr_id": data['pull_request']['id'],
                 "points": 0,
