@@ -90,11 +90,16 @@ class IssuesHandler(EventHandler):
             if data["action"] == "unlabeled":
                 issue = data["issue"]
                 db_issue = await postgres_client.get_data('id', 'issues', issue["id"])
+                print('db issue in unlabeled is ', db_issue)
                 if db_issue:
+                    print('inside of if for unlabeled ')
                     await postgres_client.delete("issue_contributors","issue_id",db_issue["id"])
                     await postgres_client.delete("issue_mentors","issue_id",db_issue["id"])
                     # Delete Ticket
                     await postgres_client.delete("issues","id",db_issue["id"])
+                    print('issue removed')
+                else:
+                    print('issue could not be removed')
                 return 'success'
         except Exception as e:
             print('exception occured while handling labels ', e)
