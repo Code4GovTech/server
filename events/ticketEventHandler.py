@@ -361,15 +361,18 @@ class TicketEventHandler:
                 "status":"closed",
                 "issue_id": eventData["id"]
             }
+
+            print('issue_update in ticket close is ', issue_update)
             issue_details = await self.postgres_client.update_data(issue_update, "issue_id", "issues")
+            print('issue details ', issue_details)
 
-
-            issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])                
+            issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])   
+            print('issue is ', issue)             
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
-            
+            print('contributor is', contributors )
             #FIND POINTS BY ISSUE COMPLEXITY
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'])
-
+            print('points is ', points)
             user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
             mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue[0]['id'], None)
             point_transaction = {
