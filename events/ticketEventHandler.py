@@ -589,21 +589,25 @@ class TicketEventHandler:
             inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
 
             #add mentor's data
-            mentor_urls = await self.get_mentors_urls(issue["body"])
-            if mentor_urls:
-                print('mentor urls ', mentor_urls)
-
-                mentor = await self.postgres_client.get_data("github_url","contributors_registration", mentor_urls)
-                if mentor:
-                    mentor_data = {
-                        "issue_id": get_issue[0]["id"],
-                        "mentor_id": mentor[0]["id"] if mentor else None,
-                        "created_at":str(datetime.now()),
-                        "updated_at":str(datetime.now())
-                    }
-                    inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
-                    if not inserted_mentor:
-                        print('mentor data could not be inserted')
+            mentor = markdown_contents.get("Mentor(s)")
+            if mentor:
+                url = f'https://api.github.com/users/{mentor}'
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        data = await response.json()
+                if data:
+                    mentor_id = data["id"]
+                    mentor = await self.postgres_client.get_data("github_id","contributors_registration", mentor_id)
+                    if mentor:
+                        mentor_data = {
+                            "issue_id": get_issue[0]["id"],
+                            "mentor_id": mentor[0]["id"] if mentor else None,
+                            "created_at":str(datetime.now()),
+                            "updated_at":str(datetime.now())
+                        }
+                        inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+                        if not inserted_mentor:
+                            print('mentor data could not be inserted')
                 else:
                     print('mentor not found skipping mentors addition')
             return inserted_data
