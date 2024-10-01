@@ -382,7 +382,7 @@ class TicketEventHandler:
                 "issue_id": issue[0]["id"],
                 "point": points,
                 "type": "credit",
-                "mentor_id": mentor[0]['mentor_id'],
+                "mentor_id": mentor[0]['mentor_id'] if mentor[0] else None,
                 "created_at": str(datetime.now()),
                 "updated_at": str(datetime.now())
             }  
