@@ -589,11 +589,9 @@ class TicketEventHandler:
             inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
 
             #add mentor's data
-            mentor_urls = await self.get_mentors_urls(issue["body"])
-            if mentor_urls:
-                print('mentor urls ', mentor_urls)
-
-                mentor = await self.postgres_client.get_data("github_url","contributors_registration", mentor_urls)
+            mentor = markdown_contents.get("Mentor(s)")
+            if mentor:
+                mentor = await self.postgres_client.get_data("github_url","contributors_registration", mentor[0])
                 if mentor:
                     mentor_data = {
                         "issue_id": get_issue[0]["id"],
