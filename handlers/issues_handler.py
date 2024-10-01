@@ -89,7 +89,7 @@ class IssuesHandler(EventHandler):
             postgres_client = PostgresORM.get_instance()
             if data["action"] == "unlabeled":
                 issue = data["issue"]
-                db_issue = await self.postgres_client.get_issue_from_issue_id(issue["id"])
+                db_issue = await postgres_client.get_issue_from_issue_id(issue["id"])
                 print('db issue in unlabeled is ', db_issue)
                 if db_issue:
                     print('inside of if for unlabeled ')
