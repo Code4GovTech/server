@@ -374,7 +374,9 @@ class TicketEventHandler:
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'])
             print('points is ', points)
             user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
+            print('user is ', user_id)
             mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue[0]['id'], None)
+            print('mentor is ', mentor)
             point_transaction = {
                 "user_id": user_id[0]['id'],
                 "issue_id": issue[0]["id"],
