@@ -94,10 +94,10 @@ class IssuesHandler(EventHandler):
                 print('db issue in unlabeled is ', db_issue)
                 if db_issue:
                     print('inside of if for unlabeled ')
-                    await postgres_client.delete("issue_contributors","issue_id",db_issue["id"])
-                    await postgres_client.delete("issue_mentors","issue_id",db_issue["id"])
+                    await postgres_client.delete("issue_contributors","issue_id",db_issue[0]["id"])
+                    await postgres_client.delete("issue_mentors","issue_id",db_issue[0]["id"])
                     # Delete Ticket
-                    await postgres_client.delete("issues","id",db_issue["id"])
+                    await postgres_client.delete("issues","id",db_issue[0]["id"])
                     print('issue removed')
                 else:
                     print('issue could not be removed')
