@@ -74,6 +74,7 @@ class IssuesHandler(EventHandler):
                 await self.handle_issue_opened(data)
             labels = issue["labels"]
             print(labels)
+            label_string=""
             if labels:
                 for label in labels:
                     label_string = label_string+","+label["name"]
