@@ -192,6 +192,7 @@ class TicketEventHandler:
                 contributor = markdown_contents.get("Contributor")
                 designer = markdown_contents.get("Designer")
                 labels = issue["labels"]
+                label_string=""
                 if labels:
                     for label in labels:
                         label_string = label_string+","+label["name"]
@@ -281,6 +282,7 @@ class TicketEventHandler:
         contributor = markdown_contents.get("Contributor")
         designer = markdown_contents.get("Designer")
         labels = issue["labels"]
+        label_string=""
         if labels:
             for label in labels:
                 label_string = label_string+","+label["name"]
