@@ -192,10 +192,6 @@ class TicketEventHandler:
                 contributor = markdown_contents.get("Contributor")
                 designer = markdown_contents.get("Designer")
                 labels = issue["labels"]
-                label_string=""
-                if labels:
-                    for label in labels:
-                        label_string = label_string+","+label["name"]
                 category = markdown_contents.get("Category")
                 sub_category = markdown_contents.get("Sub Category")
                 print("complexity", complexity)
@@ -214,7 +210,7 @@ class TicketEventHandler:
                         "status": issue["state"],
                         "link": issue["html_url"],
                         "org_id": org[0]["id"],
-                        "labels": label_string,
+                        "labels": [l['name'] for l in labels],
                         "issue_id": issue["id"],
                         "created_at": created_at,
                         "project_type": category+", "+sub_category,
@@ -282,10 +278,6 @@ class TicketEventHandler:
         contributor = markdown_contents.get("Contributor")
         designer = markdown_contents.get("Designer")
         labels = issue["labels"]
-        label_string=""
-        if labels:
-            for label in labels:
-                label_string = label_string+","+label["name"]
         category = markdown_contents.get("Category")
         sub_category = markdown_contents.get("Sub Category")
         print("complexity", complexity)
@@ -304,7 +296,7 @@ class TicketEventHandler:
                 "status": issue["state"],
                 "link": issue["html_url"],
                 "org_id": org[0]["id"],
-                "labels": label_string,
+                "labels": [l['name'] for l in labels],
                 "issue_id": issue["id"],
                 "project_type": category+", "+sub_category,
                 "created_at": created_at,

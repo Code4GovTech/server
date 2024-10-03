@@ -74,11 +74,9 @@ class IssuesHandler(EventHandler):
                 await self.handle_issue_opened(data)
             labels = issue["labels"]
             print(labels)
-            label_string=""
             if labels:
-                for label in labels:
-                    label_string = label_string+","+label["name"]
-                db_issue["labels"] = label_string
+                label_names = [l['name'] for l in labels]
+                db_issue["labels"] = label_names
                 await postgres_client.update_data(db_issue, 'id', 'issues')
                 
             return "success"
