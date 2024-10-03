@@ -827,7 +827,7 @@ class PostgresORM:
 
                 stmt = insert(table).values(
                     link=data['link'],
-                    labels=cast(data['labels'], ARRAY(String)),  # Cast to ARRAY type
+                    labels=data['labels'],  # Cast to ARRAY type
                     complexity=data['complexity'],
                     technology=data['technology'],
                     status=data['status'],
@@ -865,7 +865,7 @@ class PostgresORM:
                     .where(table.issue_id == data['issue_id'])  # Match the existing issue by issue_id
                     .values(
                         link=data['link'],
-                        labels=cast(data['labels'], ARRAY(String)),  # Cast to ARRAY type
+                        labels=['labels'],  # Cast to ARRAY type
                         complexity=data['complexity'],
                         technology=data['technology'],
                         status=data['status'],
