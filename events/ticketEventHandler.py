@@ -184,11 +184,13 @@ class TicketEventHandler:
                 # path_segments = parsed_url.path.split('/')
                 # repository_owner = path_segments[2]
                 organization = markdown_contents.get("Organisation Name")
-                org_array = []
+                # org_array = []
                 org = await self.postgres_client.get_data("name", "community_orgs", organization)
                 if org is None:
-                    org = await self.postgres_client.add_data(data={"name":organization}, table_name="community_orgs")
-                org_array.append(org)
+                    new_org = await self.postgres_client.add_data(data={"name":organization}, table_name="community_orgs")
+                    org = await self.postgres_client.get_data("name", "community_orgs", organization)
+                
+                
                 complexity = markdown_contents.get("Complexity")
                 advisor = markdown_contents.get("Advisor")
                 mentor = markdown_contents.get("Mentor(s)")
@@ -212,7 +214,7 @@ class TicketEventHandler:
                         "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
                         "status": issue["state"],
                         "link": issue["html_url"],
-                        "org_id": org_array[0]["id"],
+                        "org_id": org[0]["id"],
                         "labels": [l['name'] for l in labels],
                         "issue_id": issue["id"],
                         "created_at": created_at,
@@ -273,11 +275,11 @@ class TicketEventHandler:
         # path_segments = parsed_url.path.split('/')
         # repository_owner = path_segments[2]
         organization = markdown_contents.get("Organisation Name")
-        org_array = []
+        # org_array = []
         org = await self.postgres_client.get_data("name", "community_orgs", organization)
         if org is None:
-            org = await self.postgres_client.add_data(data={"name":organization}, table_name="community_orgs")
-        org_array.append(org)
+            new_org = await self.postgres_client.add_data(data={"name":organization}, table_name="community_orgs")
+            org = await self.postgres_client.get_data("name", "community_orgs", organization)
         complexity = markdown_contents.get("Complexity")
         advisor = markdown_contents.get("Advisor")
         mentor = markdown_contents.get("Mentors")
@@ -301,7 +303,7 @@ class TicketEventHandler:
                 "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
                 "status": issue["state"],
                 "link": issue["html_url"],
-                "org_id": org_array[0]["id"],
+                "org_id": org[0]["id"],
                 "labels": [l['name'] for l in labels],
                 "issue_id": issue["id"],
                 "project_type": category+", "+sub_category,
