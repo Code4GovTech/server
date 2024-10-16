@@ -1503,19 +1503,19 @@ class CommunityOrgs(Base):
     
 
 
-class LeaderboardPoints(Base):
-    __tablename__ = 'leaderboard_points'
+class ContributorPoints(Base):
+    __tablename__ = 'contributor_points'
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey('contributors_registration.id'), nullable=True) 
+    contributors_id = Column(BigInteger, ForeignKey('contributors_registration.id'), nullable=True) 
     total_points = Column(Integer, nullable=False, default=0)
 
     def __repr__(self):
-        return f"<LeaderboardPoints(name={self.name})>"
+        return f"<ContributorPoints(name={self.name})>"
 
     def to_dict(self):
         return {
             'id': self.id,
-            'user_id': self.user_id,
+            'contributors_id': self.contributors_id,
             'total_points': self.total_points
         }

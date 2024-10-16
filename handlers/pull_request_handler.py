@@ -54,10 +54,10 @@ class Pull_requestHandler(EventHandler):
             if not contributor:
                 print('could not add contributors data contributor does not exist')
                 return pr_data
-            contributor_id = contributor["id"]
+            contributor_id = contributor[0]["id"]
 
             issue_url = data['pull_request']['issue_url']
-            issue = await postgres_client.get_data('issue_url', 'issues', issue_url, '*')
+            issue = await postgres_client.get_data('link', 'issues', issue_url, '*')
 
             #save activity to user_activity
             activity_data = {
