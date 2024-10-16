@@ -159,9 +159,10 @@ class IssuesHandler(EventHandler):
         try:
             postgres_client = PostgresORM.get_instance()
             issue = data["issue"]
-            print('inside issue unassigned with', issue)
-           
-            await TicketEventHandler().remove_assignee(issue)
+            db_issue = await postgres_client.get_issue_from_issue_id(issue["id"])
+            print('db issue in unlabeled is ', db_issue)
+            if db_issue:
+                await postgres_client.delete("issue_contributors","issue_id",db_issue[0]["id"])
             return "success"
         except Exception as e:
             print('exception occured while removing an assignee to a ticket ', e)
