@@ -650,6 +650,24 @@ class TicketEventHandler:
         except Exception as e:
             print('exception occured while assigning an assignee to a ticket ', e)
             raise Exception
+        
+
+    async def remove_assignee(self, issue):
+        try:
+            print('removing assignee')
+            issue_exist = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
+            if issue_exist:
+                assignee = issue["assignee"]
+                if len(assignee) == 0:
+                    issueId = issue_exist[0]['id']
+                    return await self.postgres_client.delete('issue_contributors', 'id', issueId)
+            
+            print('could not remove assignee')
+            return 'success'
+
+        except Exception as e:
+            print('exception occured while assigning an assignee to a ticket ', e)
+            raise Exception
 
 
     
