@@ -159,12 +159,12 @@ class IssuesHandler(EventHandler):
         try:
             postgres_client = PostgresORM.get_instance()
             issue = data["issue"]
-            print('inside issue closed with', issue)
+            print('inside issue unassigned with', issue)
            
             await TicketEventHandler().remove_assignee(issue)
             return "success"
         except Exception as e:
-            print('exception occured while assigning an assignee to a ticket ', e)
+            print('exception occured while removing an assignee to a ticket ', e)
             raise Exception
 
     async def log_user_activity(self, data):

@@ -654,6 +654,7 @@ class TicketEventHandler:
 
     async def remove_assignee(self, issue):
         try:
+            print('removing assignee')
             issue_exist = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
             if issue_exist:
                 assignee = issue["assignee"]
