@@ -657,7 +657,9 @@ class TicketEventHandler:
             print('removing assignee')
             issue_exist = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
             if issue_exist:
-                assignee = issue["assignee"]
+                print('issue for removing assignee is ', issue['assignee'])
+                assignee = issue['assignee']
+                print('assignee for removing is ', assignee)
                 if len(assignee) == 0:
                     issueId = issue_exist[0]['id']
                     return await self.postgres_client.delete('issue_contributors', 'id', issueId)
