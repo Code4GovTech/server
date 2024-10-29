@@ -642,7 +642,8 @@ class IssueMentors(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     issue_id = Column(BigInteger, ForeignKey('issues.id'))
-    mentor_id = Column(BigInteger, ForeignKey('contributors_registration.id'))
+    org_mentor_id = Column(Text, nullable=True)
+    angel_mentor_id = Column(BigInteger, ForeignKey('contributors_registration.id'))
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -652,7 +653,8 @@ class IssueMentors(Base):
     def to_dict(self):
         return {
             'issue_id': self.issue_id,
-            'mentor_id': self.mentor_id,
+            'org_mentor_id': self.org_mentor_id,
+            'angel_mentor_id': self.angel_mentor_id,
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
@@ -671,6 +673,7 @@ class Issues(Base):
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     title = Column(Text, nullable=True)
+    domain = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
     org_id = Column(BigInteger, ForeignKey('community_orgs.id'), nullable=True)
     issue_id = Column(BigInteger, nullable=True)
@@ -702,7 +705,8 @@ class Issues(Base):
             'description': self.description,
             'org_id': self.org_id,
             'issue_id': self.issue_id,
-            'project_type':self.project_type
+            'project_type':self.project_type,
+            'domain': self.domain
         }
 
 class MentorDetails(Base):
@@ -1018,7 +1022,7 @@ class PointTransactions(Base):
     type = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)  # Set to current time when created
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)  # Updated to current time when record is modified
-    mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'), nullable=True)
+    angel_mentor_id = Column(BigInteger, ForeignKey('mentor_details.id'), nullable=True)
 
     
     contributor = relationship('ContributorsRegistration', back_populates='point_transactions')
@@ -1038,7 +1042,7 @@ class PointTransactions(Base):
             'type': self.type,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
-            'mentor_id': self.mentor_id
+            'angel_mentor_id': self.angel_mentor_id
         }
 
 class PointsMapping(Base):
@@ -1084,7 +1088,6 @@ class PrHistory(Base):
     merged_at = Column(Text, nullable=True)
     merged_by_username = Column(Text, nullable=True)
     pr_id = Column(BigInteger, nullable=False)
-    points = Column(SmallInteger, nullable=False)
     ticket_url = Column(Text, nullable=False)
     ticket_complexity = Column(Text, nullable=True)
 

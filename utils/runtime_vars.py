@@ -7,7 +7,8 @@ MARKDOWN_TEMPLATE_HEADERS = [
             'Organisation Name',
             'Domain',
             'Tech Skills Needed',
-            'Mentor(s)',
+            'Angel Mentor',
+            'Organizational Mentor',
             'Complexity',
             'Category',
             'Sub Category'
