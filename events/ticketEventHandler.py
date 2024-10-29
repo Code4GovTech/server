@@ -198,7 +198,7 @@ class TicketEventHandler:
                 designer = markdown_contents.get("Designer")
                 labels = issue["labels"]
                 category = markdown_contents.get("Category")
-                sub_category = markdown_contents.get("Sub Category")
+                domain = markdown_contents.get("Domain")
                 print("complexity", complexity)
                 created_at =  issue["created_at"] if issue.get("created_at") else None
                 if created_at:
@@ -218,7 +218,8 @@ class TicketEventHandler:
                         "labels": [l['name'] for l in labels],
                         "issue_id": issue["id"],
                         "created_at": created_at,
-                        "project_type": category+", "+sub_category,
+                        "domain": domain,
+                        "project_type": category,
                         "updated_at": updated_at
                 }
                 print('ticket_data is ', ticket_data)
@@ -287,7 +288,7 @@ class TicketEventHandler:
         designer = markdown_contents.get("Designer")
         labels = issue["labels"]
         category = markdown_contents.get("Category")
-        sub_category = markdown_contents.get("Sub Category")
+        domain = markdown_contents.get("Domain")
         print("complexity", complexity)
         created_at =  issue["created_at"] if issue.get("created_at") else None
         if created_at:
@@ -306,13 +307,17 @@ class TicketEventHandler:
                 "org_id": org[0]["id"],
                 "labels": [l['name'] for l in labels],
                 "issue_id": issue["id"],
-                "project_type": category+", "+sub_category,
+                "project_type": category,
+                "domain": domain,
                 "created_at": created_at,
                 "updated_at": updated_at
         }
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
             await self.postgres_client.record_updated_ticket(ticket_data, "issues")
+            added_contributor = await self.add_contributor(issue)
+            if added_contributor:
+                print('contributors data added')
 
         if await PostgresORM().check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
@@ -390,7 +395,7 @@ class TicketEventHandler:
                 "issue_id": issue[0]["id"],
                 "point": points,
                 "type": "credit",
-                "mentor_id": mentor[0]['mentor_id'] if mentor else None,
+                "angel_mentor_id": mentor[0]['angel_mentor_id'] if mentor else None,
                 "created_at": str(datetime.now()),
                 "updated_at": str(datetime.now())
             }  
@@ -597,27 +602,28 @@ class TicketEventHandler:
             inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
 
             #add mentor's data
-            mentor = markdown_contents.get("Mentor(s)")
-            if mentor:
-                url = f'https://api.github.com/users/{mentor}'
+            org_mentor = markdown_contents.get("Organizational Mentor")
+            angel_mentor = markdown_contents.get("Angel Mentor")
+            if angel_mentor:
+                url = f'https://api.github.com/users/{angel_mentor}'
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url) as response:
-                        data = await response.json()
-                if data:
-                    mentor_id = data["id"]
-                    mentor = await self.postgres_client.get_data("github_id","contributors_registration", mentor_id)
-                    if mentor:
-                        mentor_data = {
-                            "issue_id": get_issue[0]["id"],
-                            "mentor_id": mentor[0]["id"] if mentor else None,
-                            "created_at":str(datetime.now()),
-                            "updated_at":str(datetime.now())
-                        }
-                        inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
-                        if not inserted_mentor:
-                            print('mentor data could not be inserted')
-                else:
-                    print('mentor not found skipping mentors addition')
+                        angel_mentor_data = await response.json()
+                if angel_mentor_data:
+                    angel_mentor_id = angel_mentor_data["id"]
+                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+                
+                mentor_data = {
+                    "issue_id": get_issue[0]["id"],
+                    "org_mentor_id": org_mentor if org_mentor else None,
+                    "angel_mentor_id":angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
+                    "created_at":str(datetime.now()),
+                    "updated_at":str(datetime.now())
+                }
+                inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+                if not inserted_mentor:
+                    print('mentor data could not be inserted')
+        
             return inserted_data
         except Exception as e:
             print('exception while adding contributors data ',e)

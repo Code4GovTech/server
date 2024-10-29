@@ -31,7 +31,6 @@ class Pull_requestHandler(EventHandler):
                 "merged_at": str(merged_at),
                 "merged_by_username":  merged_by_username,
                 "pr_id": data['pull_request']['id'],
-                "points": 0,
                 "ticket_url": data['pull_request']['issue_url'],
                 "ticket_complexity": None
             }

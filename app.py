@@ -458,14 +458,27 @@ async def get_program_tickets_user():
         # all_issues = await postgres_client.getUserLeaderBoardData()
         all_issues = await postgres_client.fetch_filtered_issues(filter)
         print('issues are ', all_issues)
+
+        
+
         issue_result = []
         for issue in all_issues:
+            reqd_skills = issue["issue"]["technology"].split(',')
+            if reqd_skills:
+                for i in range(len(reqd_skills)):
+                    reqd_skills[i] = reqd_skills[i].strip()
+
+            project_type = issue["issue"]["project_type"].split(',')
+            if project_type is not None and project_type[0] != '':
+                for i in range(len(project_type)):
+                    project_type[i] = project_type[i].strip()
+
             res = {
                 "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": issue["issue"]["labels"],
-                "reqd_skills": issue["issue"]["technology"].split(','),
+                "reqd_skills": reqd_skills,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
                 "ticket_points": issue["points"]["points"] if issue["points"] else None,
@@ -473,10 +486,11 @@ async def get_program_tickets_user():
                     "Amoghavarsh"
                 ],
                 "status": issue["issue"]["status"],
+                "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
                 "assignees": None,
-                "project_type": issue["issue"]["project_type"].split(',') if issue["issue"]["project_type"] else None,
+                "project_type": project_type if project_type else None,
                 "is_assigned": False
             }
             issue_result.append(res)
