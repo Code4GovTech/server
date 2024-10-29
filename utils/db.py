@@ -979,7 +979,6 @@ class PostgresORM:
                     pr_history_record.merged_by = data['merged_by']
                     pr_history_record.merged_at = None if data['merged_at'] is None else data['merged_at']
                     pr_history_record.merged_by_username = data['merged_by_username']
-                    pr_history_record.points = data['points']
                     pr_history_record.ticket_url = data['ticket_url']
                     pr_history_record.ticket_complexity = data['ticket_complexity']
 
