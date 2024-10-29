@@ -1109,7 +1109,6 @@ class PrHistory(Base):
             'merged_at': self.merged_at,
             'merged_by_username': self.merged_by_username,
             'pr_id': self.pr_id,
-            'points': self.points,
             'ticket_url': self.ticket_url,
             'ticket_complexity': self.ticket_complexity
         }
