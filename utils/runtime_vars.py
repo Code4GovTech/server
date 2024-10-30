@@ -10,6 +10,7 @@ MARKDOWN_TEMPLATE_HEADERS = [
             'Angel Mentor',
             'Organizational Mentor',
             'Complexity',
+            'Mentor(s)',
             'Category',
             'Sub Category'
         ]
