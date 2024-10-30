@@ -605,24 +605,28 @@ class TicketEventHandler:
             org_mentor = markdown_contents.get("Organizational Mentor")
             angel_mentor = markdown_contents.get("Angel Mentor")
             if angel_mentor:
-                url = f'https://api.github.com/users/{angel_mentor}'
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as response:
-                        angel_mentor_data = await response.json()
-                if angel_mentor_data:
-                    angel_mentor_id = angel_mentor_data["id"]
-                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+                pass
+            else:
+                angel_mentor = markdown_contents.get("Mentor(s)")
                 
-                mentor_data = {
-                    "issue_id": get_issue[0]["id"],
-                    "org_mentor_id": org_mentor if org_mentor else None,
-                    "angel_mentor_id":angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
-                    "created_at":str(datetime.now()),
-                    "updated_at":str(datetime.now())
-                }
-                inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
-                if not inserted_mentor:
-                    print('mentor data could not be inserted')
+            url = f'https://api.github.com/users/{angel_mentor}'
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    angel_mentor_data = await response.json()
+            if angel_mentor_data:
+                angel_mentor_id = angel_mentor_data["id"]
+                angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+            
+            mentor_data = {
+                "issue_id": get_issue[0]["id"],
+                "org_mentor_id": org_mentor if org_mentor else None,
+                "angel_mentor_id":angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
+                "created_at":str(datetime.now()),
+                "updated_at":str(datetime.now())
+            }
+            inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+            if not inserted_mentor:
+                print('mentor data could not be inserted')
         
             return inserted_data
         except Exception as e:
