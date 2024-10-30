@@ -401,7 +401,7 @@ class TicketEventHandler:
             }  
             
             print('points_transaction is ', point_transaction)
-
+            print('inserting data in point_transactions')
             inserted_data = await self.postgres_client.add_data(point_transaction, "point_transactions")
                         
             return
