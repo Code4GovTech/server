@@ -388,14 +388,23 @@ class TicketEventHandler:
             print('points is ', points)
             user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
             print('user is ', user_id)
-            mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue[0]['id'], None)
-            print('mentor is ', mentor)
+
+            markdown_contents = MarkdownHeaders().flattenAndParse(eventData["body"])
+            angel_mentor = markdown_contents.get("Angel Mentor")
+            url = f'https://api.github.com/users/{angel_mentor}'
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    angel_mentor_data = await response.json()
+            if angel_mentor_data:
+                angel_mentor_id = angel_mentor_data["id"]
+                angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+            print('mentor is ', angel_mentor_detials)
             point_transaction = {
                 "user_id": user_id[0]['id'],
                 "issue_id": issue[0]["id"],
                 "point": points,
                 "type": "credit",
-                "angel_mentor_id": mentor[0]['angel_mentor_id'] if mentor else None,
+                "angel_mentor_id": angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
                 "created_at": str(datetime.now()),
                 "updated_at": str(datetime.now())
             }  
