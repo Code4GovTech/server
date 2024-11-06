@@ -1,6 +1,7 @@
 import aiohttp, os, sys
-from utils.db import SupabaseInterface
+from utils.db import PostgresORM
 from aiographql.client import GraphQLClient, GraphQLRequest
+import asyncio
 
 headers = {
             'Accept': 'application/vnd.github+json',
@@ -401,13 +402,26 @@ mentorship_repos = [
 
 repositories = list(set(mentorship_repos))
 
-tickets = SupabaseInterface().readAll("ccbp_tickets")
-closedTickets = []
-for ticket in tickets:
-      if ticket["status"] == "closed":
-            closedTickets.append(ticket)
+# tickets = SupabaseInterface.get_instance().readAll("ccbp_tickets")
+# tickets = await PostgresORM().readAll("ccbp_tickets")
+# closedTickets = []
+# for ticket in tickets:
+#       if ticket["status"] == "closed":
+#             closedTickets.append(ticket)
             
-        
+  
+
+
+async def get_closed_tickets():
+    tickets = await PostgresORM().readAll("ccbp_tickets")
+    if tickets is None:
+        print("No tickets found.")
+        return []
+    
+    closedTickets = [ticket for ticket in tickets if ticket["status"] == "closed"]
+    return closedTickets
+
+closed_tickets = asyncio.run(get_closed_tickets())
 
 async def getNewPRs():
     for ticket in closedTickets:
@@ -471,7 +485,7 @@ async def getNewPRs():
     #                         "number_of_files_changed": pull["changed_files"] 
 
     #                 }
-    #                         SupabaseInterface().insert("mentorship_program_pull_request", p)
+    #                         SupabaseInterface.get_instance().insert("mentorship_program_pull_request", p)
     #                 except Exception as e:
     #                     print("Exception", e, file=sys.stderr)
     #                     break
