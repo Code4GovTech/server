@@ -270,6 +270,10 @@ class TicketEventHandler:
     
         if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
             ticketType = "ccbp"
+        else:
+            ticketType = "dmp"
+        
+        print(f'calling markdown parser with {issue["body"]}')
         markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
         print("MARKDOWN", markdown_contents, file=sys.stderr )
         # parsed_url = urlparse(issue["url"])

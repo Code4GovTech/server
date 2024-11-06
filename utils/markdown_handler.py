@@ -248,6 +248,7 @@ class MarkdownHeaders:
         print(markdownDict, file=sys.stderr)
         
         # Flatten the dictionary
+        print('makrdown content', markdownDict, file=sys.stderr)
         flatDict = flatdict.FlatDict(markdownDict, delimiter=".")
         dataDict = {}
 

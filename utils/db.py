@@ -1307,3 +1307,8 @@ class PostgresORM:
             print(f"Error in fetch_filtered_issues: {e}")
             return None
             
+
+    def add_github_user(self, user):
+        data = self.client.table("contributors_registration").upsert(user, on_conflict=["github_id", "discord_id"]).execute()
+        return data.data
+                    
