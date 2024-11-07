@@ -623,15 +623,16 @@ class TicketEventHandler:
                 pass
             else:
                 angel_mentor = markdown_contents.get("Mentor(s)")
-                
-            url = f'https://api.github.com/users/{angel_mentor}'
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    angel_mentor_data = await response.json()
-            if angel_mentor_data:
-                angel_mentor_id = angel_mentor_data["id"]
-                angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
-            
+          
+            angel_mentor_detials = []
+            if angel_mentor: 
+                url = f'https://api.github.com/users/{angel_mentor}'
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        angel_mentor_data = await response.json()
+                if angel_mentor_data:
+                    angel_mentor_id = angel_mentor_data["id"]
+                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)          
             mentor_data = {
                 "issue_id": get_issue[0]["id"],
                 "org_mentor_id": org_mentor if org_mentor else None,
