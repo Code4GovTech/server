@@ -3,6 +3,7 @@ import json
 from handlers.EventHandler import EventHandler
 from events.ticketEventHandler import TicketEventHandler
 from utils.db import PostgresORM
+from utils.user_activity import UserActivity
 
 class IssuesHandler(EventHandler):
     async def handle_event(self, data, postgres_client):
@@ -17,14 +18,16 @@ class IssuesHandler(EventHandler):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
                     await handler_method(data)
-                    await self.log_user_activity(data)
+                    # await self.log_user_activity(data)
+                    await UserActivity.log_user_activity(data, 'issue')
                 else:
                     logging.info(f"No handler found for module: {module_name}")
             elif module_name == 'unlabeled':
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 if handler_method:
                     await handler_method(data)
-                    await self.log_user_activity(data)
+                    # await self.log_user_activity(data)
+                    await UserActivity.log_user_activity(data, 'issue')
             
             return 'success'
 
@@ -177,16 +180,16 @@ class IssuesHandler(EventHandler):
 
             user_id = data['issue']['user']['id']
             
-            contributor = await self.postgres_client.get_data('github_id', 'contributors_registration', user_id, '*')
-            contributor_id = contributor["id"]
-
+            contributor = await postgres_client.get_data('github_id', 'contributors_registration', user_id, '*')
+            contributor_id = contributor[0]["id"]
+            mentor = await postgres_client.get_data('issue_id', 'issue_mentors',issue[0]["id"])
             activity_data = {
-                "issue_id": issue["id"],
+                "issue_id": issue[0]["id"],
                 "activity": f"issue_{data['action']}",
-                "created_at": issue['created_at'],
-                "updated_at": issue['updated_at'],
+                "created_at": issue[0]['created_at'],
+                "updated_at": issue[0]['updated_at'],
                 "contributor_id": contributor_id,
-                "mentor_id": ""
+                "mentor_id": mentor[0]["angel_mentor_id"] if mentor else None
             }
             saved_activity_data = await postgres_client.add_data(activity_data,"user_activity")
             return saved_activity_data
