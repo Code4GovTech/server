@@ -1311,7 +1311,7 @@ class UnstructuredDiscordData(Base):
 class UserActivity(Base):
     __tablename__ = 'user_activity'
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     contributor_id = Column(BigInteger, ForeignKey('contributors_registration.id'), nullable=False)  # Assumes 'ContributorsRegistration' model
     issue_id = Column(BigInteger, ForeignKey('issues.id'), nullable=False)  # Assumes 'Issues' model
     activity = Column(Text, nullable=True)

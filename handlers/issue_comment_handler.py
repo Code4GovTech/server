@@ -2,6 +2,7 @@ from handlers.EventHandler import EventHandler
 from datetime import datetime
 from utils.logging_file import logger
 import logging
+from utils.user_activity import UserActivity
 
 class Issue_commentHandler(EventHandler):
      
@@ -16,6 +17,7 @@ class Issue_commentHandler(EventHandler):
                 handler_method = getattr(self, f'handle_issue_comment_{module_name}', None)
                 if handler_method:
                     await handler_method(data, postgres_client)
+                    await UserActivity.log_user_activity(data, 'comment')
                 else:
                     logging.info(f"No handler found for module: {module_name}")
             

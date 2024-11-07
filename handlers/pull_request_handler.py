@@ -1,6 +1,7 @@
 import logging
 from handlers.EventHandler import EventHandler
 from datetime import datetime
+from utils.user_activity import UserActivity
 
 class Pull_requestHandler(EventHandler):
 
@@ -59,15 +60,7 @@ class Pull_requestHandler(EventHandler):
             issue = await postgres_client.get_data('link', 'issues', issue_url, '*')
 
             #save activity to user_activity
-            activity_data = {
-                "issue_id": issue["id"],
-                "activity": f"pull_request_{data['action']}",
-                "created_at": data['pull_request']['created_at'],
-                "updated_at": data['pull_request']['updated_at'],
-                "contributor_id": contributor_id,
-                "mentor_id": ""
-            }
-            saved_activity_data = await postgres_client.add_data(activity_data,"user_activity")
+            await UserActivity.log_user_activity(data, 'pull_request')
         except Exception as e:
             print('exception in pr ', e)
             logging.info(e)
