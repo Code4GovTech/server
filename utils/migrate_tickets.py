@@ -27,11 +27,11 @@ class MigrateTickets:
                     new_org = await self.postgres_client.add_data(data={"name":org}, table_name="community_orgs")
                     org_exist = await self.postgres_client.get_data("name", "community_orgs", org)
 
-                created_at = ticket['created_at'].strftime('%Y-%m-%dT%H:%M:%SZ')
+                created_at = ticket['created_at'].strftime('%Y-%m-%dT%H:%M:%SZ') if ticket['created_at'] else None
                 if created_at:
                     created_at = self.convert_to_datetime(created_at)
 
-                closed_at = ticket['closed_at'].strftime('%Y-%m-%dT%H:%M:%SZ')
+                closed_at = ticket['closed_at'].strftime('%Y-%m-%dT%H:%M:%SZ') if ticket['closed_at'] else None
                 if closed_at:
                     closed_at = self.convert_to_datetime(closed_at)
 
