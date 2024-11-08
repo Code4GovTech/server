@@ -21,6 +21,7 @@ from utils.connect_db import connect_db
 from utils.helpers import *
 from datetime import datetime
 from quart_cors import cors
+from utils.migrate_tickets import MigrateTickets
 
 scheduler = AsyncIOScheduler()
 
@@ -352,6 +353,14 @@ async def get_program_tickets_user():
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
 
+@app.route('/migrate-tickets')
+async def migrate_tickets():
+    try:
+        migrator = MigrateTickets()  # Create an instance
+        return await migrator.migrate_ccbp_tickets()
+    except Exception as e:
+        print('exception occured ', e)
+        return 'failed'
 
 if __name__ == '__main__':
     app.run()
