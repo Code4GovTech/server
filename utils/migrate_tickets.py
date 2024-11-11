@@ -73,6 +73,9 @@ class MigrateTickets:
             mentor = data["mentor"][0]
             issue_id = data["issue_id"]
 
+
+            issue = await self.postgres_client.get_data("issue_id","issues", issue_id)
+
             if assignee:
                 url = f'https://api.github.com/users/{assignee}'
                 async with aiohttp.ClientSession() as session:
@@ -81,13 +84,14 @@ class MigrateTickets:
                 if assignee_data:
                     user = await self.postgres_client.get_data("github_id","contributors_registration", assignee_data[0]["id"])
                     contributors_data = {
-                                    "issue_id": issue_id,
+                                    "issue_id": issue[0]['id'],
                                     "role": 1,
                                     "contributor_id": user[0]["id"] if user else None,
                                     "created_at":str(datetime.now()),
                                     "updated_at":str(datetime.now())
                                 }
                     inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
+                    print('inserted contributor is ', inserted_data)
 
             if mentor:
                 url = f'https://api.github.com/users/{mentor}'
@@ -97,17 +101,26 @@ class MigrateTickets:
                         angel_mentor_data = await response.json()
                 if angel_mentor_data:
                     angel_mentor_id = angel_mentor_data["id"]
-                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)        
+                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+                    if not angel_mentor_detials:
+                        #add the data in a seperate table
+                        mentor_not_added = {
+                            "mentor_github_id": angel_mentor_id,
+                            "issue_id": issue[0]['id']
+                        }
+                        inserted_mentor_not_added_data = await self.postgres_client.add_data(mentor_not_added, "mentor_not_added") 
+                        # print('mentor not added data ', inserted_mentor_not_added_data)       
 
                 if angel_mentor_detials:
                     mentor_data = {
-                        "issue_id": issue_id,
+                        "issue_id": issue[0]['id'],
                         "org_mentor_id": None,
                         "angel_mentor_id":angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
                         "created_at":str(datetime.now()),
                         "updated_at":str(datetime.now())
                     }
                     inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+                    print('inserted mentor is ', inserted_mentor)
             
             return 'success'
 
