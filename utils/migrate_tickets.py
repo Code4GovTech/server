@@ -23,7 +23,7 @@ class MigrateTickets:
                 print(ticket)
                 org = ticket['organization']
                 org_exist = await self.postgres_client.get_data("name", "community_orgs", org)
-                if org_exist is None:
+                if org and (org_exist is None):
                     new_org = await self.postgres_client.add_data(data={"name":org}, table_name="community_orgs")
                     org_exist = await self.postgres_client.get_data("name", "community_orgs", org)
 
