@@ -676,7 +676,7 @@ class Issues(Base):
     domain = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
     org_id = Column(BigInteger, ForeignKey('community_orgs.id'), nullable=True)
-    issue_id = Column(BigInteger, nullable=True)
+    issue_id = Column(BigInteger, unique=True)
     
     point_transactions = relationship('PointTransactions', back_populates='issue')
     user_activities = relationship('UserActivity', back_populates='issue')
@@ -1520,4 +1520,21 @@ class ContributorPoints(Base):
             'id': self.id,
             'contributors_id': self.contributors_id,
             'total_points': self.total_points
+        }
+    
+class MentorNotAdded(Base):
+    __tablename__ = 'mentor_not_added'
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    mentor_github_id = Column(BigInteger, nullable=True) 
+    issue_id = Column(BigInteger, nullable=True)
+
+    def __repr__(self):
+        return f"<ContributorPoints(name={self.name})>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'mentor_github_id': self.mentor_github_id,
+            'issue_id': self.issue_id
         }
