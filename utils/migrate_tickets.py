@@ -22,10 +22,13 @@ class MigrateTickets:
                 # Create an Issues object with mapped fields from CcbpTickets
                 print(ticket)
                 org = ticket['organization']
-                org_exist = await self.postgres_client.get_data("name", "community_orgs", org)
-                if org and (org_exist is None):
-                    new_org = await self.postgres_client.add_data(data={"name":org}, table_name="community_orgs")
+                if org:
                     org_exist = await self.postgres_client.get_data("name", "community_orgs", org)
+                    if org and (org_exist is None):
+                        new_org = await self.postgres_client.add_data(data={"name":org}, table_name="community_orgs")
+                        org_exist = await self.postgres_client.get_data("name", "community_orgs", org)
+                else: 
+                    org_exist = None
 
                 created_at = ticket['created_at'].strftime('%Y-%m-%dT%H:%M:%SZ') if ticket['created_at'] else None
                 if created_at:
@@ -49,7 +52,7 @@ class MigrateTickets:
                     "domain":ticket['project_sub_category'],
                     "description":f"Ticket points: {ticket['ticket_points']}, Author: {ticket['issue_author']}",
                     "issue_id":ticket['issue_id'],
-                    "org_id": org_exist[0]["id"]
+                    "org_id": org_exist[0]["id"] if org_exist else None
                 }
                 inserted_ticket = await self.postgres_client.record_created_ticket(data=new_issue,table_name="issues")
                 if inserted_ticket:
