@@ -52,7 +52,10 @@ class MigrateTickets:
                     "org_id": org_exist[0]["id"]
                 }
                 inserted_ticket = await self.postgres_client.record_created_ticket(data=new_issue,table_name="issues")
-                print('inserted_ticket ', inserted_ticket)
+                if inserted_ticket:
+                    print('inserted_ticket ', inserted_ticket)
+                else:
+                    continue
 
                 data = {
                     "assignee": ticket['assignees'],
