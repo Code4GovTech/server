@@ -210,8 +210,8 @@ class TicketEventHandler:
                 ticket_data = {
                         "title":issue["title"],     #name of ticket
                         "description":  markdown_contents,
-                        "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
-                        "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                        "complexity": markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+                        "technology": markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None, 
                         "status": issue["state"],
                         "link": issue["html_url"],
                         "org_id": org[0]["id"],
@@ -304,8 +304,8 @@ class TicketEventHandler:
         ticket_data = {
                 "title":issue["title"],     #name of ticket
                 "description":  markdown_contents,
-                "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
-                "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                "complexity": markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+                "technology": markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None, 
                 "status": issue["state"],
                 "link": issue["html_url"],
                 "org_id": org[0]["id"],
@@ -388,7 +388,7 @@ class TicketEventHandler:
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
             print('contributor is', contributors )
             #FIND POINTS BY ISSUE COMPLEXITY
-            points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'])
+            points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
             user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
             print('user is ', user_id)
