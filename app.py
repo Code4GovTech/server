@@ -39,17 +39,16 @@ app.config['TESTING']= False
 
 
 async def get_github_data(code, discord_id):
-   
-    headers = {
-        "Accept": "application/json",
-        "Authorization": f"Bearer {auth_token}"
-
-    }
 
     async with aiohttp.ClientSession() as session:
         github_response = await GithubAdapter.get_github_data(code)
         auth_token = (github_response)["access_token"]
        
+        headers = {
+                "Accept": "application/json",
+                "Authorization": f"Bearer {auth_token}"
+        }
+
         user_response = await GithubAdapter.get_github_user(headers)
         user = user_response
         github_id = user["id"]
