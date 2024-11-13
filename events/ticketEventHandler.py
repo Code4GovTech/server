@@ -210,8 +210,8 @@ class TicketEventHandler:
                 ticket_data = {
                         "title":issue["title"],     #name of ticket
                         "description":  markdown_contents,
-                        "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
-                        "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                        "complexity": markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+                        "technology": markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None, 
                         "status": issue["state"],
                         "link": issue["html_url"],
                         "org_id": org[0]["id"],
@@ -304,8 +304,8 @@ class TicketEventHandler:
         ticket_data = {
                 "title":issue["title"],     #name of ticket
                 "description":  markdown_contents,
-                "complexity": markdown_contents["Complexity"].lower() if markdown_contents.get("Complexity") else None ,
-                "technology": markdown_contents["Tech Skills Needed"].lower() if markdown_contents.get("Tech Skills Needed") else None, 
+                "complexity": markdown_contents["Complexity"] if markdown_contents.get("Complexity") else None ,
+                "technology": markdown_contents["Tech Skills Needed"] if markdown_contents.get("Tech Skills Needed") else None, 
                 "status": issue["state"],
                 "link": issue["html_url"],
                 "org_id": org[0]["id"],
