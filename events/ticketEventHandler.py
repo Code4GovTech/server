@@ -388,7 +388,7 @@ class TicketEventHandler:
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
             print('contributor is', contributors )
             #FIND POINTS BY ISSUE COMPLEXITY
-            points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'])
+            points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
             user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
             print('user is ', user_id)
