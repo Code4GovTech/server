@@ -1261,6 +1261,7 @@ class PostgresORM:
                     select(Issues, CommunityOrgs, PointSystem)
                     .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
                     .join(PointSystem, Issues.complexity == PointSystem.complexity)
+                    .order_by(desc(Issues.id))
                 )
                 
                 # Prepare dynamic filter conditions
