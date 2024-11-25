@@ -202,8 +202,8 @@ class TicketEventHandler:
                 # Filter the labels to include only the desired ones
                 filtered_labels = []
                 for label in labels:
-                    if label in desired_labels:
-                        filtered_labels.append(label)
+                    if label["name"] in desired_labels:
+                        filtered_labels.append(label["name"])
 
                 print('filtered labels ', filtered_labels)
 
@@ -306,8 +306,8 @@ class TicketEventHandler:
         # Filter the labels to include only the desired ones
         filtered_labels = []
         for label in labels:
-            if label in desired_labels:
-                filtered_labels.append(label)
+            if label["name"] in desired_labels:
+                filtered_labels.append(label["name"])
 
         print('filtered labels ', filtered_labels)
 
