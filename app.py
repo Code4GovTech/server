@@ -325,6 +325,7 @@ async def get_program_tickets_user():
             if issue["issue"]["project_type"]:
                 project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
 
+            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
                 labels = ['C4GT Coding']
@@ -338,7 +339,7 @@ async def get_program_tickets_user():
                     pass
                 else: 
                     contributors_url = contributors_data["github_url"].split('/')
-                    contributors_name = contributors_url[-1]
+                    contributors_name = contributors_url[-1] if contributors_url else None
 
             res = {
                 "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
