@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from models.models import Base,GithubClassroomData
+from models.models import Base, ContributorsRegistration,GithubClassroomData, IssueContributors
 from sqlalchemy import delete, insert
 from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
@@ -834,6 +834,7 @@ class PostgresORM:
                     created_at=data['created_at'],
                     updated_at=data['updated_at'],
                     title=data['title'],
+                    domain=data['domain'],
                     description=f"{data['description']}",
                     org_id=data['org_id'],
                     issue_id=data['issue_id'],
@@ -1258,11 +1259,14 @@ class PostgresORM:
             async with self.session() as session:
                 # Start building the query by joining tables
                 query = (
-                    select(Issues, CommunityOrgs, PointSystem)
-                    .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
-                    .join(PointSystem, Issues.complexity == PointSystem.complexity)
-                    .order_by(desc(Issues.id))
-                )
+                        select(Issues, CommunityOrgs, PointSystem, IssueContributors, ContributorsRegistration)
+                        .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
+                        .join(PointSystem, Issues.complexity == PointSystem.complexity)
+                        .outerjoin(IssueContributors, Issues.id == IssueContributors.issue_id)
+                        .outerjoin(ContributorsRegistration, IssueContributors.contributor_id == ContributorsRegistration.id) 
+                        .where(Issues.complexity != 'Beginner')
+                        .order_by(desc(Issues.id))
+                    )
                 
                 # Prepare dynamic filter conditions
                 conditions = []
@@ -1294,12 +1298,14 @@ class PostgresORM:
                 data = []
                 for row in rows:
                     issue = row.Issues.to_dict()
-                    org = row.CommunityOrgs.to_dict()
+                    org = row.CommunityOrgs.to_dict() if row.CommunityOrgs else None
                     point_system = row.PointSystem.to_dict()
+                    contributors_registration = row.ContributorsRegistration.to_dict() if row.ContributorsRegistration else None
                     data.append({
                         'issue': issue,
                         'org': org,
-                        'points': point_system
+                        'points': point_system,
+                        'contributors_registration': contributors_registration
                     })
 
                 return data

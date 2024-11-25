@@ -325,11 +325,27 @@ async def get_program_tickets_user():
             if issue["issue"]["project_type"]:
                 project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
 
+            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
+            labels = issue["issue"]["labels"]
+            if len(labels) == 1:
+                labels = ['C4GT Coding']
+            else:
+                labels = [label for label in labels if label != 'C4GT Community']
+
+            contributors_data = issue["contributors_registration"]
+            if contributors_data:
+                contributors_name = contributors_data["name"] 
+                if contributors_name:
+                    pass
+                else: 
+                    contributors_url = contributors_data["github_url"].split('/')
+                    contributors_name = contributors_url[-1] if contributors_url else None
+
             res = {
                 "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
-                "category": issue["issue"]["labels"],
+                "category": labels,
                 "reqd_skills": reqd_skills if reqd_skills else None,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
@@ -341,9 +357,9 @@ async def get_program_tickets_user():
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
-                "assignees": None,
+                "assignees": contributors_name if contributors_data else None,
                 "project_type": project_type if reqd_skills else None,
-                "is_assigned": False
+                "is_assigned": True if contributors_data else False
             }
             issue_result.append(res)
 
