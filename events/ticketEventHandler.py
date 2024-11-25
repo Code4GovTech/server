@@ -198,9 +198,14 @@ class TicketEventHandler:
                 designer = markdown_contents.get("Designer")
 
                 labels = issue["labels"]  # Assuming this contains the list of labels
-                desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty']
+                desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty', 'C4GT Community']
                 # Filter the labels to include only the desired ones
-                filtered_labels = [label for label in labels if label in desired_labels]
+                filtered_labels = []
+                for label in labels:
+                    if label in desired_labels:
+                        filtered_labels.append(label)
+
+                print('filtered labels ', filtered_labels)
 
                 category = markdown_contents.get("Category")
                 domain = markdown_contents.get("Domain")
@@ -297,9 +302,14 @@ class TicketEventHandler:
         designer = markdown_contents.get("Designer")
 
         labels = issue["labels"]  # Assuming this contains the list of labels
-        desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty']
+        desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty', 'C4GT Community']
         # Filter the labels to include only the desired ones
-        filtered_labels = [label for label in labels if label in desired_labels]
+        filtered_labels = []
+        for label in labels:
+            if label in desired_labels:
+                filtered_labels.append(label)
+
+        print('filtered labels ', filtered_labels)
 
         category = markdown_contents.get("Category")
         domain = markdown_contents.get("Domain")
