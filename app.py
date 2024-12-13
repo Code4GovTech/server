@@ -67,7 +67,8 @@ async def get_github_data(code, discord_id):
             "discord_id": int(discord_id),
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
-            "email": ','.join(private_emails)
+            "email": ','.join(private_emails),
+            "joined_at": datetime.now()
         }
 
         return user_data
