@@ -10,7 +10,7 @@ class MigrateContributors:
     async def migration(self):
         try:
             #migrate contributors discord
-            # await self.migrate_contributors_discord()
+            await self.migrate_contributors_discord()
             
             #migrate contributors registraiton
             await self.migrate_contributors_registration()
@@ -29,7 +29,8 @@ class MigrateContributors:
         try:
             supabase_contributors_discord = self.supabase_client.readAll("contributors_discord")
             postgres_contributors_discord = await self.postgres_client.readAll("contributors_discord")
-            
+            print('length of supabase_contributors_discord ', len(supabase_contributors_discord))
+            print('length of postgres_contributors_discord ', len(postgres_contributors_discord))
             
             for contributor in supabase_contributors_discord:
                 # Ensure the correct key is used to compare 'discord_id' values.
@@ -71,7 +72,9 @@ class MigrateContributors:
         try:
             supabase_contributors_registration = self.supabase_client.readAll("contributors_registration")
             postgres_contributors_registration = await self.postgres_client.readAll("contributors_registration")
-            
+
+            print('length of supabase_contributors_registration ', len(supabase_contributors_registration))
+            print('length of postgres_contributors_registration ', len(postgres_contributors_registration))
             
             for contributor in supabase_contributors_registration:
                 # Ensure the correct key is used to compare 'discord_id' values.
