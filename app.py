@@ -384,7 +384,9 @@ async def migrate_tickets():
 async def migrate_contributors():
     try:
         migrator = MigrateContributors()  # Create an instance
-        return await migrator.migration()
+
+        asyncio.create_task(migrator.migration())
+        return 'migration started'
     except Exception as e:
         print('exception occured ', e)
         return 'failed'
