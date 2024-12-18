@@ -22,6 +22,7 @@ from utils.helpers import *
 from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
+from utils.migrate_users import MigrateContributors
 
 scheduler = AsyncIOScheduler()
 
@@ -67,7 +68,8 @@ async def get_github_data(code, discord_id):
             "discord_id": int(discord_id),
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
-            "email": ','.join(private_emails)
+            "email": ','.join(private_emails),
+            "joined_at": datetime.now()
         }
 
         return user_data
@@ -373,6 +375,18 @@ async def migrate_tickets():
     try:
         migrator = MigrateTickets()  # Create an instance
         return await migrator.migrate_ccbp_tickets()
+    except Exception as e:
+        print('exception occured ', e)
+        return 'failed'
+    
+
+@app.route('/migrate-contributors')
+async def migrate_contributors():
+    try:
+        migrator = MigrateContributors()  # Create an instance
+
+        asyncio.create_task(migrator.migration())
+        return 'migration started'
     except Exception as e:
         print('exception occured ', e)
         return 'failed'
