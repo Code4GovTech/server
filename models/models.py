@@ -228,6 +228,9 @@ class ContributorsDiscord(Base):
     field_name = Column(Text, nullable=True, name='name')  # Adjusted field name
     chapter = Column(Text, nullable=True, comment="the chapter they're associated with")
     gender = Column(Text, nullable=True)
+    country = Column(Text, nullable=True)
+    city = Column(Text, nullable=True)
+    experience = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False)
 
     def __repr__(self):
