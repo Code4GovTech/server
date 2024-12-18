@@ -38,8 +38,8 @@ class SupabaseInterface():
     def __init__(self):
         # Initialize Supabase client upon first instantiation
         if not SupabaseInterface._instance:
-            self.supabase_url = os.getenv("SUPABASE_URL")
-            self.supabase_key = os.getenv("SUPABASE_KEY")
+            self.supabase_url = os.getenv("SERVER_SUPABASE_URL")
+            self.supabase_key = os.getenv("SERVER_SUPABASE_KEY")
             self.client: Client = create_client(self.supabase_url, self.supabase_key, options=client_options)
             SupabaseInterface._instance = self
         else:          
