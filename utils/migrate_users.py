@@ -10,7 +10,7 @@ class MigrateContributors:
     async def migration(self):
         try:
             #migrate contributors discord
-            # await self.migrate_contributors_discord()
+            await self.migrate_contributors_discord()
             
             #migrate contributors registraiton
             await self.migrate_contributors_registration()
