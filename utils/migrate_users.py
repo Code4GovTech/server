@@ -31,6 +31,10 @@ class MigrateContributors:
             postgres_contributors_discord = await self.postgres_client.readAll("contributors_discord")
             print('length of supabase_contributors_discord ', len(supabase_contributors_discord))
             print('length of postgres_contributors_discord ', len(postgres_contributors_discord))
+
+            if len(supabase_contributors_discord) == len(postgres_contributors_discord):
+                print('skipping migration to contributors discord as both lens are equal')
+                return
             
             for contributor in supabase_contributors_discord:
                 # Ensure the correct key is used to compare 'discord_id' values.
@@ -75,6 +79,10 @@ class MigrateContributors:
 
             print('length of supabase_contributors_registration ', len(supabase_contributors_registration))
             print('length of postgres_contributors_registration ', len(postgres_contributors_registration))
+
+            if len(supabase_contributors_registration) == len(postgres_contributors_registration):
+                print('skipping migration to contributors discord as both lens are equal')
+                return
             
             for contributor in supabase_contributors_registration:
                 # Ensure the correct key is used to compare 'discord_id' values.
