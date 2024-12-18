@@ -22,6 +22,7 @@ from utils.helpers import *
 from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
+from utils.migrate_users import MigrateContributors
 
 scheduler = AsyncIOScheduler()
 
@@ -374,6 +375,16 @@ async def migrate_tickets():
     try:
         migrator = MigrateTickets()  # Create an instance
         return await migrator.migrate_ccbp_tickets()
+    except Exception as e:
+        print('exception occured ', e)
+        return 'failed'
+    
+
+@app.route('/migrate-contributors')
+async def migrate_contributors():
+    try:
+        migrator = MigrateContributors()  # Create an instance
+        return await migrator.migration()
     except Exception as e:
         print('exception occured ', e)
         return 'failed'
