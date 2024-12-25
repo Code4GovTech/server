@@ -3,7 +3,8 @@
 
 import aiohttp
 import os, sys, datetime, json
-from utils.db import PostgresORM
+# from utils.db import PostgresORM
+from shared_migrations.db.server import ServerQueries
 from utils.markdown_handler import MarkdownHeaders
 from utils.github_api import GithubAPI
 from utils.jwt_generator import GenerateJWT
@@ -80,8 +81,8 @@ def matchProduct(enteredProductName):
 
 
 async def send_message(ticket_data):
-    discord_channels = await PostgresORM().readAll("discord_channels")
-    products = await PostgresORM().readAll("product")
+    discord_channels = await ServerQueries().readAll("discord_channels")
+    products = await ServerQueries().readAll("product")
 
     url = None
     # for product in products:
@@ -139,7 +140,7 @@ async def get_pull_request(owner, repo, number):
 
 class TicketEventHandler:
     def __init__(self):
-        self.postgres_client = PostgresORM()
+        self.postgres_client = ServerQueries()
         self.ticket_points = {
                         "hard":30,
                         "easy":10,
@@ -255,11 +256,11 @@ class TicketEventHandler:
                     repo = url_components[-3]
                     owner = url_components[-4]
                     try:                    
-                        await PostgresORM().add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
+                        await self.postgres_client.add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
                         comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                         if comment:
                                 
-                            await PostgresORM().update_data({
+                            await self.postgres_client.update_data({
                                 "api_url":comment["url"],
                                 "comment_id":comment["id"],
                                 "issue_id":issue["id"],
@@ -343,17 +344,17 @@ class TicketEventHandler:
             if added_contributor:
                 print('contributors data added')
 
-        if await PostgresORM().check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
+        if await self.postgres_client.check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
             url_components = issue["url"].split('/')
             repo = url_components[-3]
             owner = url_components[-4]
-            comments = await PostgresORM().get_data("issue_id","app_comments",issue["id"],None)
+            comments = await self.postgres_client.get_data("issue_id","app_comments",issue["id"],None)
             comment_id = comments[0]["comment_id"]
             if TicketFeedbackHandler().evaluateDict(markdown_contents):
                 comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
                 if comment:
                     
-                    await PostgresORM.get_instance().update_data({
+                    await self.postgres_client.update_data({
                         "updated_at": datetime.utcnow().isoformat(),
                         "issue_id": issue["id"]
                     },"issue_id","app_comments")
@@ -361,7 +362,7 @@ class TicketEventHandler:
                 try:
                     comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                     print(f"Print Delete Task,{comment}", file=sys.stderr)
-                    print(await PostgresORM.get_instance().deleteComment(issue["id"],"app_comments"))
+                    print(await self.postgres_client.deleteComment(issue["id"],"app_comments"))
                 except:
                     print("Error in deletion")
         elif ticketType=="ccbp":
@@ -373,14 +374,14 @@ class TicketEventHandler:
                 try:
                     
                     
-                    await PostgresORM().add_data({
+                    await self.postgres_client.add_data({
                             "issue_id":issue["id"],
                             "updated_at": datetime.utcnow().isoformat()
                         },"app_comments")
                     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
                     if comment:
                                                 
-                        await PostgresORM().update_data({
+                        await self.postgres_client.update_data({
                             "api_url":comment["url"],
                             "comment_id":comment["id"],
                             "issue_id":issue["id"],

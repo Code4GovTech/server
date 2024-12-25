@@ -6,7 +6,7 @@ import dotenv, os, json, urllib, sys, dateutil, datetime, sys
 from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
 from utils.webhook_auth import verify_github_webhook
-from utils.db import SupabaseInterface,PostgresORM
+# from utils.db import SupabaseInterface,PostgresORM
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
@@ -23,6 +23,7 @@ from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
+from shared_migrations.db.server import ServerQueries
 
 scheduler = AsyncIOScheduler()
 
@@ -77,7 +78,7 @@ async def get_github_data(code, discord_id):
 async def comment_cleaner():
     while True:
         await asyncio.sleep(5)
-        comments = await PostgresORM().readAll("app_comments")
+        comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
             utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
@@ -89,7 +90,7 @@ async def comment_cleaner():
                 issue_id = comment["issue_id"]
                 comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                 print(f"Print Delete Task,{comment}", file=sys.stderr)
-                print(await PostgresORM().deleteComment(issue_id,"app_comments"))
+                print(await ServerQueries().deleteComment(issue_id,"app_comments"))
 
 async def fetch_github_issues_from_repo(owner, repo):
     try:
@@ -161,7 +162,7 @@ async def verify(githubUsername):
 
 @app.route("/misc_actions")
 async def addIssues():
-    tickets = await PostgresORM().readAll("ccbp_tickets")
+    tickets = await ServerQueries().readAll("ccbp_tickets")
     count =1
     for ticket in tickets:
         print(f'{count}/{len(tickets)}')
@@ -177,7 +178,7 @@ async def addIssues():
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    data = await PostgresORM().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
+    data = await ServerQueries().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
     GithubProfileDisplay().update(data)
     return 'Done'
 
@@ -188,7 +189,7 @@ async def do_update():
     while True:
         print("Starting Update")
         await asyncio.sleep(21600)
-        data = await PostgresORM().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
+        data = await ServerQueries().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
         GithubProfileDisplay().update(data)
 
 
@@ -218,7 +219,7 @@ async def test():
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
     print("🛠️SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER", locals(), file=sys.stderr)
-    postgres_client = PostgresORM()
+    postgres_client = ServerQueries()
 
     discord_id = discord_userdata
     print("🛠️SUCCESFULLY DEFINED FUNCTION TO POST TO SUPABASE", locals(), file=sys.stderr)
@@ -249,7 +250,7 @@ async def event_handler():
 
         verification_result, error_message = await verify_github_webhook(request,secret_key)
             
-        postgres_client = PostgresORM.get_instance()
+        postgres_client = ServerQueries()
         event_type = request.headers.get("X-GitHub-Event")
         await dispatch_event(event_type, data, postgres_client)
             
@@ -274,7 +275,7 @@ async def discord_metrics():
         }
         discord_data.append(data)
 
-    data = await PostgresORM().add_discord_metrics(discord_data)
+    data = await ServerQueries().add_discord_metrics(discord_data)
     return data
 
 @app.route("/metrics/github", methods = ['POST'])
@@ -293,12 +294,12 @@ async def github_metrics():
         }
         github_data.append(data)
 
-    data =  await PostgresORM().add_github_metrics(github_data)
+    data =  await ServerQueries().add_github_metrics(github_data)
     return data
 
 @app.route("/role-master")
 async def get_role_master():
-    role_masters = await PostgresORM().readAll("role_master")
+    role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
 
@@ -310,7 +311,7 @@ async def get_program_tickets_user():
         filter = ''
         if request_data:
             filter = json.loads(request_data.decode('utf-8'))
-        postgres_client = PostgresORM.get_instance()
+        postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filter)
         print('length of all issue ', len(all_issues))
 
