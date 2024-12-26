@@ -5,6 +5,7 @@ import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
 from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
+from utils.link_pr_issue import AddIssueId
 from utils.webhook_auth import verify_github_webhook
 from utils.db import SupabaseInterface,PostgresORM
 from events.ticketEventHandler import TicketEventHandler
@@ -390,6 +391,21 @@ async def migrate_contributors():
     except Exception as e:
         print('exception occured ', e)
         return 'failed'
+
+
+@app.route('/add-issue-id-pr')
+async def add_issue_id_pr():
+    try:
+        migrator = AddIssueId()  # Create an instance
+
+        asyncio.create_task(migrator.process_prs())
+        
+        # return await migrator.process_prs()
+        return 'migration started'
+    except Exception as e:
+        print('exception occured ', e)
+        return 'failed'
+    
 
 if __name__ == '__main__':
     app.run()
