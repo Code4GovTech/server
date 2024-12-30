@@ -1,4 +1,4 @@
-import logging
+import logging, httpx, os, re, aiohttp
 from handlers.EventHandler import EventHandler
 from datetime import datetime
 from utils.user_activity import UserActivity
@@ -7,6 +7,39 @@ class Pull_requestHandler(EventHandler):
 
     def convert_to_datetime(self, date_str):
         return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
+    
+    def extract_issue_number(title):
+        match = re.search(r'#(\d+)', title)
+        if match:
+            return int(match.group(1))  
+        return None
+    
+    async def get_issue_data(owner, repo, issue_number):
+        try:
+            GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+            headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {GITHUB_TOKEN}",
+                "X-GitHub-Api-Version": "2022-11-28"
+            }
+            
+            GITHUB_ISSUE_URL = "https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
+            
+            description_url = GITHUB_ISSUE_URL.format(
+                owner=owner, repo=repo, issue_number=issue_number)
+            async with httpx.AsyncClient() as client:
+                issue_response = await client.get(description_url, headers=headers)
+                if issue_response.status_code == 200:
+                    
+                    issue_details = issue_response.json()
+                    issue_id = issue_details.id
+                    return issue_id
+                
+            return None
+        except Exception as e:
+            print('Exception occured while getting issue data ', e)
+            return None
+    
 
     async def handle_event(self, data, postgres_client):
         # Implement your logic for handling issue events here
@@ -19,6 +52,21 @@ class Pull_requestHandler(EventHandler):
             raised_at = self.convert_to_datetime(data['pull_request']['updated_at'])
             if merged_at:
                 merged_at = self.convert_to_datetime(merged_at)
+
+            api_url = data['pull_request']["api_url"]
+                
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url) as response:
+                    pr_data = await response.json()
+            if pr_data:
+                pr_title = pr_data["title"]
+                issue_number = self.extract_issue_number(pr_title)
+                if issue_number:
+                    url_parts = api_url.split('/')
+                    owner = url_parts[4]
+                    repo = url_parts[5]
+                    issue_id = self.extract_issue_number(owner, repo, issue_number)
+            
             pr_data = {
                 "created_at": created_at,
                 "api_url":data['pull_request']['url'],
@@ -33,6 +81,8 @@ class Pull_requestHandler(EventHandler):
                 "merged_by_username":  merged_by_username,
                 "pr_id": data['pull_request']['id'],
                 "ticket_url": data['pull_request']['issue_url'],
+                "title": data['pull_request']['title'],
+                "issue_id": issue_id if issue_id else None,
                 "ticket_complexity": None
             }
 
