@@ -1,5 +1,5 @@
 import aiohttp, os, sys
-from utils.db import PostgresORM
+from shared_migrations.db.server import ServerQueries
 from aiographql.client import GraphQLClient, GraphQLRequest
 import asyncio
 
@@ -413,7 +413,7 @@ repositories = list(set(mentorship_repos))
 
 
 async def get_closed_tickets():
-    tickets = await PostgresORM().readAll("ccbp_tickets")
+    tickets = await ServerQueries().readAll("ccbp_tickets")
     if tickets is None:
         print("No tickets found.")
         return []

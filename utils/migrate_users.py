@@ -1,9 +1,10 @@
 from utils.db import PostgresORM, SupabaseInterface
 from datetime import datetime
+from shared_migrations.db.server import ServerQueries
 
 class MigrateContributors:
     def __init__(self):
-        self.postgres_client = PostgresORM.get_instance()
+        self.postgres_client = ServerQueries()
         self.supabase_client = SupabaseInterface.get_instance()
         return
     
