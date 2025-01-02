@@ -1,11 +1,11 @@
 import aiohttp
-from utils.db import PostgresORM
 import os, re, httpx, time
 from datetime import datetime
+from shared_migrations.db.server import ServerQueries
 
 class AddIssueId:
     def __init__(self):
-        self.postgres_client = PostgresORM.get_instance()
+        self.postgres_client = ServerQueries()
         return
     
     def convert_to_datetime(self, date_str):

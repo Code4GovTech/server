@@ -1,11 +1,11 @@
 import logging
-from utils.db import PostgresORM
+from shared_migrations.db.server import ServerQueries
 import aiohttp
 from datetime import datetime
 
 class MigrateTickets:
     def __init__(self):
-        self.postgres_client = PostgresORM.get_instance()
+        self.postgres_client = ServerQueries()
         return
     
 
