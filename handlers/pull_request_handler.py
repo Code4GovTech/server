@@ -59,6 +59,8 @@ class Pull_requestHandler(EventHandler):
 
             api_url = data['pull_request']["url"]
                 
+            issue_id = None
+            
             async with aiohttp.ClientSession() as session:
                 async with session.get(api_url) as response:
                     pr_data = await response.json()
