@@ -10,6 +10,7 @@ RUN apt-get update && \
 
 
 COPY . .
+RUN git init
 RUN --mount=type=ssh git submodule update --init --recursive
 
 ARG REPOSITORY_MONITOR_APP_PK_PEM
