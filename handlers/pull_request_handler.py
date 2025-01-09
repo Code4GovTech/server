@@ -60,7 +60,7 @@ class Pull_requestHandler(EventHandler):
             api_url = data['pull_request']["url"]
                 
             issue_id = None
-            
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(api_url) as response:
                     pr_data = await response.json()
@@ -71,7 +71,7 @@ class Pull_requestHandler(EventHandler):
                     url_parts = api_url.split('/')
                     owner = url_parts[4]
                     repo = url_parts[5]
-                    issue_id = self.get_issue_data(owner, repo, issue_number)
+                    issue_id = await self.get_issue_data(owner, repo, issue_number)
             
             pr_data = {
                 "created_at": created_at,
