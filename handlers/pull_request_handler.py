@@ -5,8 +5,6 @@ from utils.user_activity import UserActivity
 from shared_migrations.db.server import ServerQueries
 
 class Pull_requestHandler(EventHandler):
-    def __init__(self):
-        self.postgres_client = ServerQueries()
 
     def convert_to_datetime(self, date_str):
         return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
@@ -44,10 +42,13 @@ class Pull_requestHandler(EventHandler):
             return None
     
 
-    async def handle_event(self, data):
+    async def handle_event(self, data, dummy_ps_client):
         # Implement your logic for handling issue events here
         try:
             print('inside pull request handler ', data) 
+
+            postgres_client = ServerQueries()
+
             merged_by =  data['pull_request']['merged_by']['id'] if data['pull_request']['merged_by'] else None
             merged_at = data['pull_request']['merged_at']
             merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None 
@@ -91,11 +92,11 @@ class Pull_requestHandler(EventHandler):
 
             print('PR data ', pr_data)
             
-            pr_exist = await self.postgres_client.get_data('pr_id', 'pr_history',  data['pull_request']['id'])
+            pr_exist = await postgres_client.get_data('pr_id', 'pr_history',  data['pull_request']['id'])
             if pr_exist:
-                save_data = await self.postgres_client.update_pr_history(pr_data["pr_id"],pr_data)
+                save_data = await postgres_client.update_pr_history(pr_data["pr_id"],pr_data)
             else:
-                save_data = await self.postgres_client.add_data(pr_data,"pr_history")
+                save_data = await postgres_client.add_data(pr_data,"pr_history")
             print('saved data in PR ', save_data)            
             if save_data == None:
                 logging.info("Failed to save data in pr_history")
@@ -103,14 +104,14 @@ class Pull_requestHandler(EventHandler):
             user_id = data['pull_request']['user']['id']
 
             #get contributor_id and save to supabase
-            contributor = await self.postgres_client.get_data('github_id', 'contributors_registration', user_id)
+            contributor = await postgres_client.get_data('github_id', 'contributors_registration', user_id)
             if not contributor:
                 print('could not add contributors data contributor does not exist')
                 return pr_data
             contributor_id = contributor[0]["id"]
 
             issue_url = data['pull_request']['issue_url']
-            issue = await self.postgres_client.get_data('link', 'issues', issue_url, '*')
+            issue = await postgres_client.get_data('link', 'issues', issue_url, '*')
 
             #save activity to user_activity
             await UserActivity.log_user_activity(data, 'pull_request')
