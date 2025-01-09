@@ -9,13 +9,13 @@ class Pull_requestHandler(EventHandler):
     def convert_to_datetime(self, date_str):
         return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
     
-    def extract_issue_number(title):
+    def extract_issue_number(self, title):
         match = re.search(r'#(\d+)', title)
         if match:
             return int(match.group(1))  
         return None
     
-    async def get_issue_data(owner, repo, issue_number):
+    async def get_issue_data(self, owner, repo, issue_number):
         try:
             GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
             headers = {
@@ -57,7 +57,7 @@ class Pull_requestHandler(EventHandler):
             if merged_at:
                 merged_at = self.convert_to_datetime(merged_at)
 
-            api_url = data['pull_request']["api_url"]
+            api_url = data['pull_request']["url"]
                 
             async with aiohttp.ClientSession() as session:
                 async with session.get(api_url) as response:
@@ -69,7 +69,7 @@ class Pull_requestHandler(EventHandler):
                     url_parts = api_url.split('/')
                     owner = url_parts[4]
                     repo = url_parts[5]
-                    issue_id = self.extract_issue_number(owner, repo, issue_number)
+                    issue_id = self.get_issue_data(owner, repo, issue_number)
             
             pr_data = {
                 "created_at": created_at,
