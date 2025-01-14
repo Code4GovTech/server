@@ -3,8 +3,11 @@ from datetime import datetime
 from utils.logging_file import logger
 import logging
 from utils.user_activity import UserActivity
+from shared_migrations.db.server import ServerQueries
 
 class Issue_commentHandler(EventHandler):
+    def __init__(self):
+        self.postgres_client = ServerQueries()
      
     async def handle_event(self, data, postgres_client):
         try:        
@@ -16,7 +19,7 @@ class Issue_commentHandler(EventHandler):
             if next((l for l in labels if l['name'].lower() == 'c4gt community'), None):
                 handler_method = getattr(self, f'handle_issue_comment_{module_name}', None)
                 if handler_method:
-                    await handler_method(data, postgres_client)
+                    await handler_method(data)
                     await UserActivity.log_user_activity(data, 'comment')
                 else:
                     logging.info(f"No handler found for module: {module_name}")
@@ -28,7 +31,7 @@ class Issue_commentHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_comment_created(self, data, postgres_client):
+    async def handle_issue_comment_created(self, data):
         try:        
             #generate sample dict for ticket comment table
             print(f'creating comment with {data["issue"]}')
@@ -52,7 +55,7 @@ class Issue_commentHandler(EventHandler):
 
             print('comments data ', comment_data)
                         
-            save_data = await postgres_client.add_data(comment_data,"ticket_comments") 
+            save_data = await self.postgres_client.add_data(comment_data,"ticket_comments")
             print('saved data in comments created ', save_data)           
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
@@ -62,7 +65,7 @@ class Issue_commentHandler(EventHandler):
             raise Exception 
         
     
-    async def handle_issue_comment_edited(self, data, postgres_client):
+    async def handle_issue_comment_edited(self, data):
         try:        
             #generate sample dict for ticket comment table
             print(f'editing comment with {data["issue"]}')
@@ -72,7 +75,7 @@ class Issue_commentHandler(EventHandler):
                 'updated_at':str(datetime.now())
             }
             
-            save_data = await postgres_client.update_data(comment_data, "id", "ticket_comments")   
+            save_data = await self.postgres_client.update_data(comment_data, "id", "ticket_comments")
             print('saved data in comments edited ', save_data)          
             if save_data == None:
                 logger.info(f"{datetime.now()}--- Failed to save data in ticket_comments")
@@ -81,12 +84,12 @@ class Issue_commentHandler(EventHandler):
             logger.info(f"{datetime.now()}---{e}")
             raise Exception 
         
-    async def handle_issue_comment_deleted(self, data, postgres_client):
+    async def handle_issue_comment_deleted(self, data):
         try:
             print(f'deleting comment with {data["issue"]}')
             comment_id = data['comment']['id']
             # data = await postgres_client.deleteIssueComment(comment_id)
-            await postgres_client.delete("ticket_comments","id", comment_id)
+            await self.postgres_client.delete("ticket_comments","id", comment_id)
             print('data in comment deleted', data) 
         except Exception as e:
             print('Exception occured ', e)

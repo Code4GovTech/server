@@ -1,10 +1,11 @@
 import logging
-from utils.db import PostgresORM
+from shared_migrations.db.server import ServerQueries
 
 class UserActivity:
-    async def log_user_activity(data, activity):
+
+    async def log_user_activity(self, data, activity):
         try:
-            postgres_client = PostgresORM.get_instance()
+            postgres_client = ServerQueries()
             issue = data["issue"]
             print('inside user activity', issue)
             issue = await postgres_client.get_data('issue_id', 'issues', issue["id"])

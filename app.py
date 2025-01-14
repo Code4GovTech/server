@@ -3,10 +3,13 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+
+from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
+from utils.link_pr_issue import AddIssueId
 from utils.webhook_auth import verify_github_webhook
-from utils.db import SupabaseInterface,PostgresORM
+from shared_migrations.db.server import ServerQueries
 from events.ticketEventHandler import TicketEventHandler
 from events.ticketFeedbackHandler import TicketFeedbackHandler
 from githubdatapipeline.pull_request.scraper import getNewPRs
@@ -22,6 +25,7 @@ from utils.helpers import *
 from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
+from utils.migrate_users import MigrateContributors
 
 scheduler = AsyncIOScheduler()
 
@@ -43,7 +47,7 @@ async def get_github_data(code, discord_id):
     async with aiohttp.ClientSession() as session:
         github_response = await GithubAdapter.get_github_data(code)
         auth_token = (github_response)["access_token"]
-       
+
         headers = {
                 "Accept": "application/json",
                 "Authorization": f"Bearer {auth_token}"
@@ -67,15 +71,16 @@ async def get_github_data(code, discord_id):
             "discord_id": int(discord_id),
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
-            "email": ','.join(private_emails)
+            "email": ','.join(private_emails),
+            "joined_at": datetime.now()
         }
 
         return user_data
-            
+
 async def comment_cleaner():
     while True:
         await asyncio.sleep(5)
-        comments = await PostgresORM().readAll("app_comments")
+        comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
             utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
@@ -87,7 +92,7 @@ async def comment_cleaner():
                 issue_id = comment["issue_id"]
                 comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
                 print(f"Print Delete Task,{comment}", file=sys.stderr)
-                print(await PostgresORM().deleteComment(issue_id,"app_comments"))
+                print(await ServerQueries().deleteComment(issue_id,"app_comments"))
 
 async def fetch_github_issues_from_repo(owner, repo):
     try:
@@ -96,11 +101,11 @@ async def fetch_github_issues_from_repo(owner, repo):
             return response
         else:
             print(f"Failed to get issues: {response}")
-                
+
     except Exception as e:
         logger.info(e)
         raise Exception
-    
+
 repositories_list = [
     "KDwevedi/c4gt-docs",
     "KDwevedi/testing_for_github_app"
@@ -159,7 +164,7 @@ async def verify(githubUsername):
 
 @app.route("/misc_actions")
 async def addIssues():
-    tickets = await PostgresORM().readAll("ccbp_tickets")
+    tickets = await ServerQueries().readAll("ccbp_tickets")
     count =1
     for ticket in tickets:
         print(f'{count}/{len(tickets)}')
@@ -167,15 +172,15 @@ async def addIssues():
         if ticket["status"] == "closed":
             # if ticket["api_endpoint_url"] in ["https://api.github.com/repos/glific/glific/issues/2824"]:
             await TicketEventHandler().onTicketClose({"issue":await get_url(ticket["api_endpoint_url"])})
-    
 
-    return '' 
+
+    return ''
 
 
 @app.route("/update_profile", methods=["POST"])
 async def updateGithubStats():
     webhook_data = await request.json
-    data = await PostgresORM().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
+    data = await ServerQueries().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
     GithubProfileDisplay().update(data)
     return 'Done'
 
@@ -186,7 +191,7 @@ async def do_update():
     while True:
         print("Starting Update")
         await asyncio.sleep(21600)
-        data = await PostgresORM().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
+        data = await ServerQueries().read("github_profile_data", filters={"dpg_points": ("gt", 0)})
         GithubProfileDisplay().update(data)
 
 
@@ -216,7 +221,7 @@ async def test():
 @app.route("/register/<discord_userdata>")
 async def register(discord_userdata):
     print("🛠️SUCCESSFULLY REDIECTED FROM GITHUB TO SERVER", locals(), file=sys.stderr)
-    postgres_client = PostgresORM()
+    postgres_client = ServerQueries()
 
     discord_id = discord_userdata
     print("🛠️SUCCESFULLY DEFINED FUNCTION TO POST TO SUPABASE", locals(), file=sys.stderr)
@@ -233,7 +238,7 @@ async def register(discord_userdata):
         print("🛠️PUSHED USER DETAILS TO SUPABASE")
     except Exception as e:
         print("🛠️ENCOUNTERED EXCEPTION PUSHING TO SUPABASE",e, file=sys.stderr)
-    
+
     print("🛠️FLOW COMPLETED SUCCESSFULLY, REDIRECTING TO DISCORD", file=sys.stderr)
     return await render_template('success.html'), {"Refresh": f'1; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
@@ -243,14 +248,14 @@ async def event_handler():
     try:
         data = await request.json
         print('data is ', data)
-        secret_key = os.getenv("WEBHOOK_SECRET") 
+        secret_key = os.getenv("WEBHOOK_SECRET")
 
         verification_result, error_message = await verify_github_webhook(request,secret_key)
-            
-        postgres_client = PostgresORM.get_instance()
+
+        postgres_client = ServerQueries()
         event_type = request.headers.get("X-GitHub-Event")
         await dispatch_event(event_type, data, postgres_client)
-            
+
         return data
     except Exception as e:
         logger.info(e)
@@ -268,11 +273,11 @@ async def discord_metrics():
         data = {
             "product_name" : product_name,
             "mentor_messages" : value['mentor_messages'],
-            "contributor_messages": value['contributor_messages']     
+            "contributor_messages": value['contributor_messages']
         }
         discord_data.append(data)
 
-    data = await PostgresORM().add_discord_metrics(discord_data)
+    data = await ServerQueries().add_discord_metrics(discord_data)
     return data
 
 @app.route("/metrics/github", methods = ['POST'])
@@ -287,16 +292,16 @@ async def github_metrics():
             "closed_prs": value['closed_prs'],
             "open_issues": value['open_issues'],
             "closed_issues": value['closed_issues'],
-            "number_of_commits": value['number_of_commits'],           
+            "number_of_commits": value['number_of_commits'],
         }
         github_data.append(data)
 
-    data =  await PostgresORM().add_github_metrics(github_data)
+    data =  await ServerQueries().add_github_metrics(github_data)
     return data
 
 @app.route("/role-master")
 async def get_role_master():
-    role_masters = await PostgresORM().readAll("role_master")
+    role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
 
@@ -308,7 +313,7 @@ async def get_program_tickets_user():
         filter = ''
         if request_data:
             filter = json.loads(request_data.decode('utf-8'))
-        postgres_client = PostgresORM.get_instance()
+        postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filter)
         print('length of all issue ', len(all_issues))
 
@@ -334,10 +339,10 @@ async def get_program_tickets_user():
 
             contributors_data = issue["contributors_registration"]
             if contributors_data:
-                contributors_name = contributors_data["name"] 
+                contributors_name = contributors_data["name"]
                 if contributors_name:
                     pass
-                else: 
+                else:
                     contributors_url = contributors_data["github_url"].split('/')
                     contributors_name = contributors_url[-1] if contributors_url else None
 
@@ -376,6 +381,33 @@ async def migrate_tickets():
     except Exception as e:
         print('exception occured ', e)
         return 'failed'
+
+
+@app.route('/migrate-contributors')
+async def migrate_contributors():
+    try:
+        migrator = MigrateContributors()  # Create an instance
+
+        asyncio.create_task(migrator.migration())
+        return 'migration started'
+    except Exception as e:
+        print('exception occured ', e)
+        return 'failed'
+
+
+@app.route('/add-issue-id-pr')
+async def add_issue_id_pr():
+    try:
+        migrator = AddIssueId()  # Create an instance
+
+        asyncio.create_task(migrator.process_prs())
+
+        # return await migrator.process_prs()
+        return 'migration started'
+    except Exception as e:
+        print('exception occured ', e)
+        return 'failed'
+
 
 if __name__ == '__main__':
     app.run()
