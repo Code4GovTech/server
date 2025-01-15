@@ -36,7 +36,7 @@ class Pull_requestHandler(EventHandler):
                     
                     issue_details = issue_response.json()
                     print('issue_details after fetching is ', issue_details)
-                    issue_id = issue_details.id
+                    issue_id = issue_details["id"]
                     print('issue id after fetching ', issue_id)
                     return issue_id
                 
