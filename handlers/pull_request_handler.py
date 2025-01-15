@@ -25,7 +25,7 @@ class Pull_requestHandler(EventHandler):
             }
             
             GITHUB_ISSUE_URL = "https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
-            
+            print('inside get issue id for issue number ',issue_number )
             description_url = GITHUB_ISSUE_URL.format(
                 owner=owner, repo=repo, issue_number=issue_number)
             async with httpx.AsyncClient() as client:
@@ -33,7 +33,9 @@ class Pull_requestHandler(EventHandler):
                 if issue_response.status_code == 200:
                     
                     issue_details = issue_response.json()
+                    print('issue_details after fetching is ', issue_details)
                     issue_id = issue_details.id
+                    print('issue id after fetching ', issue_id)
                     return issue_id
                 
             return None
@@ -65,6 +67,7 @@ class Pull_requestHandler(EventHandler):
                 async with session.get(api_url) as response:
                     pr_data = await response.json()
             if pr_data:
+                print('pr data is ', pr_data)
                 pr_title = pr_data["title"]
                 issue_number = self.extract_issue_number(pr_title)
                 if issue_number:
@@ -72,6 +75,7 @@ class Pull_requestHandler(EventHandler):
                     owner = url_parts[4]
                     repo = url_parts[5]
                     issue_id = await self.get_issue_data(owner, repo, issue_number)
+                    print('issue_id in pr handler is ', issue_id)
             
             pr_data = {
                 "created_at": created_at,
