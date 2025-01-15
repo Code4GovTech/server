@@ -17,7 +17,7 @@ class Pull_requestHandler(EventHandler):
     
     async def get_issue_data(self, owner, repo, issue_number):
         try:
-            GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+            GITHUB_TOKEN = os.getenv('API_TOKEN')
             print('github token is ', GITHUB_TOKEN)
             headers = {
                 "Accept": "application/vnd.github+json",
