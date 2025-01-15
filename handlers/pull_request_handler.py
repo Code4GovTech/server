@@ -30,6 +30,7 @@ class Pull_requestHandler(EventHandler):
                 owner=owner, repo=repo, issue_number=issue_number)
             async with httpx.AsyncClient() as client:
                 issue_response = await client.get(description_url, headers=headers)
+                print('issue response inside get issue id for pr is ', issue_response)
                 if issue_response.status_code == 200:
                     
                     issue_details = issue_response.json()
