@@ -26,6 +26,7 @@ from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
+from cronjob.cronjob import CronJob
 
 scheduler = AsyncIOScheduler()
 
@@ -408,6 +409,13 @@ async def add_issue_id_pr():
         print('exception occured ', e)
         return 'failed'
 
+
+@app.route('/trigger-cron')
+async def trigger_cron():
+    cronjob = CronJob()
+    # return await cronjob.main()
+    asyncio.create_task(cronjob.main())
+    return 'cron started'
 
 if __name__ == '__main__':
     app.run()
