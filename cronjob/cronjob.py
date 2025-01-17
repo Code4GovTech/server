@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import sys
-
+import time
 
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -145,6 +145,7 @@ class CronJob():
 
     async def main(self):
         # action_types = ["created", "opened", "labeled", "unlabeled", "edited", "closed", "assigned", "unassigned"]
+        start_time = time.time()
         action_types = ["labeled"]
         engine = create_async_engine(get_postgres_uri(), echo=False, poolclass=NullPool)
         async_session = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
@@ -161,6 +162,11 @@ class CronJob():
                         installation in installations}
         all_issue_ids = set()
         all_comment_ids = set()
+        all_pr_id = set()
+
+        original_issue = await self.postgres_client.readAll("issues")
+        original_prs = await self.postgres_client.readAll("pr_history")
+        original_orgs = await self.postgres_client.readAll("community_orgs")
 
         for token in access_tokens.values():
             repos = await self.get_repos(token)
@@ -175,20 +181,35 @@ class CronJob():
                 #process prs
                 pull_requests = await self.get_pull_requests(token, repo_name)
 
-                await self.process_cron_prs(pull_requests)
+                await self.process_cron_prs(pull_requests, all_pr_id)
                 print('finished cron')
 
 
-                #purge remaining issues, comments
-                await self.purge_issues_comments(all_issue_ids, all_comment_ids)
+        #purge remaining issues, comments
+        await self.purge_issues_comments(all_issue_ids, all_comment_ids)
 
-                """ Need to use pull_request_handler from handlers """
-                """ Only closed PRs need to be updated with points"""
-                """ All issues need to be updated? - Yes
-                    To update issues - use , log_user_activity class
-                """
-                """ Do we have a separate table for organisations - Yes"""
-                """ Mentor's data is in body - Body will always be there in a closed Issue/PR"""
+
+        new_issues_length = len(all_issue_ids)
+        new_prs_length = len(all_pr_id)
+        new_orgs = await self.postgres_client.readAll("community_orgs")
+        new_orgs_length = len(new_orgs)
+        #share report
+
+        original_issue_length = len(original_issue)
+        original_pr_length = len(original_prs)
+        original_orgs_length = len(original_orgs)
+        end_time = time.time()
+
+        time_taken = end_time - start_time
+        await self.send_discord_report(original_issue_length, new_issues_length, original_pr_length, new_prs_length, original_orgs_length, new_orgs_length, time_taken)
+
+        """ Need to use pull_request_handler from handlers """
+        """ Only closed PRs need to be updated with points"""
+        """ All issues need to be updated? - Yes
+            To update issues - use , log_user_activity class
+        """
+        """ Do we have a separate table for organisations - Yes"""
+        """ Mentor's data is in body - Body will always be there in a closed Issue/PR"""
 
 
 
@@ -273,10 +294,11 @@ class CronJob():
             return e
 
 
-    async def process_cron_prs(self, pull_requests):
+    async def process_cron_prs(self, pull_requests, all_pr_id):
         try:
             pr_handler = Pull_requestHandler()
             for pr in pull_requests:
+                all_pr_id.add(pr["id"])
                 await pr_handler.handle_event(
                     data={"action": "closed" if pr["state"] == "close" else "opened",
                             "pull_request": pr},
@@ -310,3 +332,47 @@ class CronJob():
         except Exception as e:
             print('exception occured while purging data ', e)
             return 'Error occured'
+
+
+    async def send_discord_report(self, original_issue_length, new_issues_length, original_pr_length, new_prs_length, original_orgs_length, new_orgs_length, time_taken):
+        try:
+            DISCORD_WEBHOOK_URL = os.getenv("CRON_DISCORD_WEBHOOK_URL")
+            if not DISCORD_WEBHOOK_URL:
+                raise ValueError("DISCORD_WEBHOOK_URL is not set in environment variables.")
+            
+            message = 'Cron finished execution'
+
+            report = (
+                        f"total time taken: {time_taken:.2f},\n"
+                        f"total original issues: {original_issue_length},\n"
+                        f"total new issues: {new_issues_length},\n"
+                        f"delta issues: {new_issues_length - original_issue_length},\n"
+                        f"total original PRs: {original_pr_length},\n"
+                        f"total new PRs: {new_prs_length},\n"
+                        f"delta PRs: {new_prs_length - original_pr_length},\n"
+                        f"total original orgs: {original_orgs_length},\n"
+                        f"total new orgs: {new_orgs_length},\n"
+                        f"delta orgs: {new_orgs_length - original_orgs_length}"
+                    )
+            
+            data = {
+                "content": message,
+                "embeds": [
+                    {
+                        "title": "Cron Job Report",
+                        "description": report,
+                        "color": 3066993  # Green
+                    }
+                ]
+            }
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(DISCORD_WEBHOOK_URL, json=data)
+                if response.status_code == 204:
+                    print("Update successfully sent to Discord!")
+                else:
+                    print(f"Failed to send update to Discord. Status: {response.status_code}, Response: {response.text}")
+
+        except Exception as e:
+            print('Exception occured while sending report to discord ', e)
+            return 'Exception occured'
