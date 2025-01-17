@@ -634,7 +634,13 @@ class TicketEventHandler:
                             "created_at":str(datetime.now()),
                             "updated_at":str(datetime.now())
                         }
-            inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
+
+            get_issue_in_contributors = self.postgres_client.get_data("issue_id", "issue_contributors", issue["id"])
+            inserted_contributors_data = None
+            if get_issue_in_contributors:
+                inserted_contributors_data = await self.postgres_client.update_data(contributors_data, "issue_id", "issue_contributors")
+            else:
+                inserted_contributors_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
 
             #add mentor's data
             org_mentor = markdown_contents.get("Organizational Mentor")
@@ -660,11 +666,17 @@ class TicketEventHandler:
                 "created_at":str(datetime.now()),
                 "updated_at":str(datetime.now())
             }
-            inserted_mentor = await self.postgres_client.add_data(mentor_data, "issue_mentors")
-            if not inserted_mentor:
+            get_issue_mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue["id"])
+            inserted_mentors_data = None
+            if get_issue_mentor:
+                inserted_mentors_data = await self.postgres_client.update_data(mentor_data, "issue_id", "issue_mentors")
+            else:
+                inserted_mentors_data = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+
+            if not inserted_mentors_data:
                 print('mentor data could not be inserted')
         
-            return inserted_data
+            return inserted_contributors_data
         except Exception as e:
             print('exception while adding contributors data ',e)
             return None
