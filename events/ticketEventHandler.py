@@ -635,7 +635,7 @@ class TicketEventHandler:
                             "updated_at":str(datetime.now())
                         }
 
-            get_issue_in_contributors = self.postgres_client.get_data("issue_id", "issue_contributors", issue["id"])
+            get_issue_in_contributors = self.postgres_client.get_data("issue_id", "issue_contributors", get_issue[0]["id"])
             inserted_contributors_data = None
             if get_issue_in_contributors:
                 inserted_contributors_data = await self.postgres_client.update_data(contributors_data, "issue_id", "issue_contributors")
@@ -666,8 +666,8 @@ class TicketEventHandler:
                 "created_at":str(datetime.now()),
                 "updated_at":str(datetime.now())
             }
-            get_issue_mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue["id"])
-            inserted_mentors_data = None
+            get_issue_mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", get_issue[0]["id"])
+            # inserted_mentors_data = None
             if get_issue_mentor:
                 inserted_mentors_data = await self.postgres_client.update_data(mentor_data, "issue_id", "issue_mentors")
             else:

@@ -175,7 +175,7 @@ class CronJob():
                 issues = await self.get_issues(token, repo_name)
 
                 #process issues
-                await self.process_cron_issues(issues, all_issue_ids, all_comment_ids)
+                issues = await self.process_cron_issues(issues, all_issue_ids, all_comment_ids)
                 #process issue_comments
 
                 #process prs
@@ -376,3 +376,9 @@ class CronJob():
         except Exception as e:
             print('Exception occured while sending report to discord ', e)
             return 'Exception occured'
+
+
+
+if __name__ == '__main__':
+    cronjob = CronJob()
+    asyncio.run(cronjob.main())
