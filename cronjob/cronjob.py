@@ -12,6 +12,7 @@ import time
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from utils.jwt_generator import GenerateJWT
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -31,6 +32,7 @@ class CronJob():
 
     def __init__(self):
         self.postgres_client = ServerQueries()
+        self.jwt_generator = GenerateJWT()
 
     def get_github_jwt(self):
         pem = os.getenv('pem_file')
@@ -151,7 +153,8 @@ class CronJob():
         async_session = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
         issue_handler = IssuesHandler()
         pr_handler = Pull_requestHandler()
-        jwt_token = self.get_github_jwt()
+        jwt_token = self.jwt_generator.__call__()
+        # jwt_token = self.get_github_jwt()
         jwt_headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {jwt_token}",
@@ -169,7 +172,11 @@ class CronJob():
         original_prs = await self.postgres_client.readAll("pr_history")
         original_orgs = await self.postgres_client.readAll("community_orgs")
 
-        for token in access_tokens.values():
+
+        for installation in installations:
+            time.sleep(5)
+            token = await self.get_access_token(jwt_headers, installation.get('id'))
+           
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
@@ -219,6 +226,7 @@ class CronJob():
             issue_handler = IssuesHandler()
             
             for issue in issues:
+                time.sleep(5)
                 issue_ids_list.add(issue["id"])
                 data={
                 "action":f'{issue["state"]}ed', 
@@ -262,6 +270,7 @@ class CronJob():
     async def process_cron_issue_comments(self, all_comments, all_comment_ids):
         try:
             for comment in all_comments:
+                time.sleep(5)
                 all_comment_ids.add(comment["id"])
 
                 issue_id = await self.get_issue_data(comment['issue_url'])
@@ -299,6 +308,7 @@ class CronJob():
         try:
             pr_handler = Pull_requestHandler()
             for pr in pull_requests:
+                time.sleep(5)
                 all_pr_id.add(pr["id"])
                 await pr_handler.handle_event(
                     data={"action": "closed" if pr["state"] == "close" else "opened",
