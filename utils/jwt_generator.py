@@ -15,7 +15,7 @@ class GenerateJWT:
 
         # Open PEM
         with open(pem, 'rb') as pem_file:
-            signing_key = jwt.jwk_from_pem(pem_file.read())
+            signing_key = pem_file.read()
 
         payload = {
             # Issued at time
