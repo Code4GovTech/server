@@ -40,13 +40,13 @@ class CronJob():
 
         try:
             with open(pem, 'rb') as pem_file:
-                signing_key = pem_file.read()
+                signing_key = jwt.jwk_from_pem(pem_file.read())
                 payload = {
                     'iat': datetime.now(timezone.utc),
                     'exp': datetime.now(timezone.utc) + timedelta(seconds=600),
                     'iss': client_id
                 }
-                encoded_jwt = jwt.encode(payload, signing_key, algorithm='RS256')
+                encoded_jwt = jwt.JWT().encode(payload, signing_key, algorithm='RS256')
                 pem_file.close()
             return encoded_jwt
         except Exception as e:
