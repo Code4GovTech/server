@@ -161,9 +161,9 @@ class CronJob():
             "X-GitHub-Api-Version": "2022-11-28"
         }
         installations = await self.get_installations(jwt_headers)
-        access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
-                        installation in installations}
-        print(access_tokens)
+        # access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
+        #                 installation in installations}
+        # print(access_tokens)
         all_issue_ids = set()
         all_comment_ids = set()
         all_pr_id = set()
