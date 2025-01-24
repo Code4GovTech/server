@@ -160,6 +160,7 @@ class CronJob():
         installations = await self.get_installations(jwt_headers)
         access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
                         installation in installations}
+        print(access_tokens)
         all_issue_ids = set()
         all_comment_ids = set()
         all_pr_id = set()
@@ -226,13 +227,13 @@ class CronJob():
                 await issue_handler.handle_event(data=data, postgres_client='client')
 
                 #process issue comments
-                all_comments = await self.get_issue_comments(issue["comment_url"])
+                all_comments = await self.get_issue_comments(issue["comments_url"])
                 self.process_cron_issue_comments(all_comments, all_comment_ids)
             
             return 'issues processed'
 
         except Exception as e:
-            print('Exception occured while processing issues in cron ', e)
+            print('Exception occured in process_cron_issues ', e)
             return e
 
     async def get_issue_data(self, issue_url):
@@ -290,7 +291,7 @@ class CronJob():
                 save_data = await self.postgres_client.update_data(comment_data, "id", "ticket_comments")
 
         except Exception as e:
-            print('Exception occured while processing issues in cron ', e)
+            print('Exception occured in process_cron_issue_comments ', e)
             return e
 
 
@@ -307,7 +308,7 @@ class CronJob():
             return 'processed pr'
                     
         except Exception as e:
-            print('Exception occured while processing issues in cron ', e)
+            print('Exception occured in process_cron_issue_comments', e)
             return e
 
     async def purge_issues_comments(self, issue_ids, comment_ids):
