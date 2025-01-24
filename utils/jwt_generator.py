@@ -3,10 +3,11 @@
 #token : eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOiAxNjg2NzY1Mjk1LCAiZXhwIjogMTY4Njc2NTg5NSwgImlzcyI6ICIzNDY3NjYifQ.Z5eqVc6f8DSRLrFY3knCXkTTX1lMlj1Arp0oB4OgF2K34FyIyi4hu2t9f3qg4MQO31oMoW9GWnIxJZXLCDrFPML_H__2qs2MLHNHBa9EN1a_ooifAKT4-FCAYHjZF4HbIfnFUEpLDQli0ptj6JHRqYWEUaai57OCJA-ps_M98BEYozuwOlZn0_kUIsV7JmaiV4gaLw-tbRNb2-DYv5kPRA84R87hBifC_4WikDuXczvpUqotQWSKRLPBkjAFlPl4vjM9R4GrCHYXeGYEL1eHwbV6cAGMmSlUNgBnsIYwaY_2r8Oygrd6xzxNj7zjtKauB29pkP2-JcigbczDOIL14Q
 import os
 from typing import Any
-import jwt
+# import jwt
 import time
 from datetime import datetime, timezone, timedelta
 import logging
+from jwt import jwt, jwk
 
 class GenerateJWT:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -15,7 +16,7 @@ class GenerateJWT:
 
         # Open PEM
         with open(pem, 'rb') as pem_file:
-            signing_key = pem_file.read()
+            signing_key = jwk.jwk_from_pem(pem_file.read())
 
         payload = {
             # Issued at time
