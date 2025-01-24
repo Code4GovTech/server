@@ -8,6 +8,7 @@ from utils.user_activity import UserActivity
 class IssuesHandler(EventHandler):
     def __init__(self):
         self.postgres_client = ServerQueries()
+        self.user_activity = UserActivity()
 
     async def handle_event(self, data, postgres_client):
         # Implement your logic for handling issue events here
@@ -22,7 +23,7 @@ class IssuesHandler(EventHandler):
                 if handler_method:
                     await handler_method(data)
                     # await self.log_user_activity(data)
-                    await UserActivity.log_user_activity(data, 'issue')
+                    await self.user_activity.log_user_activity(data, 'issue')
                 else:
                     logging.info(f"No handler found for module: {module_name}")
             elif module_name == 'unlabeled':
@@ -30,7 +31,7 @@ class IssuesHandler(EventHandler):
                 if handler_method:
                     await handler_method(data)
                     # await self.log_user_activity(data)
-                    await UserActivity.log_user_activity(data, 'issue')
+                    await self.user_activity.log_user_activity(data, 'issue')
             
             return 'success'
 
@@ -174,32 +175,32 @@ class IssuesHandler(EventHandler):
             print('exception occured while removing an assignee to a ticket ', e)
             raise Exception
 
-    async def log_user_activity(self, data):
-        try:
+    # async def log_user_activity(self, data):
+    #     try:
             
-            issue = data["issue"]
-            print('inside user activity', issue)
-            issue = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
+    #         issue = data["issue"]
+    #         print('inside user activity', issue)
+    #         issue = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
 
-            user_id = data['issue']['user']['id']
+    #         user_id = data['issue']['user']['id']
             
-            contributor = await self.postgres_client.get_data('github_id', 'contributors_registration', user_id, '*')
-            contributor_id = contributor[0]["id"]
-            mentor = await self.postgres_client.get_data('issue_id', 'issue_mentors',issue[0]["id"])
-            activity_data = {
-                "issue_id": issue[0]["id"],
-                "activity": f"issue_{data['action']}",
-                "created_at": issue[0]['created_at'],
-                "updated_at": issue[0]['updated_at'],
-                "contributor_id": contributor_id,
-                "mentor_id": mentor[0]["angel_mentor_id"] if mentor else None
-            }
-            saved_activity_data = await self.postgres_client.add_data(activity_data,"user_activity")
-            return saved_activity_data
+    #         contributor = await self.postgres_client.get_data('github_id', 'contributors_registration', user_id, '*')
+    #         contributor_id = contributor[0]["id"]
+    #         mentor = await self.postgres_client.get_data('issue_id', 'issue_mentors',issue[0]["id"])
+    #         activity_data = {
+    #             "issue_id": issue[0]["id"],
+    #             "activity": f"issue_{data['action']}",
+    #             "created_at": issue[0]['created_at'],
+    #             "updated_at": issue[0]['updated_at'],
+    #             "contributor_id": contributor_id,
+    #             "mentor_id": mentor[0]["angel_mentor_id"] if mentor else None
+    #         }
+    #         saved_activity_data = await self.postgres_client.add_data(activity_data,"user_activity")
+    #         return saved_activity_data
         
-        except Exception as e:
-            logging.info(e)
-            raise Exception
+    #     except Exception as e:
+    #         logging.info(e)
+    #         raise Exception
         
 
     
