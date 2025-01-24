@@ -15,7 +15,13 @@ class GenerateJWT:
 
         # Open PEM
         with open(pem, 'rb') as pem_file:
-            signing_key = jwt.jwk_from_pem(pem_file.read())
+            pem_data = pem_file.read()
+
+            # Verify if it's a private key
+            try:
+                signing_key = jwt.jwk_from_pem(pem_data)  # Try loading as private key
+            except ValueError as e:
+                raise ValueError(f"Invalid PEM format: {e}")
 
         payload = {
             # Issued at time
