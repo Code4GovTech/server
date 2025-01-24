@@ -10,7 +10,7 @@ import logging
 
 class GenerateJWT:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pem="./repository_monitor_app_pk.pem"
+        pem="utils/repository_monitor_app_pk.pem"
         app_id=346766
 
         # Open PEM
