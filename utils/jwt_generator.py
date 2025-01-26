@@ -7,27 +7,47 @@ from typing import Any
 import time
 from datetime import datetime, timezone, timedelta
 import logging
-from jwt import jwt, jwk
+# from jwt import jwt, jwk
+from utils.new_jwt_generator import NewGenerateJWT
 
 class GenerateJWT:
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pem="/app/utils/repository_monitor_app_pk.pem"
-        app_id=346766
-
-        # Open PEM
-        with open(pem, 'rb') as pem_file:
-            signing_key = jwk.jwk_from_pem(pem_file.read())
-
-        payload = {
-            # Issued at time
-            'iat': int(time.time()),
-            # JWT expiration time (10 minutes maximum)
-            'exp': int(time.time()) + 600,
-            # GitHub App's identifier
-            'iss': app_id
-        }
-
-        # Create JWT
-        jwt_instance = jwt.JWT()
-        encoded_jwt = jwt_instance.encode(payload, signing_key, alg='RS256')
-        return encoded_jwt
+    NewGenerateJWT.__call__()
+    # def __call__(self, *args: Any, **kwds: Any) -> Any:
+    #     pem="/app/utils/repository_monitor_app_pk.pem"
+    #     app_id=346766
+    #
+    #     # Open PEM
+    #     # with open(pem, 'rb') as pem_file:
+    #     #     signing_key = jwk.jwk_from_pem(pem_file.read())
+    #     #
+    #     # payload = {
+    #     #     # Issued at time
+    #     #     'iat': int(time.time()),
+    #     #     # JWT expiration time (10 minutes maximum)
+    #     #     'exp': int(time.time()) + 600,
+    #     #     # GitHub App's identifier
+    #     #     'iss': app_id
+    #     # }
+    #     #
+    #     # # Create JWT
+    #     # jwt_instance = jwt.JWT()
+    #     # encoded_jwt = jwt_instance.encode(payload, signing_key, alg='RS256')
+    #     # return encoded_jwt
+    #
+    #     # pem = os.getenv('pem_file')
+    #     client_id = os.getenv('client_id')
+    #
+    #     try:
+    #         with open(pem, 'rb') as pem_file:
+    #             signing_key = pem_file.read()
+    #             payload = {
+    #                 'iat': datetime.now(timezone.utc),
+    #                 'exp': datetime.now(timezone.utc) + timedelta(seconds=600),
+    #                 'iss': client_id
+    #             }
+    #             encoded_jwt = jwt.JWT().encode(payload, signing_key, algorithm='RS256')
+    #             pem_file.close()
+    #         return encoded_jwt
+    #     except Exception as e:
+    #         logging.error(f"In get_github_jwt: {e}")
+    #         return None
