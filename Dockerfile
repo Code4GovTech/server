@@ -15,7 +15,7 @@ RUN --mount=type=ssh git submodule update --init --recursive
 
 ARG REPOSITORY_MONITOR_APP_PK_PEM
 
-RUN echo $REPOSITORY_MONITOR_APP_PK_PEM > /app/utils/repository_monitor_app_pk.pem
+RUN echo "$REPOSITORY_MONITOR_APP_PK_PEM" | sed 's/\\n/\n/g' > /app/utils/repository_monitor_app_pk.pem
 
 EXPOSE 5000
 ENV FLASK_APP=app.py
