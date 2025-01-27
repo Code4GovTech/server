@@ -36,24 +36,24 @@ class CronJob():
         # self.jwt_generator = GenerateJWT()
         self.jwt_generator = NewGenerateJWT()
 
-    def get_github_jwt(self):
-        pem = os.getenv('pem_file')
-        client_id = os.getenv('client_id')
-
-        try:
-            with open(pem, 'rb') as pem_file:
-                signing_key = pem_file.read()
-                payload = {
-                    'iat': datetime.now(timezone.utc),
-                    'exp': datetime.now(timezone.utc) + timedelta(seconds=600),
-                    'iss': client_id
-                }
-                encoded_jwt = jwt.encode(payload, signing_key, algorithm='RS256')
-                pem_file.close()
-            return encoded_jwt
-        except Exception as e:
-            logging.error(f"In get_github_jwt: {e}")
-            return None
+    # def get_github_jwt(self):
+    #     pem = os.getenv('pem_file')
+    #     client_id = os.getenv('client_id')
+    #
+    #     try:
+    #         with open(pem, 'rb') as pem_file:
+    #             signing_key = pem_file.read()
+    #             payload = {
+    #                 'iat': datetime.now(timezone.utc),
+    #                 'exp': datetime.now(timezone.utc) + timedelta(seconds=600),
+    #                 'iss': client_id
+    #             }
+    #             encoded_jwt = jwt.encode(payload, signing_key, algorithm='RS256')
+    #             pem_file.close()
+    #         return encoded_jwt
+    #     except Exception as e:
+    #         logging.error(f"In get_github_jwt: {e}")
+    #         return None
 
 
     async def get_rate_limits(self, token_headers: dict):
