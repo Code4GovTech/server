@@ -67,6 +67,8 @@ class CronJob():
         async with httpx.AsyncClient() as client:
             get_installations_url = 'https://api.github.com/app/installations'
             installations_response = await client.get(get_installations_url, headers=token_headers)
+            print(installations_response.status_code, installations_response.text)
+
             if installations_response.status_code == 200:
                 return installations_response.json()
             elif installations_response.status_code == 401:
