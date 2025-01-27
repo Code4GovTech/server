@@ -10,8 +10,11 @@ import logging
 # from jwt import jwt, jwk
 from utils.new_jwt_generator import NewGenerateJWT
 
+
 class GenerateJWT:
-    NewGenerateJWT.__call__()
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return NewGenerateJWT().__call__()
+
     # def __call__(self, *args: Any, **kwds: Any) -> Any:
     #     pem="/app/utils/repository_monitor_app_pk.pem"
     #     app_id=346766
