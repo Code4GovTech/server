@@ -9,8 +9,9 @@ load_dotenv()
 
 class NewGenerateJWT:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pem = "/app/utils/repository_monitor_app_pk.pem"
-        client_id = os.getenv('client_id')
+        # pem = "/app/utils/repository_monitor_app_pk.pem"
+        pem = os.getenv('PEM_FILE')
+        client_id = os.getenv('CLIENT_ID')
 
         try:
             with open(pem, 'rb') as pem_file:
@@ -26,3 +27,4 @@ class NewGenerateJWT:
         except Exception as e:
             logging.error(f"In get_github_jwt: {e}")
             return None
+
