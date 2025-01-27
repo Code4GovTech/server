@@ -9,8 +9,8 @@ load_dotenv()
 
 class NewGenerateJWT:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        # pem = "/app/utils/repository_monitor_app_pk.pem"
-        pem = os.getenv('PEM_FILE')
+        pem = "/app/utils/repository_monitor_app_pk.pem"
+        # pem = os.getenv('PEM_FILE')
         client_id = os.getenv('CLIENT_ID')
 
         try:
