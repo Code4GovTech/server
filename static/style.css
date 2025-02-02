@@ -1,56 +1,63 @@
+/* Define variables for colors */
+:root {
+    --black: #000000;
+    --dark-gray: #1c2128;
+    --medium-gray: #22272e;
+    --light-gray: #adbac7;
+    --green: #2ea749;
+    --orange: #cf4a19;
+}
 
 /* General styles */
 body {
-    color: #adbac7;
-    background-color: #000000;
+    color: var(--light-gray);
+    background-color: var(--black);
     font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji;
 }
 
 hr {
-    border-color: #adbac7;
+    border-color: var(--light-gray);
 }
 
 header {
-    background-color: #000000;
+    background-color: var(--black);
     padding: 15px;
 }
 
 #repo-product-mapping {
-    background-color: #22272e;
+    background-color: var(--medium-gray);
     padding: 15px;
 }
 
 h1, h2 {
-    color: #adbac7;
+    color: var(--light-gray);
 }
-
 
 /* Form fields */
 input, select {
     padding: 5px 10px;
-    background-color: #1c2128;
-    color: #adbac7;
-    border: 1px solid #1c2128;
+    background-color: var(--dark-gray);
+    color: var(--light-gray);
+    border: 1px solid var(--dark-gray);
     transition: border 0.3s ease;
     border-radius: 5px;
 }
 
 input:focus, select:focus {
-    border-color: #adbac7;
+    border-color: var(--light-gray);
 }
 
 /* Modals */
 #newProductModal, #confirmProductModal {
-    background-color: #22272e;
-    border: 1px solid #adbac7;
+    background-color: var(--medium-gray);
+    color: var(--light-gray);
+    border: 1px solid var(--light-gray);
     display: none;
     position: fixed;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    border: 1px solid #ccc;
     padding: 20px;
-    background-color: #fff;
     z-index: 1000;
 }
 
@@ -63,49 +70,36 @@ button {
     color: #ffffff;
     transition: background-color 0.3s ease;
 }
-#main-content {
-    background-color: #22272e; /* Adjust as per your desired color */
-    /* The height is set to 100vh minus the height of the header and any other top spacing you might have */
-    min-height: calc(100vh - 0px);
-    padding: 15px;
-}
-.logo {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    transform: translate(-50%, 0%);
-    height: auto;
-    width: 8%; /* Adjust this value as needed */
-    z-index: 100;
-}
 
 button:hover {
     filter: brightness(1.1);
 }
 
 #submitBtn, button[onclick="showConfirmationModal()"], button[onclick="finalAddProduct()"] {
-    background-color: #2ea749;
+    background-color: var(--green);
 }
 
 button[onclick="closeAllModals()"], button[onclick="closeModal()"] {
-    background-color: #cf4a19;
+    background-color: var(--orange);
 }
+
+/* Additional styles */
 div {
-            margin: 10px 0;
-        }
+    margin: 10px 0;
+}
 
-        label {
-            color: #ffffff;  /* Other text color */
-        }
+label {
+    color: var(--light-gray);
+}
 
-        /* Adjusted modal styles */
-        #newProductModal, #confirmProductModal {
-            background-color: #22272e;
-            color: #ffffff;
-            border: 1px solid #adbac7;
-        }
+/* Adjusted modal styles */
+#newProductModal, #confirmProductModal {
+    background-color: var(--medium-gray);
+    color: var(--light-gray);
+    border: 1px solid var(--light-gray);
+}
 
-        /* Adjustments to position the buttons with some spacing */
-        button {
-            margin: 5px;
-        }
+/* Adjustments to position the buttons with some spacing */
+button {
+    margin: 5px;
+}
