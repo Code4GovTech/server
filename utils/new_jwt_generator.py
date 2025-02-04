@@ -9,9 +9,11 @@ load_dotenv()
 
 class NewGenerateJWT:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pem = "/app/utils/repository_monitor_app_pk.pem"
-        # pem = os.getenv('PEM_FILE')
+        # pem = "/app/utils/repository_monitor_app_pk.pem"
+        pem = os.getenv('PEM_FILE')
         client_id = os.getenv('CLIENT_ID')
+        print("Pem", pem)
+        print("Client", client_id)
 
         try:
             with open(pem, 'rb') as pem_file:
@@ -22,6 +24,7 @@ class NewGenerateJWT:
                     'iss': client_id
                 }
                 encoded_jwt = jwt.encode(payload, signing_key, algorithm='RS256')
+                print("Token: ", encoded_jwt)
                 pem_file.close()
             return encoded_jwt
         except Exception as e:
