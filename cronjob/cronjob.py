@@ -208,7 +208,7 @@ class CronJob():
         for installation in installations:
             time.sleep(5)
             token = await self.get_access_token(jwt_headers, installation.get('id'))
-           
+            # token = 'ghs_vLYQWRnqkzrj33pCvXgRs6M8aCrFTQ3KDxN2'
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
@@ -268,7 +268,7 @@ class CronJob():
 
                 #process issue comments
                 all_comments = await self.get_issue_comments(issue["comments_url"])
-                self.process_cron_issue_comments(all_comments, all_comment_ids)
+                await self.process_cron_issue_comments(issue, all_comments, all_comment_ids)
             
             return 'issues processed'
 
@@ -299,38 +299,42 @@ class CronJob():
             return None
  
 
-    async def process_cron_issue_comments(self, all_comments, all_comment_ids):
+    async def process_cron_issue_comments(self, issue, all_comments, all_comment_ids):
         try:
+            print('inside cron comments')
             for comment in all_comments:
                 time.sleep(5)
                 all_comment_ids.add(comment["id"])
 
-                issue_id = await self.get_issue_data(comment['issue_url'])
+                issue_id = issue["id"]
                 comment_data = {
-                'url':comment["url"],
-                'html_url':comment['html_url'],
-                'issue_url':comment['issue_url'],
-                'issue_id': issue_id,
-                'comment_id': comment['id'],
-                'node_id':comment['node_id'],
-                'commented_by':comment['user']['login'],
-                'commented_by_id':comment['user']['id'],
-                'content':comment['body'],
-                'reactions_url':comment['reactions']['url'],
-                'ticket_url':comment['issue_url'],
-                'id':comment['id'],
-                'created_at':str(datetime.now()),
-                'updated_at':str(datetime.now()) 
-            }
+                    'url':comment["url"],
+                    'html_url':comment['html_url'],
+                    'issue_url':comment['issue_url'],
+                    'issue_id': issue_id,
+                    'comment_id': comment['id'],
+                    'node_id':comment['node_id'],
+                    'commented_by':comment['user']['login'],
+                    'commented_by_id':comment['user']['id'],
+                    'content':comment['body'],
+                    'reactions_url':comment['reactions']['url'],
+                    'ticket_url':comment['issue_url'],
+                    'id':comment['id'],
+                    'created_at':str(datetime.now()),
+                    'updated_at':str(datetime.now()) 
+                }
 
-            print('comments data ', comment_data)
-                        
-            is_comment_present = await self.postgres_client.get_data('id', 'ticket_comments', comment['id'])
-            if is_comment_present:
-                save_data = await self.postgres_client.add_data(comment_data,"ticket_comments")
-            else:
-                save_data = await self.postgres_client.update_data(comment_data, "id", "ticket_comments")
-
+                print('comments data ', comment_data)
+                            
+                is_comment_present = await self.postgres_client.get_data('id', 'ticket_comments', comment['id'])
+                # print(type(is_comment_present))
+                print(len(is_comment_present))
+                if len(is_comment_present)<0:
+                    save_data = await self.postgres_client.add_data(comment_data,"ticket_comments")
+                else:
+                    save_data = await self.postgres_client.update_data(comment_data, "id", "ticket_comments")
+                print(save_data)
+            return True
         except Exception as e:
             print('Exception occured in process_cron_issue_comments ', e)
             return e
