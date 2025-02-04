@@ -208,7 +208,6 @@ class CronJob():
         for installation in installations:
             time.sleep(5)
             token = await self.get_access_token(jwt_headers, installation.get('id'))
-            # token = 'ghs_vLYQWRnqkzrj33pCvXgRs6M8aCrFTQ3KDxN2'
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
