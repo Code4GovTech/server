@@ -114,39 +114,67 @@ class CronJob():
 
 
     async def get_issues(self, token: str, repo_fullname):
-        get_issue_url = f"https://api.github.com/repos/{repo_fullname}/issues"
-        token_headers = {
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
-        payload = {"labels": "c4gt community"}
-        async with httpx.AsyncClient() as client:
-            issues_response = await client.get(url=get_issue_url,
-                                            headers=token_headers,
-                                            params=payload
-                                            )
-            return issues_response.json()
+        page = 1
+        all_issues = []
+        while True:
+            get_issue_url = f"https://api.github.com/repos/{repo_fullname}/issues?state=all&per_page=100&page={page}"
+            token_headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "X-GitHub-Api-Version": "2022-11-28"
+            }
+            payload = {"labels": "c4gt community"}
+            async with httpx.AsyncClient() as client:
+                issues_response = await client.get(url=get_issue_url,
+                                                headers=token_headers,
+                                                params=payload
+                                                )
+                page_issues = issues_response.json()
+                if len(page_issues)>0:
+                    page += 1
+                    all_issues = all_issues + page_issues
+                else:
+                    break
+            
+        return all_issues
 
     async def get_issue_comments(self, issue_comment_url):
+        page=1
+        all_comments = []
+        while True:
+            comments_url = f"{issue_comment_url}?state=all&page={page}&per_page=100"
        
-        async with httpx.AsyncClient() as client:
-            issue_comment_response = await client.get(url=issue_comment_url)
-            return issue_comment_response.json()
+            async with httpx.AsyncClient() as client:
+                issue_comment_response = await client.get(url=comments_url)
+                issue_comments_data = issue_comment_response.json()
+                if len(issue_comments_data) > 0:
+                    page += 1
+                    all_comments += issue_comments_data
+                else:
+                    break
+        return all_comments
 
     async def get_pull_requests(self, token: str, repo_fullname):
-        get_pull_requests_url = f"https://api.github.com/repos/{repo_fullname}/pulls"
-        token_headers = {
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
-        async with httpx.AsyncClient() as client:
-            pull_requests_response = await client.get(url=get_pull_requests_url,
-                                                    headers=token_headers
-                                                    )
-            pull_requests_data = pull_requests_response.json()
-            return pull_requests_data
+        page = 1
+        all_prs = []
+        while True:
+            get_pull_requests_url = f"https://api.github.com/repos/{repo_fullname}/pulls?state=all&page={page}&per_page=100"
+            token_headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "X-GitHub-Api-Version": "2022-11-28"
+            }
+            async with httpx.AsyncClient() as client:
+                pull_requests_response = await client.get(url=get_pull_requests_url,
+                                                        headers=token_headers
+                                                        )
+                pull_requests_data = pull_requests_response.json()
+                if len(pull_requests_data)>0:
+                    page += 1
+                    all_prs += pull_requests_data
+                else:
+                    break
+        return all_prs
 
 
     async def main(self):
@@ -165,8 +193,8 @@ class CronJob():
             "X-GitHub-Api-Version": "2022-11-28"
         }
         installations = await self.get_installations(jwt_headers)
-        # access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
-        #                 installation in installations}
+        access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
+                        installation in installations}
         # print(access_tokens)
         all_issue_ids = set()
         all_comment_ids = set()
@@ -185,7 +213,7 @@ class CronJob():
             for repo in repos:
                 repo_name = repo.get("full_name")
                 issues = await self.get_issues(token, repo_name)
-
+                # issues = [issue for issue in issues if issue.get('html_url') == "https://github.com/AakashSatpute119/Nisai_Pwa/issues/189"]
                 #process issues
                 issues = await self.process_cron_issues(issues, all_issue_ids, all_comment_ids)
                 #process issue_comments
