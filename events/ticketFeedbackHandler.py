@@ -66,6 +66,7 @@ Please update the ticket
         return body
     
     async def createComment(self, owner, repo, issue_number, markdown_dict):
+        return None
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
         print('token checked ', token)
         print(f'creating comments at {datetime.now()}')
@@ -92,6 +93,7 @@ Please update the ticket
                     print(f'Response body: {response_text}', file=sys.stderr)
     
     async def updateComment(self, owner, repo, comment_id, markdown_dict):
+        return None
         token = await GithubAPI().authenticate_app_as_installation(repo_owner=owner)
         print('token checked ', token)
         url = f'https://api.github.com/repos/{owner}/{repo}/issues/comments/{comment_id}'

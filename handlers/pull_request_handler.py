@@ -49,10 +49,12 @@ class Pull_requestHandler(EventHandler):
 
             postgres_client = ServerQueries()
 
-            merged_by =  data['pull_request']['merged_by']['id'] if data['pull_request']['merged_by'] else None
+            # merged_by =  data['pull_request']['merged_by']['id'] if data['pull_request']['merged_by'] else None
+            merged_by = data.get("pull_request", {}).get("merged_by", {}).get('id', None)
             merged_at = data['pull_request']['merged_at']
-            merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None 
-            created_at =  self.convert_to_datetime(data['pull_request']['created_at']) 
+            # merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None
+            merged_by_username = data.get("pull_request", {}).get("merged_by", {}).get('login', None)
+            created_at =  self.convert_to_datetime(data['pull_request']['created_at'])
             raised_at = self.convert_to_datetime(data['pull_request']['updated_at'])
             if merged_at:
                 merged_at = self.convert_to_datetime(merged_at)
@@ -61,17 +63,30 @@ class Pull_requestHandler(EventHandler):
                 
             issue_id = None
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url) as response:
-                    pr_data = await response.json()
-            if pr_data:
-                pr_title = pr_data["title"]
+            # async with aiohttp.ClientSession() as session:
+            #     async with session.get(api_url) as response:
+            #         pr_data = await response.json()
+            # if pr_data:
+            #     pr_title = pr_data["title"]
+            #     issue_number = self.extract_issue_number(pr_title)
+            #     if issue_number:
+            #         url_parts = api_url.split('/')
+            #         owner = url_parts[4]
+            #         repo = url_parts[5]
+            #         issue_id = await self.get_issue_data(owner, repo, issue_number)
+
+            pr_title = data.get("pull_request", {}).get("title", None)
+            if pr_title is not None:
                 issue_number = self.extract_issue_number(pr_title)
                 if issue_number:
                     url_parts = api_url.split('/')
                     owner = url_parts[4]
                     repo = url_parts[5]
-                    issue_id = await self.get_issue_data(owner, repo, issue_number)
+                    issue_link = f"https://github.com/{owner}/{repo}/issues/{issue_number}"
+                    issue_data = await postgres_client.get_data('link', 'issues',  issue_link)
+                    if issue_data:
+                        issue_id = issue_data[0].get("issue_id", None)
+
             
             pr_data = {
                 "created_at": created_at,
@@ -81,14 +96,16 @@ class Pull_requestHandler(EventHandler):
                 "raised_at":  raised_at,
                 "raised_by_username": data['pull_request']['user']['login'],
                 "status": data['action'],
-                "is_merged": data['pull_request']['merged'],
+                # "is_merged": data['pull_request']['merged'],
+                "is_merged": data.get("pull_request", {}).get("merged", False),
                 "merged_by": merged_by,
                 "merged_at": str(merged_at),
                 "merged_by_username":  merged_by_username,
                 "pr_id": data['pull_request']['id'],
                 "ticket_url": data['pull_request']['issue_url'],
                 "title": data['pull_request']['title'],
-                "issue_id": issue_id if issue_id else None,
+                # "issue_id": issue_id if issue_id else None,
+                "issue_id": issue_id,
                 "ticket_complexity": None
             }
 

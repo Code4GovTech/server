@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import segno,os
 from io import BytesIO
+from dotenv import load_dotenv
 
 class GithubProfileDisplay:
     def __init__(self):
@@ -85,7 +86,8 @@ class GithubProfileDisplay:
     
 
     def generateQR(self,border_size=1, ghUsername=''):
-        qr = segno.make_qr(f"https://github-app.c4gt.samagra.io/verify/{ghUsername}")
+        load_dotenv()
+        qr = segno.make_qr(f"https://github-app.{os.getenv('HOST')}/verify/{ghUsername}")
         buffer = BytesIO()
         # Save the QR code to a buffer, adjusting the border size here
         qr.save(buffer, kind='png', scale=1, border=border_size)
