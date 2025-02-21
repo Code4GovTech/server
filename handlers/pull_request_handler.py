@@ -17,7 +17,8 @@ class Pull_requestHandler(EventHandler):
     
     async def get_issue_data(self, owner, repo, issue_number):
         try:
-            GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+            GITHUB_TOKEN = os.getenv('API_TOKEN')
+            print('github token is ', GITHUB_TOKEN)
             headers = {
                 "Accept": "application/vnd.github+json",
                 "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -25,15 +26,18 @@ class Pull_requestHandler(EventHandler):
             }
             
             GITHUB_ISSUE_URL = "https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
-            
+            print('inside get issue id for issue number ',issue_number )
             description_url = GITHUB_ISSUE_URL.format(
                 owner=owner, repo=repo, issue_number=issue_number)
             async with httpx.AsyncClient() as client:
                 issue_response = await client.get(description_url, headers=headers)
+                print('issue response inside get issue id for pr is ', issue_response)
                 if issue_response.status_code == 200:
                     
                     issue_details = issue_response.json()
-                    issue_id = issue_details.id
+                    print('issue_details after fetching is ', issue_details)
+                    issue_id = issue_details["id"]
+                    print('issue id after fetching ', issue_id)
                     return issue_id
                 
             return None
@@ -63,6 +67,7 @@ class Pull_requestHandler(EventHandler):
                 
             issue_id = None
 
+
             # async with aiohttp.ClientSession() as session:
             #     async with session.get(api_url) as response:
             #         pr_data = await response.json()
@@ -82,10 +87,12 @@ class Pull_requestHandler(EventHandler):
                     url_parts = api_url.split('/')
                     owner = url_parts[4]
                     repo = url_parts[5]
+
                     issue_link = f"https://github.com/{owner}/{repo}/issues/{issue_number}"
                     issue_data = await postgres_client.get_data('link', 'issues',  issue_link)
                     if issue_data:
                         issue_id = issue_data[0].get("issue_id", None)
+
 
             
             pr_data = {
