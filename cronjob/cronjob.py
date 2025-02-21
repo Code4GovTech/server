@@ -56,8 +56,13 @@ class CronJob():
             return None
 
 
-    async def get_rate_limits(self, token_headers: dict):
+    async def get_rate_limits(self, token: str):
         rate_limit_url = "https://api.github.com/rate_limit"
+        token_headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
         async with httpx.AsyncClient() as client:
             rate_limit_resp = await client.get(rate_limit_url, headers=token_headers)
             return rate_limit_resp.json()
@@ -112,8 +117,7 @@ class CronJob():
                 repo_data = repo_response.json()
                 return repo_data.get('repositories', [])
 
-
-    async def get_issues(self, token: str, repo_fullname):
+    async def get_issues(self, token: str, since: datetime, repo_fullname: str):
         page = 1
         all_issues = []
         while True:
@@ -123,7 +127,8 @@ class CronJob():
                 "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28"
             }
-            payload = {"labels": "c4gt community"}
+            payload = {"labels": "c4gt community",
+                       "since": since.isoformat()}
             async with httpx.AsyncClient() as client:
                 issues_response = await client.get(url=get_issue_url,
                                                 headers=token_headers,
@@ -135,17 +140,31 @@ class CronJob():
                     all_issues = all_issues + page_issues
                 else:
                     break
-            
+            rate_limit = await self.get_rate_limits(token)
+            print(rate_limit)
         return all_issues
 
-    async def get_issue_comments(self, issue_comment_url):
+    async def get_issue_comments(self, issue_comment_url, since: datetime, **kwargs):
         page=1
         all_comments = []
+        token = kwargs.get("token", None)
         while True:
             comments_url = f"{issue_comment_url}?state=all&page={page}&per_page=100"
+            payload = {"since": since.isoformat()}
        
             async with httpx.AsyncClient() as client:
-                issue_comment_response = await client.get(url=comments_url)
+                if token is not None:
+                    token_headers = {
+                        "Accept": "application/vnd.github+json",
+                        "Authorization": f"Bearer {token}",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    }
+                    issue_comment_response = await client.get(url=comments_url,
+                                                              headers=token_headers,
+                                                              params=payload)
+                else:
+                    issue_comment_response = await client.get(url=comments_url,
+            )
                 issue_comments_data = issue_comment_response.json()
                 if len(issue_comments_data) > 0:
                     page += 1
@@ -154,7 +173,7 @@ class CronJob():
                     break
         return all_comments
 
-    async def get_pull_requests(self, token: str, repo_fullname):
+    async def get_pull_requests(self, token: str, repo_fullname, since: datetime):
         page = 1
         all_prs = []
         while True:
@@ -164,9 +183,11 @@ class CronJob():
                 "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28"
             }
+            payload = {"since": since.isoformat()}
             async with httpx.AsyncClient() as client:
                 pull_requests_response = await client.get(url=get_pull_requests_url,
-                                                        headers=token_headers
+                                                          headers=token_headers,
+                                                          params=payload
                                                         )
                 pull_requests_data = pull_requests_response.json()
                 if len(pull_requests_data)>0:
@@ -178,7 +199,6 @@ class CronJob():
 
 
     async def main(self):
-        # action_types = ["created", "opened", "labeled", "unlabeled", "edited", "closed", "assigned", "unassigned"]
         start_time = time.time()
         action_types = ["labeled"]
         engine = create_async_engine(get_postgres_uri(), echo=False, poolclass=NullPool)
@@ -193,8 +213,8 @@ class CronJob():
             "X-GitHub-Api-Version": "2022-11-28"
         }
         installations = await self.get_installations(jwt_headers)
-        access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
-                        installation in installations}
+        # access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
+        #                 installation in installations}
         # print(access_tokens)
         all_issue_ids = set()
         all_comment_ids = set()
@@ -211,16 +231,25 @@ class CronJob():
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
-                issues = await self.get_issues(token, repo_name)
+                rate_limits = await self.get_rate_limits(token=token)
+                print(rate_limits)
+                since = (datetime.now() - timedelta(days=1))
+                issues = await self.get_issues(token, since, repo_name)
+                print(await self.get_rate_limits(token=token))
                 # issues = [issue for issue in issues if issue.get('html_url') == "https://github.com/AakashSatpute119/Nisai_Pwa/issues/189"]
-                #process issues
-                issues = await self.process_cron_issues(issues, all_issue_ids, all_comment_ids)
-                #process issue_comments
+
+                # process issues
+                processed_issues = await self.process_cron_issues(issues,
+                                                                  all_issue_ids,
+                                                                  all_comment_ids,
+                                                                  token=token)
 
                 #process prs
-                pull_requests = await self.get_pull_requests(token, repo_name)
+                pull_requests = await self.get_pull_requests(token,
+                                                             repo_name,
+                                                             since)
 
-                await self.process_cron_prs(pull_requests, all_pr_id)
+                processed_prs = await self.process_cron_prs(pull_requests, all_pr_id)
                 print('finished cron')
 
 
@@ -242,32 +271,42 @@ class CronJob():
         time_taken = end_time - start_time
         await self.send_discord_report(original_issue_length, new_issues_length, original_pr_length, new_prs_length, original_orgs_length, new_orgs_length, time_taken)
 
-        """ Need to use pull_request_handler from handlers """
-        """ Only closed PRs need to be updated with points"""
-        """ All issues need to be updated? - Yes
-            To update issues - use , log_user_activity class
-        """
-        """ Do we have a separate table for organisations - Yes"""
-        """ Mentor's data is in body - Body will always be there in a closed Issue/PR"""
-
-
-
-    async def process_cron_issues(self, issues, issue_ids_list, all_comment_ids):
+    async def process_cron_issues(self, issues, issue_ids_list, all_comment_ids, **kwargs):
         try:
+            token = kwargs.get("token", None)
             issue_handler = IssuesHandler()
             
             for issue in issues:
-                time.sleep(5)
-                issue_ids_list.add(issue["id"])
-                data={
-                "action":f'{issue["state"]}ed', 
-                "issue":issue
-                }
-                await issue_handler.handle_event(data=data, postgres_client='client')
+                try:
+                    print(issue)
+                    time.sleep(1)
+                    issue_ids_list.add(issue["id"])
+                    state = f'{issue["state"]}ed'
+                    state = state.replace('eded', 'ed')
+                    data={
+                    "action":state,
+                    "issue":issue
+                    }
+                    if token is not None:
+                        await issue_handler.handle_event(data=data,
+                                                         postgres_client='client',
+                                                         token=token)
+                    else:
+                        await issue_handler.handle_event(data=data,
+                                                         postgres_client='client')
 
-                #process issue comments
-                all_comments = await self.get_issue_comments(issue["comments_url"])
-                await self.process_cron_issue_comments(issue, all_comments, all_comment_ids)
+
+                    #process issue comments
+                    since = (datetime.now() - timedelta(days=1))
+                    all_comments = await self.get_issue_comments(issue["comments_url"],
+                                                                 since=since,
+                                                                 token=token)
+                    processed_comments = await self.process_cron_issue_comments(issue, all_comments, all_comment_ids)
+                    rate_limts = await self.get_rate_limits(token)
+                    print(rate_limts)
+                except Exception as e:
+                    print("Exeption in issue - ", issue)
+                    continue
             
             return 'issues processed'
 
@@ -302,7 +341,7 @@ class CronJob():
         try:
             print('inside cron comments')
             for comment in all_comments:
-                time.sleep(5)
+                # time.sleep(5)
                 all_comment_ids.add(comment["id"])
 
                 issue_id = issue["id"]
@@ -326,9 +365,8 @@ class CronJob():
                 print('comments data ', comment_data)
                             
                 is_comment_present = await self.postgres_client.get_data('id', 'ticket_comments', comment['id'])
-                # print(type(is_comment_present))
-                print(len(is_comment_present))
-                if len(is_comment_present)<0:
+
+                if is_comment_present is None or len(is_comment_present) == 0:
                     save_data = await self.postgres_client.add_data(comment_data,"ticket_comments")
                 else:
                     save_data = await self.postgres_client.update_data(comment_data, "id", "ticket_comments")
@@ -343,12 +381,15 @@ class CronJob():
         try:
             pr_handler = Pull_requestHandler()
             for pr in pull_requests:
-                time.sleep(5)
-                all_pr_id.add(pr["id"])
-                await pr_handler.handle_event(
-                    data={"action": "closed" if pr["state"] == "close" else "opened",
-                            "pull_request": pr},
-                    dummy_ps_client='async_session')
+                # time.sleep(5)
+                try:
+                    all_pr_id.add(pr["id"])
+                    await pr_handler.handle_event(
+                        data={"action": "closed" if pr["state"] == "close" else "opened",
+                                "pull_request": pr},
+                        dummy_ps_client='async_session')
+                except Exception as e:
+                    print("Error in processing pr")
                 
             return 'processed pr'
                     

@@ -165,8 +165,9 @@ class TicketEventHandler:
     def convert_to_datetime(self, date_str):
         return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
     
-    async def onTicketCreate(self, eventData):
+    async def onTicketCreate(self, eventData, **kwargs):
         try:
+            token = kwargs.get("token", None)
             issue = eventData["issue"]
 
             is_issue = await self.postgres_client.get_issue_from_issue_id(issue["id"])
@@ -236,7 +237,12 @@ class TicketEventHandler:
                 if ticketType == "ccbp":
                     recorded_data = await self.postgres_client.record_created_ticket(data=ticket_data,table_name="issues")
                     print("recorded issue data ", recorded_data)
-                    added_contributor = await self.add_contributor(issue)
+                    if token is not None:
+                        added_contributor = await self.add_contributor(issue,
+                                                                       token=token)
+                    else:
+                        added_contributor = await self.add_contributor(issue)
+
                     if added_contributor:
                         print('contributors data added')
                     else:
@@ -274,7 +280,8 @@ class TicketEventHandler:
             
         
 
-    async def onTicketEdit(self, eventData):
+    async def onTicketEdit(self, eventData, **kwargs):
+        token = kwargs.get("token", None)
         issue = eventData["issue"]
         print(f'edit ticket called at {datetime.now()} with {issue}')
     
@@ -339,7 +346,11 @@ class TicketEventHandler:
         # print("TICKET", ticket_data, file=sys.stderr)
         if ticketType == "ccbp":
             await self.postgres_client.record_updated_ticket(ticket_data, "issues")
-            added_contributor = await self.add_contributor(issue)
+            if token is not None:
+                added_contributor = await self.add_contributor(issue,
+                                                               token=token)
+            else:
+                added_contributor = await self.add_contributor(issue)
             if added_contributor:
                 print('contributors data added')
 
@@ -392,8 +403,10 @@ class TicketEventHandler:
 
         return eventData
     
-    async def onTicketClose(self, eventData):
+    async def onTicketClose(self, eventData, **kwargs):
         try:
+            token = kwargs.get("token", None)
+            print(token)
             issue_update = {
                 "status":"closed",
                 "issue_id": eventData["id"]
@@ -406,7 +419,7 @@ class TicketEventHandler:
             issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])   
             print('issue is ', issue)             
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
-            print('contributor is', contributors )
+            print('contributor is', contributors)
             #FIND POINTS BY ISSUE COMPLEXITY
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
@@ -415,16 +428,32 @@ class TicketEventHandler:
 
             markdown_contents = MarkdownHeaders().flattenAndParse(eventData["body"])
             angel_mentor = markdown_contents.get("Angel Mentor")
-            angel_mentor_detials = []
             if angel_mentor:
-                url = f'https://api.github.com/users/{angel_mentor}'
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as response:
-                        angel_mentor_data = await response.json()
-                if angel_mentor_data:
-                    angel_mentor_id = angel_mentor_data["id"]
-                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
-            print('mentor is ', angel_mentor_detials)
+                angel_mentor_detials = await self.postgres_client.get_data("github_url",
+                                                                           "contributors_registration",
+                                                                           f"https://github.com/{angel_mentor}")
+                if not angel_mentor_detials:
+                    angel_mentor_detials = []
+                    # if angel_mentor:
+                    url = f'https://api.github.com/users/{angel_mentor}'
+                    async with aiohttp.ClientSession() as session:
+                        if token is not None:
+                            token_headers = {
+                                "Accept": "application/vnd.github+json",
+                                "Authorization": f"Bearer {token}",
+                                "X-GitHub-Api-Version": "2022-11-28"
+                            }
+                            async with session.get(url,
+                                                   headers=token_headers) as response:
+                                angel_mentor_data = await response.json()
+                        else:
+                            async with session.get(url) as response:
+                                angel_mentor_data = await response.json()
+
+                    if angel_mentor_data:
+                        angel_mentor_id = angel_mentor_data["id"]
+                        angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+                    print('mentor is ', angel_mentor_detials)
             point_transaction = {
                 "user_id": user_id[0]['id'],
                 "issue_id": issue[0]["id"],
@@ -617,8 +646,9 @@ class TicketEventHandler:
         return None
 
     
-    async def add_contributor(self, issue):
+    async def add_contributor(self, issue, **kwargs):
         try:
+            token = kwargs.get("token", None)
             markdown_contents = MarkdownHeaders().flattenAndParse(issue["body"])
             assignee = issue["assignee"]
             get_issue = await self.postgres_client.get_data("issue_id", "issues", issue["id"])
@@ -650,16 +680,30 @@ class TicketEventHandler:
                 pass
             else:
                 angel_mentor = markdown_contents.get("Mentor(s)")
-          
-            angel_mentor_detials = []
-            if angel_mentor: 
-                url = f'https://api.github.com/users/{angel_mentor}'
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as response:
-                        angel_mentor_data = await response.json()
-                if angel_mentor_data:
-                    angel_mentor_id = angel_mentor_data["id"]
-                    angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)          
+
+            angel_mentor_detials = await self.postgres_client.get_data("github_url",
+                                                                       "contributors_registration",
+                                                                       f"https://github.com/{angel_mentor}")
+            if not angel_mentor_detials:
+                angel_mentor_detials = []
+                if angel_mentor:
+                    url = f'https://api.github.com/users/{angel_mentor}'
+                    async with aiohttp.ClientSession() as session:
+                        if token is not None:
+                            token_headers = {
+                                "Accept": "application/vnd.github+json",
+                                "Authorization": f"Bearer {token}",
+                                "X-GitHub-Api-Version": "2022-11-28"
+                            }
+                            async with session.get(url=url,
+                                                   headers=token_headers) as response:
+                                angel_mentor_data = await response.json()
+                        else:
+                            async with session.get(url) as response:
+                                angel_mentor_data = await response.json()
+                    if angel_mentor_data:
+                        angel_mentor_id = angel_mentor_data["id"]
+                        angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
             mentor_data = {
                 "issue_id": get_issue[0]["id"],
                 "org_mentor_id": org_mentor if org_mentor else None,

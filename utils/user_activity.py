@@ -28,4 +28,5 @@ class UserActivity:
         
         except Exception as e:
             logging.info(e)
+            print(f'{e.__traceback__.tb_lineno} - {str(e)}')
             raise Exception
