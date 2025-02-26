@@ -231,12 +231,8 @@ class CronJob():
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
-                rate_limits = await self.get_rate_limits(token=token)
-                print(rate_limits)
                 since = (datetime.now() - timedelta(days=1))
                 issues = await self.get_issues(token, since, repo_name)
-                print(await self.get_rate_limits(token=token))
-                # issues = [issue for issue in issues if issue.get('html_url') == "https://github.com/AakashSatpute119/Nisai_Pwa/issues/189"]
 
                 # process issues
                 processed_issues = await self.process_cron_issues(issues,
@@ -278,7 +274,6 @@ class CronJob():
             
             for issue in issues:
                 try:
-                    print(issue)
                     time.sleep(1)
                     issue_ids_list.add(issue["id"])
                     state = f'{issue["state"]}ed'

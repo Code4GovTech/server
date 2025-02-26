@@ -260,20 +260,20 @@ class TicketEventHandler:
                     issue_number = url_components[-1]
                     repo = url_components[-3]
                     owner = url_components[-4]
-                    try:                    
-                        await self.postgres_client.add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
-                        comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
-                        if comment:
-                                
-                            await self.postgres_client.update_data({
-                                "api_url":comment["url"],
-                                "comment_id":comment["id"],
-                                "issue_id":issue["id"],
-                                "updated_at": datetime.utcnow().isoformat()
-                            },"issue_id","app_comments")
-                            
-                    except Exception as e:
-                        print("Issue already commented ", e)
+                    # try:
+                    #     await self.postgres_client.add_data({"issue_id":issue["id"],"updated_at": datetime.utcnow().isoformat()},"app_comments")
+                    #     comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+                    #     if comment:
+                    #
+                    #         await self.postgres_client.update_data({
+                    #             "api_url":comment["url"],
+                    #             "comment_id":comment["id"],
+                    #             "issue_id":issue["id"],
+                    #             "updated_at": datetime.utcnow().isoformat()
+                    #         },"issue_id","app_comments")
+                    #
+                    # except Exception as e:
+                    #     print("Issue already commented ", e)
             return eventData
         except Exception as e:
             print('exception occured while creating ticket ', e)
@@ -354,52 +354,52 @@ class TicketEventHandler:
             if added_contributor:
                 print('contributors data added')
 
-        if await self.postgres_client.check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
-            url_components = issue["url"].split('/')
-            repo = url_components[-3]
-            owner = url_components[-4]
-            comments = await self.postgres_client.get_data("issue_id","app_comments",issue["id"],None)
-            comment_id = comments[0]["comment_id"]
-            if TicketFeedbackHandler().evaluateDict(markdown_contents):
-                comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
-                if comment:
-                    
-                    await self.postgres_client.update_data({
-                        "updated_at": datetime.utcnow().isoformat(),
-                        "issue_id": issue["id"]
-                    },"issue_id","app_comments")
-            else:
-                try:
-                    comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
-                    print(f"Print Delete Task,{comment}", file=sys.stderr)
-                    print(await self.postgres_client.deleteComment(issue["id"],"app_comments"))
-                except:
-                    print("Error in deletion")
-        elif ticketType=="ccbp":
-            if TicketFeedbackHandler().evaluateDict(markdown_contents):
-                url_components = issue["url"].split('/')
-                issue_number = url_components[-1]
-                repo = url_components[-3]
-                owner = url_components[-4]
-                try:
-                    
-                    
-                    await self.postgres_client.add_data({
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.utcnow().isoformat()
-                        },"app_comments")
-                    comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
-                    if comment:
-                                                
-                        await self.postgres_client.update_data({
-                            "api_url":comment["url"],
-                            "comment_id":comment["id"],
-                            "issue_id":issue["id"],
-                            "updated_at": datetime.utcnow().isoformat()
-                        },"issue_id","app_comments")
-                        
-                except Exception as e:
-                    print("Issue already commented ", e)
+        # if await self.postgres_client.check_record_exists("app_comments","issue_id",issue["id"]) and ticketType=="ccbp":
+        #     url_components = issue["url"].split('/')
+        #     repo = url_components[-3]
+        #     owner = url_components[-4]
+        #     comments = await self.postgres_client.get_data("issue_id","app_comments",issue["id"],None)
+        #     comment_id = comments[0]["comment_id"]
+        #     if TicketFeedbackHandler().evaluateDict(markdown_contents):
+        #         comment = await TicketFeedbackHandler().updateComment(owner, repo, comment_id, markdown_contents)
+        #         if comment:
+        #
+        #             await self.postgres_client.update_data({
+        #                 "updated_at": datetime.utcnow().isoformat(),
+        #                 "issue_id": issue["id"]
+        #             },"issue_id","app_comments")
+        #     else:
+        #         try:
+        #             comment = await TicketFeedbackHandler().deleteComment(owner, repo, comment_id)
+        #             print(f"Print Delete Task,{comment}", file=sys.stderr)
+        #             print(await self.postgres_client.deleteComment(issue["id"],"app_comments"))
+        #         except:
+        #             print("Error in deletion")
+        # elif ticketType=="ccbp":
+        #     if TicketFeedbackHandler().evaluateDict(markdown_contents):
+        #         url_components = issue["url"].split('/')
+        #         issue_number = url_components[-1]
+        #         repo = url_components[-3]
+        #         owner = url_components[-4]
+        #         try:
+        #
+        #
+        #             await self.postgres_client.add_data({
+        #                     "issue_id":issue["id"],
+        #                     "updated_at": datetime.utcnow().isoformat()
+        #                 },"app_comments")
+        #             comment = await TicketFeedbackHandler().createComment(owner, repo, issue_number, markdown_contents)
+        #             if comment:
+        #
+        #                 await self.postgres_client.update_data({
+        #                     "api_url":comment["url"],
+        #                     "comment_id":comment["id"],
+        #                     "issue_id":issue["id"],
+        #                     "updated_at": datetime.utcnow().isoformat()
+        #                 },"issue_id","app_comments")
+        #
+        #         except Exception as e:
+        #             print("Issue already commented ", e)
 
         return eventData
     
