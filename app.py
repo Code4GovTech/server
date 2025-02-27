@@ -410,6 +410,12 @@ async def add_issue_id_pr():
         return 'failed'
 
 
+@app.before_serving
+async def start_scheduler():
+    scheduler.add_job(CronJob().main, "cron", hour=2, minute=0)
+    scheduler.start()
+
+
 @app.route('/trigger-cron')
 async def trigger_cron():
     cronjob = CronJob()

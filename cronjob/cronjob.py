@@ -213,8 +213,8 @@ class CronJob():
             "X-GitHub-Api-Version": "2022-11-28"
         }
         installations = await self.get_installations(jwt_headers)
-        # access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
-        #                 installation in installations}
+        access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
+                        installation in installations}
         # print(access_tokens)
         all_issue_ids = set()
         all_comment_ids = set()
@@ -226,8 +226,12 @@ class CronJob():
 
 
         for installation in installations:
-            time.sleep(5)
-            token = await self.get_access_token(jwt_headers, installation.get('id'))
+            time.sleep(1)
+            # token = await self.get_access_token(jwt_headers, installation.get('id'))
+            token = access_tokens.get(installation.get('id'))
+            if not token:
+                print(f"Error in ")
+                continue
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
@@ -265,7 +269,7 @@ class CronJob():
         end_time = time.time()
 
         time_taken = end_time - start_time
-        await self.send_discord_report(original_issue_length, new_issues_length, original_pr_length, new_prs_length, original_orgs_length, new_orgs_length, time_taken)
+        # await self.send_discord_report(original_issue_length, new_issues_length, original_pr_length, new_prs_length, original_orgs_length, new_orgs_length, time_taken)
 
     async def process_cron_issues(self, issues, issue_ids_list, all_comment_ids, **kwargs):
         try:
@@ -297,8 +301,8 @@ class CronJob():
                                                                  since=since,
                                                                  token=token)
                     processed_comments = await self.process_cron_issue_comments(issue, all_comments, all_comment_ids)
-                    rate_limts = await self.get_rate_limits(token)
-                    print(rate_limts)
+                    # rate_limts = await self.get_rate_limits(token)
+                    # print(rate_limts)
                 except Exception as e:
                     print("Exeption in issue - ", issue)
                     continue
@@ -376,7 +380,6 @@ class CronJob():
         try:
             pr_handler = Pull_requestHandler()
             for pr in pull_requests:
-                # time.sleep(5)
                 try:
                     all_pr_id.add(pr["id"])
                     await pr_handler.handle_event(
