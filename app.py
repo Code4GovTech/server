@@ -248,7 +248,7 @@ async def register(discord_userdata):
 async def event_handler():
     try:
         data = await request.json
-        logger.info(f"Webhook Recieved - {data}")
+        logger.info(f"Webhook Received - {data}")
         secret_key = os.getenv("WEBHOOK_SECRET")
 
         verification_result, error_message = await verify_github_webhook(request,secret_key)
@@ -418,10 +418,12 @@ async def start_scheduler():
 
 @app.route('/trigger-cron')
 async def trigger_cron():
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
     cronjob = CronJob()
-    # return await cronjob.main()
-    asyncio.create_task(cronjob.main())
+    asyncio.create_task(cronjob.main(from_date, to_date))
     return 'cron started'
+
 
 if __name__ == '__main__':
     app.run()
