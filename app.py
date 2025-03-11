@@ -248,7 +248,9 @@ async def register(discord_userdata):
 async def event_handler():
     try:
         data = await request.json
+
         logger.info(f"Webhook Received - {data}")
+
         secret_key = os.getenv("WEBHOOK_SECRET")
 
         verification_result, error_message = await verify_github_webhook(request,secret_key)

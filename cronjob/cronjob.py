@@ -79,6 +79,7 @@ class CronJob():
             elif installations_response.status_code == 401:
                 if installations_response.json().get("message",
                                                     None) == '\'Expiration time\' claim (\'exp\') must be a numeric value representing the future time at which the assertion expires':
+
                     logger.info("JWT expired at get_installation stage")
                     return -1
 
@@ -97,6 +98,7 @@ class CronJob():
             elif access_token_response.status_code == 401:
                 if access_token_response.json().get("message",
                                                     None) == '\'Expiration time\' claim (\'exp\') must be a numeric value representing the future time at which the assertion expires':
+
                     logger.info("JWT expired at get_access_token stage")
                     return -1
             else:
@@ -117,6 +119,7 @@ class CronJob():
                 repo_data = repo_response.json()
                 return repo_data.get('repositories', [])
 
+
     async def get_issues(self, token: str, since: datetime, repo_fullname: str, to_date=None):
         page = 1
         all_issues = []
@@ -127,6 +130,7 @@ class CronJob():
                 "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28"
             }
+
             payload = {
                 "labels": "c4gt community",
                 "since": since.isoformat(),
@@ -154,6 +158,7 @@ class CronJob():
 
     async def get_issue_comments(self, issue_comment_url, since: datetime, to_date=None, **kwargs):
         page = 1
+
         all_comments = []
         token = kwargs.get("token", None)
         while True:
@@ -215,6 +220,7 @@ class CronJob():
                     break
         return all_prs
 
+
     async def main(self, from_date=None, to_date=None):
         start_time = time.time()
         logger.info(f"Cron triggered")
@@ -230,6 +236,7 @@ class CronJob():
         installations = await self.get_installations(jwt_headers)
         access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
                          installation in installations}
+
 
         all_issue_ids = set()
         all_comment_ids = set()
@@ -489,3 +496,4 @@ if __name__ == '__main__':
     from_date= "2025-03-01T00:00:00"
     to_date = "2025-03-11T00:00:00"
     asyncio.run(cronjob.main(from_date,to_date))
+
