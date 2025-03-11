@@ -5,7 +5,6 @@ import jwt
 # from jwt import JWT
 import os
 from dotenv import load_dotenv
-import logging
 import sys
 import time
 
@@ -13,6 +12,7 @@ from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from utils.jwt_generator import GenerateJWT
+from utils.logging_file import logger
 from utils.new_jwt_generator import NewGenerateJWT
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -52,7 +52,7 @@ class CronJob():
                 pem_file.close()
             return encoded_jwt
         except Exception as e:
-            logging.error(f"In get_github_jwt: {e}")
+            logger.error(f"In get_github_jwt: {e}")
             return None
 
 
@@ -79,7 +79,7 @@ class CronJob():
             elif installations_response.status_code == 401:
                 if installations_response.json().get("message",
                                                     None) == '\'Expiration time\' claim (\'exp\') must be a numeric value representing the future time at which the assertion expires':
-                    logging.info("JWT expired at get_installation stage")
+                    logger.info("JWT expired at get_installation stage")
                     return -1
 
 
@@ -97,7 +97,7 @@ class CronJob():
             elif access_token_response.status_code == 401:
                 if access_token_response.json().get("message",
                                                     None) == '\'Expiration time\' claim (\'exp\') must be a numeric value representing the future time at which the assertion expires':
-                    logging.info("JWT expired at get_access_token stage")
+                    logger.info("JWT expired at get_access_token stage")
                     return -1
             else:
                 return None
@@ -117,7 +117,7 @@ class CronJob():
                 repo_data = repo_response.json()
                 return repo_data.get('repositories', [])
 
-    async def get_issues(self, token: str, since: datetime, repo_fullname: str):
+    async def get_issues(self, token: str, since: datetime, repo_fullname: str, to_date=None):
         page = 1
         all_issues = []
         while True:
@@ -127,50 +127,68 @@ class CronJob():
                 "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28"
             }
-            payload = {"labels": "c4gt community",
-                       "since": since.isoformat()}
+            payload = {
+                "labels": "c4gt community",
+                "since": since.isoformat(),
+                "direction": "asc"
+            }
             async with httpx.AsyncClient() as client:
-                issues_response = await client.get(url=get_issue_url,
-                                                headers=token_headers,
-                                                params=payload
-                                                )
+                issues_response = await client.get(url=get_issue_url, headers=token_headers, params=payload)
                 page_issues = issues_response.json()
-                if len(page_issues)>0:
+
+                # Filter based on created_at if to_date is provided
+                if to_date:
+                    page_issues = [issue for issue in page_issues if
+                                   datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00')) <= to_date]
+
+                if len(page_issues) > 0:
+                    all_issues += page_issues
                     page += 1
-                    all_issues = all_issues + page_issues
                 else:
                     break
-            rate_limit = await self.get_rate_limits(token)
-            print(rate_limit)
+
+                rate_limit = await self.get_rate_limits(token)
+                print(rate_limit)
+
         return all_issues
 
-    async def get_issue_comments(self, issue_comment_url, since: datetime, **kwargs):
-        page=1
+    async def get_issue_comments(self, issue_comment_url, since: datetime, to_date=None, **kwargs):
+        page = 1
         all_comments = []
         token = kwargs.get("token", None)
         while True:
             comments_url = f"{issue_comment_url}?state=all&page={page}&per_page=100"
-            payload = {"since": since.isoformat()}
-       
+            payload = {
+                "since": since.isoformat(),
+                "direction": "asc"
+            }
+
             async with httpx.AsyncClient() as client:
-                if token is not None:
+                if token:
                     token_headers = {
                         "Accept": "application/vnd.github+json",
                         "Authorization": f"Bearer {token}",
                         "X-GitHub-Api-Version": "2022-11-28"
                     }
-                    issue_comment_response = await client.get(url=comments_url,
-                                                              headers=token_headers,
-                                                              params=payload)
+                    response = await client.get(url=comments_url, headers=token_headers, params=payload)
                 else:
-                    issue_comment_response = await client.get(url=comments_url,
-            )
-                issue_comments_data = issue_comment_response.json()
+                    response = await client.get(url=comments_url, params=payload)
+
+                issue_comments_data = response.json()
+
+                # Filter based on created_at if to_date is provided
+                if to_date:
+                    issue_comments_data = [
+                        comment for comment in issue_comments_data
+                        if datetime.fromisoformat(comment['created_at'].replace('Z', '+00:00')) <= to_date
+                    ]
+
                 if len(issue_comments_data) > 0:
-                    page += 1
                     all_comments += issue_comments_data
+                    page += 1
                 else:
                     break
+
         return all_comments
 
     async def get_pull_requests(self, token: str, repo_fullname, since: datetime):
@@ -197,120 +215,121 @@ class CronJob():
                     break
         return all_prs
 
-
-    async def main(self):
+    async def main(self, from_date=None, to_date=None):
         start_time = time.time()
-        action_types = ["labeled"]
+        logger.info(f"Cron triggered")
         engine = create_async_engine(get_postgres_uri(), echo=False, poolclass=NullPool)
-        async_session = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
-        issue_handler = IssuesHandler()
-        pr_handler = Pull_requestHandler()
         jwt_token = self.jwt_generator.__call__()
-        # jwt_token = self.get_github_jwt()
+
         jwt_headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {jwt_token}",
             "X-GitHub-Api-Version": "2022-11-28"
         }
+
         installations = await self.get_installations(jwt_headers)
         access_tokens = {installation.get('id'): await self.get_access_token(jwt_headers, installation.get('id')) for
-                        installation in installations}
-        # print(access_tokens)
+                         installation in installations}
+
         all_issue_ids = set()
         all_comment_ids = set()
         all_pr_id = set()
 
-        original_issue = await self.postgres_client.readAll("issues")
-        original_prs = await self.postgres_client.readAll("pr_history")
-        original_orgs = await self.postgres_client.readAll("community_orgs")
-
+        # Parse date params
+        since = datetime.now() - timedelta(days=1)  # Default to 1 day before
+        if from_date:
+            since = datetime.fromisoformat(from_date)
+        to_date = datetime.fromisoformat(to_date).replace(tzinfo=timezone.utc) if to_date else None
 
         for installation in installations:
-            time.sleep(1)
-            # token = await self.get_access_token(jwt_headers, installation.get('id'))
+            logger.info(f"Installation: ", installation)
             token = access_tokens.get(installation.get('id'))
             if not token:
-                print(f"Error in ")
+                print(f"Error in installation {installation.get('id')}")
                 continue
+
             repos = await self.get_repos(token)
             for repo in repos:
                 repo_name = repo.get("full_name")
-                since = (datetime.now() - timedelta(days=1))
-                issues = await self.get_issues(token, since, repo_name)
+                logger.info(f"Repository: {repo_name}")
+                issues = await self.get_issues(token, since, repo_name, to_date)
 
-                # process issues
-                processed_issues = await self.process_cron_issues(issues,
-                                                                  all_issue_ids,
-                                                                  all_comment_ids,
-                                                                  token=token)
+                # Pass from_date and to_date to process_cron_issues
+                processed_issues = await self.process_cron_issues(
+                    issues,
+                    all_issue_ids,
+                    all_comment_ids,
+                    from_date=since,
+                    to_date=to_date,
+                    token=token
+                )
 
-                #process prs
-                pull_requests = await self.get_pull_requests(token,
-                                                             repo_name,
-                                                             since)
+                # pull_requests = await self.get_pull_requests(token, repo_name, since)
+                # processed_prs = await self.process_cron_prs(pull_requests, all_pr_id)
 
-                processed_prs = await self.process_cron_prs(pull_requests, all_pr_id)
-                print('finished cron')
-
-
-        #purge remaining issues, comments
         await self.purge_issues_comments(all_issue_ids, all_comment_ids)
 
-
-        new_issues_length = len(all_issue_ids)
-        new_prs_length = len(all_pr_id)
-        new_orgs = await self.postgres_client.readAll("community_orgs")
-        new_orgs_length = len(new_orgs)
-        #share report
-
-        original_issue_length = len(original_issue)
-        original_pr_length = len(original_prs)
-        original_orgs_length = len(original_orgs)
         end_time = time.time()
-
         time_taken = end_time - start_time
-        # await self.send_discord_report(original_issue_length, new_issues_length, original_pr_length, new_prs_length, original_orgs_length, new_orgs_length, time_taken)
+        # await self.send_discord_report(
+        #     len(original_issue),
+        #     len(all_issue_ids),
+        #     len(original_prs),
+        #     len(all_pr_id),
+        #     len(original_orgs),
+        #     len(await self.postgres_client.readAll("community_orgs")),
+        #     time_taken
+        # )
 
-    async def process_cron_issues(self, issues, issue_ids_list, all_comment_ids, **kwargs):
+    async def process_cron_issues(self, issues, issue_ids_list, all_comment_ids, from_date=None, to_date=None,
+                                  **kwargs):
         try:
             token = kwargs.get("token", None)
             issue_handler = IssuesHandler()
-            
+
             for issue in issues:
                 try:
-                    time.sleep(1)
+                    logger.info(f"Issue: {issue.get('html_url')}")
                     issue_ids_list.add(issue["id"])
                     state = f'{issue["state"]}ed'
                     state = state.replace('eded', 'ed')
-                    data={
-                    "action":state,
-                    "issue":issue
+                    data = {
+                        "action": state,
+                        "issue": issue
                     }
                     if token is not None:
-                        await issue_handler.handle_event(data=data,
-                                                         postgres_client='client',
-                                                         token=token)
+                        await issue_handler.handle_event(
+                            data=data,
+                            postgres_client='client',
+                            token=token
+                        )
                     else:
-                        await issue_handler.handle_event(data=data,
-                                                         postgres_client='client')
+                        await issue_handler.handle_event(
+                            data=data,
+                            postgres_client='client'
+                        )
 
+                    # Process issue comments with from_date and to_date
+                    since = from_date or (datetime.now() - timedelta(days=1))
+                    all_comments = await self.get_issue_comments(
+                        issue["comments_url"],
+                        since=since,
+                        to_date=to_date,
+                        token=token
+                    )
+                    time.sleep(1)
+                    processed_comments = await self.process_cron_issue_comments(
+                        issue, all_comments, all_comment_ids
+                    )
 
-                    #process issue comments
-                    since = (datetime.now() - timedelta(days=1))
-                    all_comments = await self.get_issue_comments(issue["comments_url"],
-                                                                 since=since,
-                                                                 token=token)
-                    processed_comments = await self.process_cron_issue_comments(issue, all_comments, all_comment_ids)
-                    # rate_limts = await self.get_rate_limits(token)
-                    # print(rate_limts)
                 except Exception as e:
-                    print("Exeption in issue - ", issue)
+                    print("Exception in issue - ", issue, e)
                     continue
-            
+
             return 'issues processed'
 
         except Exception as e:
-            print('Exception occured in process_cron_issues ', e)
+            print('Exception occurred in process_cron_issues:', e)
             return e
 
     async def get_issue_data(self, issue_url):
@@ -381,6 +400,7 @@ class CronJob():
             pr_handler = Pull_requestHandler()
             for pr in pull_requests:
                 try:
+                    logger.info(f"PR: {pr.get('html_url')}")
                     all_pr_id.add(pr["id"])
                     await pr_handler.handle_event(
                         data={"action": "closed" if pr["state"] == "close" else "opened",
@@ -466,4 +486,6 @@ class CronJob():
 
 if __name__ == '__main__':
     cronjob = CronJob()
-    asyncio.run(cronjob.main())
+    from_date= "2025-03-01T00:00:00"
+    to_date = "2025-03-11T00:00:00"
+    asyncio.run(cronjob.main(from_date,to_date))
