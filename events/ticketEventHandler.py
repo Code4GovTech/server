@@ -425,35 +425,38 @@ class TicketEventHandler:
             print('points is ', points)
             user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
             print('user is ', user_id)
+            try:
+                markdown_contents = MarkdownHeaders().flattenAndParse(eventData["body"])
+                print(f"Markdown_contents: {markdown_contents}")
+                angel_mentor = markdown_contents.get("Angel Mentor")
+                if angel_mentor:
+                    angel_mentor_detials = await self.postgres_client.get_data("github_url",
+                                                                               "contributors_registration",
+                                                                               f"https://github.com/{angel_mentor}")
+                    if not angel_mentor_detials:
+                        angel_mentor_detials = []
+                        # if angel_mentor:
+                        url = f'https://api.github.com/users/{angel_mentor}'
+                        async with aiohttp.ClientSession() as session:
+                            if token is not None:
+                                token_headers = {
+                                    "Accept": "application/vnd.github+json",
+                                    "Authorization": f"Bearer {token}",
+                                    "X-GitHub-Api-Version": "2022-11-28"
+                                }
+                                async with session.get(url,
+                                                       headers=token_headers) as response:
+                                    angel_mentor_data = await response.json()
+                            else:
+                                async with session.get(url) as response:
+                                    angel_mentor_data = await response.json()
 
-            markdown_contents = MarkdownHeaders().flattenAndParse(eventData["body"])
-            angel_mentor = markdown_contents.get("Angel Mentor")
-            if angel_mentor:
-                angel_mentor_detials = await self.postgres_client.get_data("github_url",
-                                                                           "contributors_registration",
-                                                                           f"https://github.com/{angel_mentor}")
-                if not angel_mentor_detials:
-                    angel_mentor_detials = []
-                    # if angel_mentor:
-                    url = f'https://api.github.com/users/{angel_mentor}'
-                    async with aiohttp.ClientSession() as session:
-                        if token is not None:
-                            token_headers = {
-                                "Accept": "application/vnd.github+json",
-                                "Authorization": f"Bearer {token}",
-                                "X-GitHub-Api-Version": "2022-11-28"
-                            }
-                            async with session.get(url,
-                                                   headers=token_headers) as response:
-                                angel_mentor_data = await response.json()
-                        else:
-                            async with session.get(url) as response:
-                                angel_mentor_data = await response.json()
-
-                    if angel_mentor_data:
-                        angel_mentor_id = angel_mentor_data["id"]
-                        angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
-                    print('mentor is ', angel_mentor_detials)
+                        if angel_mentor_data:
+                            angel_mentor_id = angel_mentor_data["id"]
+                            angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+                        print('mentor is ', angel_mentor_detials)
+            except Exception as e:
+                print(f"Error in getting Angel Mentor from Markdown_contents - {e}")
             point_transaction = {
                 "user_id": user_id[0]['id'],
                 "issue_id": issue[0]["id"],
