@@ -272,6 +272,7 @@ class CronJob():
                 )
 
                 pull_requests = await self.get_pull_requests(token, repo_name, since)
+                print("PRs received  - ", repo_name, len(pull_requests))
                 processed_prs = await self.process_cron_prs(pull_requests, all_pr_id)
 
         await self.purge_issues_comments(all_issue_ids, all_comment_ids)
@@ -408,6 +409,7 @@ class CronJob():
             for pr in pull_requests:
                 try:
                     logger.info(f"PR: {pr.get('html_url')}")
+                    print(f"PR: {pr.get('html_url')}")
                     all_pr_id.add(pr["id"])
                     await pr_handler.handle_event(
                         data={"action": "closed" if pr["state"] == "close" else "opened",
