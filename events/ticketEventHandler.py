@@ -417,9 +417,52 @@ class TicketEventHandler:
             print('issue details ', issue_details)
 
             issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])   
-            print('issue is ', issue)             
+            print('issue is ', issue)
+
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
             print('contributor is', contributors)
+            try:
+                if contributors:
+                    assignee = eventData["assignee"]
+                    if assignee:
+                        for contributor in contributors:
+                            if contributor["id"] == assignee["id"]:
+                                continue
+                            else:
+                                contributors_id = assignee["id"]
+                                user = await self.postgres_client.get_data("github_id", "contributors_registration", contributors_id)
+                                contributors_data = {
+                                    "issue_id": eventData['id'],
+                                    "role": 1,
+                                    "contributor_id": user[0]["id"] if user else None,
+                                    "created_at": str(datetime.now()),
+                                    "updated_at": str(datetime.now())
+                                }
+                                inserted_contributors = await self.postgres_client.add_data(contributors_data, "issue_contributors")
+
+                else:
+                    assignee = eventData["assignee"]
+                    if assignee:
+                        contributors_id = assignee["id"]
+                        user = await self.postgres_client.get_data("github_id", "contributors_registration",
+                                                                   contributors_id)
+                        contributors_data = {
+                            "issue_id": eventData['id'],
+                            "role": 1,
+                            "contributor_id": user[0]["id"] if user else None,
+                            "created_at": str(datetime.now()),
+                            "updated_at": str(datetime.now())
+                        }
+                        inserted_contributors = await self.postgres_client.add_data(contributors_data,
+                                                                                    "issue_contributors")
+
+            except Exception as e:
+                print('Error in attributing assignee data to contributor - ', e)
+
+            contributors = await self.postgres_client.get_contributors_from_issue_id(
+                issue[0]['id']) if issue else None
+            print('contributor is', contributors)
+
             #FIND POINTS BY ISSUE COMPLEXITY
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
@@ -457,12 +500,16 @@ class TicketEventHandler:
                         print('mentor is ', angel_mentor_detials)
             except Exception as e:
                 print(f"Error in getting Angel Mentor from Markdown_contents - {e}")
+            angel_mentor_id = None
+            if angel_mentor_detials and len(angel_mentor_detials) > 0:
+                angel_mentor_id = angel_mentor_detials[0]['id']
             point_transaction = {
                 "user_id": user_id[0]['id'],
                 "issue_id": issue[0]["id"],
                 "point": points,
                 "type": "credit",
-                "angel_mentor_id": angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
+                # "angel_mentor_id": angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
+                "angel_mentor_id": angel_mentor_id,
                 "created_at": str(datetime.now()),
                 "updated_at": str(datetime.now())
             }  
