@@ -241,27 +241,31 @@ class MarkdownHeaders:
         self.headers = MARKDOWN_TEMPLATE_HEADERS
 
     def flattenAndParse(self, rawMarkdown):
-        markdown = mistune.create_markdown(renderer=HeadingRenderer())
-        dummyHeader = "## Header\n\n"
-        markdown(dummyHeader + rawMarkdown)
-        markdownDict = markdown.renderer.data
-        print(markdownDict, file=sys.stderr)
-        
-        # Flatten the dictionary
-        print('makrdown content', markdownDict, file=sys.stderr)
-        flatDict = flatdict.FlatDict(markdownDict, delimiter=".")
-        dataDict = {}
+        try:
+            markdown = mistune.create_markdown(renderer=HeadingRenderer())
+            dummyHeader = "## Header\n\n"
+            markdown(dummyHeader + rawMarkdown)
+            markdownDict = markdown.renderer.data
+            print(markdownDict, file=sys.stderr)
 
-        # Process headers and clean up
-        for header in self.headers:
-            pattern = fr"(?:^{re.escape(header)}\.text$)|(?:\.{re.escape(header)}\.text$)"
-            for key in flatDict.keys():
-                if re.search(pattern, key):
-                    dataDict[header] = remove_special_characters(flatDict[key])
-            if f'{header}.text' in flatDict.keys():
-                dataDict[header] = remove_special_characters(flatDict[f'{header}.text'])
-        
-        return dataDict
+            # Flatten the dictionary
+            print('makrdown content', markdownDict, file=sys.stderr)
+            flatDict = flatdict.FlatDict(markdownDict, delimiter=".")
+            dataDict = {}
+
+            # Process headers and clean up
+            for header in self.headers:
+                pattern = fr"(?:^{re.escape(header)}\.text$)|(?:\.{re.escape(header)}\.text$)"
+                for key in flatDict.keys():
+                    if re.search(pattern, key):
+                        dataDict[header] = remove_special_characters(flatDict[key])
+                if f'{header}.text' in flatDict.keys():
+                    dataDict[header] = remove_special_characters(flatDict[f'{header}.text'])
+
+            return dataDict
+        except Exception as e:
+            print("Error in parsing template - ", e)
+            return {}
 
 
 # Example usage:
