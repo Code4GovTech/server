@@ -419,92 +419,91 @@ class TicketEventHandler:
             issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])   
             print('issue is ', issue)
 
+            issue_contributor_id = None
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
             print('contributor is', contributors)
             try:
                 if contributors:
-                    assignee = eventData["assignee"]
-                    if assignee:
-                        for contributor in contributors:
-                            if contributor["id"] == assignee["id"]:
-                                continue
-                            else:
-                                contributors_id = assignee["id"]
-                                user = await self.postgres_client.get_data("github_id", "contributors_registration", contributors_id)
-                                contributors_data = {
-                                    "issue_id": eventData['id'],
-                                    "role": 1,
-                                    "contributor_id": user[0]["id"] if user else None,
-                                    "created_at": str(datetime.now()),
-                                    "updated_at": str(datetime.now())
-                                }
-                                inserted_contributors = await self.postgres_client.add_data(contributors_data, "issue_contributors")
-
+                    issue_contributor_id = contributors[0]["contributor_id"]
                 else:
                     assignee = eventData["assignee"]
                     if assignee:
-                        contributors_id = assignee["id"]
+                        assignee_id = assignee["id"]
                         user = await self.postgres_client.get_data("github_id", "contributors_registration",
-                                                                   contributors_id)
-                        contributors_data = {
-                            "issue_id": eventData['id'],
-                            "role": 1,
-                            "contributor_id": user[0]["id"] if user else None,
-                            "created_at": str(datetime.now()),
-                            "updated_at": str(datetime.now())
-                        }
-                        inserted_contributors = await self.postgres_client.add_data(contributors_data,
-                                                                                    "issue_contributors")
+                                                                   assignee_id)
+                        if user:
+                            issue_contributor_id = user[0]["id"] if user[0] else None
+                            contributors_data = {
+                                "issue_id": eventData['id'],
+                                "role": 1,
+                                "contributor_id": issue_contributor_id,
+                                "created_at": str(datetime.now()),
+                                "updated_at": str(datetime.now())
+                            }
+                            inserted_contributors = await self.postgres_client.add_data(contributors_data,
+                                                                                        "issue_contributors")
 
             except Exception as e:
                 print('Error in attributing assignee data to contributor - ', e)
 
-            contributors = await self.postgres_client.get_contributors_from_issue_id(
-                issue[0]['id']) if issue else None
-            print('contributor is', contributors)
-
             #FIND POINTS BY ISSUE COMPLEXITY
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
-            user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
-            print('user is ', user_id)
+
+            """Commenting this cause this query is not needed."""
+            # user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
+            # print('user is ', user_id)
+            angel_mentor_id = None
             try:
+                get_issue_mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue[0]['id'])
+                if get_issue_mentor:
+                    try:
+                        angel_mentor_id = get_issue_mentor[0]["id"]
+                    except Exception as e:
+                        print("get_issue_mentor exception - ", e)
+                        pass
+
                 markdown_contents = MarkdownHeaders().flattenAndParse(eventData["body"])
                 print(f"Markdown_contents: {markdown_contents}")
                 angel_mentor = markdown_contents.get("Angel Mentor")
+                if not angel_mentor:
+                    angel_mentor = markdown_contents.get("Mentor(s)")
+
                 if angel_mentor:
                     angel_mentor_detials = await self.postgres_client.get_data("github_url",
                                                                                "contributors_registration",
                                                                                f"https://github.com/{angel_mentor}")
-                    if not angel_mentor_detials:
-                        angel_mentor_detials = []
-                        # if angel_mentor:
-                        url = f'https://api.github.com/users/{angel_mentor}'
-                        async with aiohttp.ClientSession() as session:
-                            if token is not None:
-                                token_headers = {
-                                    "Accept": "application/vnd.github+json",
-                                    "Authorization": f"Bearer {token}",
-                                    "X-GitHub-Api-Version": "2022-11-28"
-                                }
-                                async with session.get(url,
-                                                       headers=token_headers) as response:
-                                    angel_mentor_data = await response.json()
-                            else:
-                                async with session.get(url) as response:
-                                    angel_mentor_data = await response.json()
+                    """Commenting the below because only the users who have registered with us should get the points."""
+                    # if not angel_mentor_detials:
+                    #     angel_mentor_detials = []
+                    #     # if angel_mentor:
+                    #     url = f'https://api.github.com/users/{angel_mentor}'
+                    #     async with aiohttp.ClientSession() as session:
+                    #         if token is not None:
+                    #             token_headers = {
+                    #                 "Accept": "application/vnd.github+json",
+                    #                 "Authorization": f"Bearer {token}",
+                    #                 "X-GitHub-Api-Version": "2022-11-28"
+                    #             }
+                    #             async with session.get(url,
+                    #                                    headers=token_headers) as response:
+                    #                 angel_mentor_data = await response.json()
+                    #         else:
+                    #             async with session.get(url) as response:
+                    #                 angel_mentor_data = await response.json()
+                    #
+                    #     if angel_mentor_data:
+                    #         angel_mentor_id = angel_mentor_data["id"]
+                    #         angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
+                    #     print('mentor is ', angel_mentor_detials)
 
-                        if angel_mentor_data:
-                            angel_mentor_id = angel_mentor_data["id"]
-                            angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
-                        print('mentor is ', angel_mentor_detials)
+                    if angel_mentor_detials and len(angel_mentor_detials) > 0:
+                        angel_mentor_id = angel_mentor_detials[0]['id']
             except Exception as e:
                 print(f"Error in getting Angel Mentor from Markdown_contents - {e}")
-            angel_mentor_id = None
-            if angel_mentor_detials and len(angel_mentor_detials) > 0:
-                angel_mentor_id = angel_mentor_detials[0]['id']
+                
             point_transaction = {
-                "user_id": user_id[0]['id'],
+                "user_id": issue_contributor_id,
                 "issue_id": issue[0]["id"],
                 "point": points,
                 "type": "credit",
@@ -515,8 +514,8 @@ class TicketEventHandler:
             }  
             
             print('points_transaction is ', point_transaction)
-            print('inserting data in point_transactions')
             inserted_data = await self.postgres_client.add_data(point_transaction, "point_transactions")
+            print('inserted data in point_transactions')
                         
             return
         except Exception as e:
