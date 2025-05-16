@@ -420,7 +420,6 @@ class TicketEventHandler:
             print('issue is ', issue)
 
             issue_contributor_id = None
-
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
             print('contributor is', contributors)
             try:
@@ -502,8 +501,7 @@ class TicketEventHandler:
                         angel_mentor_id = angel_mentor_detials[0]['id']
             except Exception as e:
                 print(f"Error in getting Angel Mentor from Markdown_contents - {e}")
-
-
+                
             point_transaction = {
                 "user_id": issue_contributor_id,
                 "issue_id": issue[0]["id"],
