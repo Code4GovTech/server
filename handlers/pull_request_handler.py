@@ -60,7 +60,8 @@ class Pull_requestHandler(EventHandler):
             merged_by = data.get("pull_request", {}).get("merged_by", {}).get('id', None) if data.get("pull_request", {}).get("merged_by", {}) is not None else None
             merged_at = data['pull_request']['merged_at']
             # merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None
-            merged_by_username = data.get("pull_request", {}).get("merged_by", {}).get('login', None)
+
+            merged_by_username = data.get("pull_request", {}).get("merged_by", {}).get('login', None) if data.get("pull_request", {}).get("merged_by", {}) is not None else None
             created_at =  self.convert_to_datetime(data['pull_request']['created_at'])
             raised_at = self.convert_to_datetime(data['pull_request']['updated_at'])
             if merged_at:
