@@ -98,6 +98,7 @@ class Pull_requestHandler(EventHandler):
                             issue_id = issue_data[0].get("issue_id", None) if issue_data[0] else None
             except Exception as e:
                 print("Error getting issue from PR title - ", e)
+                print(f"{e.__traceback__.tb_lineno} - {str(e)}")
 
 
             
@@ -149,6 +150,7 @@ class Pull_requestHandler(EventHandler):
             await UserActivity.log_user_activity(data, 'pull_request')
         except Exception as e:
             print('exception in pr ', e)
+            print(f"{e.__traceback__.tb_lineno} - {str(e)}")
             logging.info(e)
             raise Exception
         
