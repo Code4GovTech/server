@@ -57,7 +57,7 @@ class Pull_requestHandler(EventHandler):
             postgres_client = ServerQueries()
 
             # merged_by =  data['pull_request']['merged_by']['id'] if data['pull_request']['merged_by'] else None
-            merged_by = data.get("pull_request", {}).get("merged_by", {}).get('id', None)
+            merged_by = data.get("pull_request", {}).get("merged_by", {}).get('id', None) if data.get("pull_request", {}).get("merged_by", {}) is not None else None
             merged_at = data['pull_request']['merged_at']
             # merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None
             merged_by_username = data.get("pull_request", {}).get("merged_by", {}).get('login', None)
