@@ -1,4 +1,7 @@
 import logging, httpx, os, re, aiohttp
+
+from sqlalchemy.util import ellipses_string
+
 from handlers.EventHandler import EventHandler
 from datetime import datetime
 from utils.user_activity import UserActivity
@@ -80,18 +83,21 @@ class Pull_requestHandler(EventHandler):
             #         repo = url_parts[5]
             #         issue_id = await self.get_issue_data(owner, repo, issue_number)
 
-            pr_title = data.get("pull_request", {}).get("title", None)
-            if pr_title is not None:
-                issue_number = self.extract_issue_number(pr_title)
-                if issue_number:
-                    url_parts = api_url.split('/')
-                    owner = url_parts[4]
-                    repo = url_parts[5]
+            try:
+                pr_title = data.get("pull_request", {}).get("title", None)
+                if pr_title is not None:
+                    issue_number = self.extract_issue_number(pr_title)
+                    if issue_number:
+                        url_parts = api_url.split('/')
+                        owner = url_parts[4]
+                        repo = url_parts[5]
 
-                    issue_link = f"https://github.com/{owner}/{repo}/issues/{issue_number}"
-                    issue_data = await postgres_client.get_data('link', 'issues',  issue_link)
-                    if issue_data:
-                        issue_id = issue_data[0].get("issue_id", None)
+                        issue_link = f"https://github.com/{owner}/{repo}/issues/{issue_number}"
+                        issue_data = await postgres_client.get_data('link', 'issues',  issue_link)
+                        if issue_data:
+                            issue_id = issue_data[0].get("issue_id", None) if issue_data[0] else None
+            except Exception as e:
+                print("Error getting issue from PR title - ", e)
 
 
             
