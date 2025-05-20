@@ -449,7 +449,7 @@ class TicketEventHandler:
             #FIND POINTS BY ISSUE COMPLEXITY
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
-
+            
             """Commenting this cause this query is not needed."""
             # user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
             # print('user is ', user_id)
@@ -473,6 +473,7 @@ class TicketEventHandler:
                     angel_mentor_detials = await self.postgres_client.get_data("github_url",
                                                                                "contributors_registration",
                                                                                f"https://github.com/{angel_mentor}")
+
                     """Commenting the below because only the users who have registered with us should get the points."""
                     # if not angel_mentor_detials:
                     #     angel_mentor_detials = []
