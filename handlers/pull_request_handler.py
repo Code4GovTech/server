@@ -55,7 +55,7 @@ class Pull_requestHandler(EventHandler):
             print('inside pull request handler ', data) 
 
             postgres_client = ServerQueries()
-
+            
             merged_by = None
             merged_by_username = None
             merged_at = None
@@ -86,18 +86,6 @@ class Pull_requestHandler(EventHandler):
                 
             issue_id = None
 
-
-            # async with aiohttp.ClientSession() as session:
-            #     async with session.get(api_url) as response:
-            #         pr_data = await response.json()
-            # if pr_data:
-            #     pr_title = pr_data["title"]
-            #     issue_number = self.extract_issue_number(pr_title)
-            #     if issue_number:
-            #         url_parts = api_url.split('/')
-            #         owner = url_parts[4]
-            #         repo = url_parts[5]
-            #         issue_id = await self.get_issue_data(owner, repo, issue_number)
 
             try:
                 pr_title = data.get("pull_request", {}).get("title", None)
