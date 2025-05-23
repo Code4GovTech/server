@@ -532,6 +532,7 @@ class TicketEventHandler:
                     angel_mentor_details = await self.postgres_client.get_data("github_url",
                                                                                "contributors_registration",
                                                                                f"https://github.com/{angel_mentor}")
+                
 
                     if angel_mentor_details:
                         latest_angel_mentor_id = angel_mentor_details[0]['id'] if angel_mentor_details[0] else None
