@@ -419,29 +419,58 @@ class TicketEventHandler:
             issue = await self.postgres_client.get_issue_from_issue_id(eventData['id'])   
             print('issue is ', issue)
 
+            """
+            # Fetching and inserting contributor logic:
+            
+            1. Initialize issue_contributor and issue_contributor_id as None.
+            2. Check if a contributor already exists in the database.
+               (It must have been added when the issue was opened, edited, or assigned.)
+            3. If contributors exist, take the first one (multiple contributors are not part of current product flow).
+            4. Assign its ID to issue_contributor_id.
+            5. Even if a contributor exists, check the assignee from the latest event data
+               to ensure we don't miss a new contributor.
+            6. If the assignee exists and is different from the current contributor, delete the old one.
+            7. Look up the assignee in the contributors_registration table.
+            8. If the assignee is registered, update issue_contributor_id and insert it into issue_contributors.
+            9. If none of these conditions are met, issue_contributor_id remains None.
+            """
+            issue_contributor =None
             issue_contributor_id = None
+            # Step 2: Fetch existing contributors from the database based on issue ID
             contributors = await self.postgres_client.get_contributors_from_issue_id(issue[0]['id']) if issue else None
             print('contributor is', contributors)
             try:
                 if contributors:
-                    issue_contributor_id = contributors[0]["contributor_id"]
-                else:
-                    assignee = eventData["assignee"]
-                    if assignee:
-                        assignee_id = assignee["id"]
-                        user = await self.postgres_client.get_data("github_id", "contributors_registration",
-                                                                   assignee_id)
-                        if user:
-                            issue_contributor_id = user[0]["id"] if user[0] else None
-                            contributors_data = {
-                                "issue_id": eventData['id'],
-                                "role": 1,
-                                "contributor_id": issue_contributor_id,
-                                "created_at": str(datetime.now()),
-                                "updated_at": str(datetime.now())
-                            }
-                            inserted_contributors = await self.postgres_client.add_data(contributors_data,
-                                                                                        "issue_contributors")
+                    # Step 3: Pick the first contributor (only one is considered for now)
+                    issue_contributor = contributors[0]
+                    issue_contributor_id = issue_contributor["contributor_id"]
+
+                # Step 5: Check for assignee in the incoming event data
+                assignee = eventData["assignee"]
+                if assignee:
+                    assignee_id = assignee["id"]
+                    if issue_contributor:
+                        # Step 6: If assignee is different from current contributor, delete the old entry
+                        if assignee_id != issue_contributor["github_id"]:
+                            await self.postgres_client.delete("issue_contributors", "issue_id", issue[0]['id'])
+                            issue_contributor_id = None
+                            # Step 7: Look up assignee in contributors_registration table
+                            user = await self.postgres_client.get_data("github_id", "contributors_registration",
+                                                                       assignee_id)
+
+                            if user:
+                                # Step 8: Register assignee as contributor
+                                issue_contributor_id = user[0]["id"] if user[0] else None
+                                contributors_data = {
+                                    "issue_id": eventData['id'],
+                                    "role": 1,
+                                    "contributor_id": issue_contributor_id,
+                                    "created_at": str(datetime.now()),
+                                    "updated_at": str(datetime.now())
+                                }
+                                inserted_contributors = await self.postgres_client.add_data(contributors_data,
+                                                                                            "issue_contributors")
+
 
             except Exception as e:
                 print('Error in attributing assignee data to contributor - ', e)
@@ -449,20 +478,49 @@ class TicketEventHandler:
             #FIND POINTS BY ISSUE COMPLEXITY
             points = await self.postgres_client.get_pointsby_complexity(issue[0]['complexity'].lower())
             print('points is ', points)
+
+            """
+            Fetching and inserting angel mentor - 
+            Initialise angel_mentor_id as None 
+            check if angel mentor exists in the database (It must have been added when issue was opened or edited)
+            if the angel mentor(s) exits consider the first angel mentor (multiple angel mentors not in product flow right now.)
+            Assign its id to angel_mentor_id
+            Even if angel mentor exists in the database, look for angel mentor to get the latest angel mentor incase we might have missed it. 
+            look for angel mentor in template part of the issue data that we have in eventData variable.
+            if angel mentor exists in template part,
+            if latest angel mentor and current angel mentor are not same, delete the previous one.
+            check if latest angel mentor is registered with us by looking up in contributors_registration table.
+            if latest angel mentor is registered with us, assign it's id to angle_mentor_id  
+            and insert it as angel mentor for the issue as well.
+            if no conditions are met angel_mentor_id remains None
             
-            """Commenting this cause this query is not needed."""
-            # user_id = await self.postgres_client.get_data("id","contributors_registration", contributors[0]['contributor_id'],None)
-            # print('user is ', user_id)
+            # Fetching and inserting angel mentor:
+            1. Initialize angel_mentor_id as None.
+            2. Check if an angel mentor already exists in the database.
+               (It must have been added when the issue was opened or edited.)
+            3. If an angel mentor exists, use the first one.
+               (Multiple angel mentors are not supported in the current product flow.)
+            4. Assign the ID of the existing angel mentor to angel_mentor_id.
+            (Even if angel mentor exists in the database, look for angel mentor to get the latest angel mentor incase we might have missed it.)
+            5. Parse the latest angel mentor from the issue body (from the 'template' part of eventData).
+            6. Check if the latest angel mentor is registered in the contributors_registration table.
+            7. If the latest angel mentor is different from the current one, delete the previous entry.
+            8. If registered, insert them as the angel mentor for this issue and update angel_mentor_id.
+            9. If none of the conditions are met, angel_mentor_id remains None.
+            """
             angel_mentor_id = None
             try:
+                # Step 2: Fetch existing angel mentor entry for the issue
                 get_issue_mentor = await self.postgres_client.get_data("issue_id", "issue_mentors", issue[0]['id'])
                 if get_issue_mentor:
                     try:
-                        angel_mentor_id = get_issue_mentor[0]["id"]
+                        # Step 3 & 4: Assign first existing angel mentor's ID
+                        angel_mentor_id = get_issue_mentor[0]["id"] if get_issue_mentor[0] else None
                     except Exception as e:
                         print("get_issue_mentor exception - ", e)
                         pass
 
+                # Step 5: Parse angel mentor from issue body content
                 markdown_contents = MarkdownHeaders().flattenAndParse(eventData["body"])
                 print(f"Markdown_contents: {markdown_contents}")
                 angel_mentor = markdown_contents.get("Angel Mentor")
@@ -470,36 +528,27 @@ class TicketEventHandler:
                     angel_mentor = markdown_contents.get("Mentor(s)")
 
                 if angel_mentor:
-                    angel_mentor_detials = await self.postgres_client.get_data("github_url",
+                    # Step 6: Check if latest angel mentor is registered
+                    angel_mentor_details = await self.postgres_client.get_data("github_url",
                                                                                "contributors_registration",
                                                                                f"https://github.com/{angel_mentor}")
+                
 
-                    """Commenting the below because only the users who have registered with us should get the points."""
-                    # if not angel_mentor_detials:
-                    #     angel_mentor_detials = []
-                    #     # if angel_mentor:
-                    #     url = f'https://api.github.com/users/{angel_mentor}'
-                    #     async with aiohttp.ClientSession() as session:
-                    #         if token is not None:
-                    #             token_headers = {
-                    #                 "Accept": "application/vnd.github+json",
-                    #                 "Authorization": f"Bearer {token}",
-                    #                 "X-GitHub-Api-Version": "2022-11-28"
-                    #             }
-                    #             async with session.get(url,
-                    #                                    headers=token_headers) as response:
-                    #                 angel_mentor_data = await response.json()
-                    #         else:
-                    #             async with session.get(url) as response:
-                    #                 angel_mentor_data = await response.json()
-                    #
-                    #     if angel_mentor_data:
-                    #         angel_mentor_id = angel_mentor_data["id"]
-                    #         angel_mentor_detials = await self.postgres_client.get_data("github_id","contributors_registration", angel_mentor_id)
-                    #     print('mentor is ', angel_mentor_detials)
+                    if angel_mentor_details:
+                        latest_angel_mentor_id = angel_mentor_details[0]['id'] if angel_mentor_details[0] else None
+                        # Step 7 & 8: Replace the old angel mentor if it differs
+                        if angel_mentor_id != latest_angel_mentor_id:
+                            await self.postgres_client.delete("issue_mentors", "issue_id", issue[0]['id'])
+                            mentor_data = {
+                                "issue_id": issue[0]['id'],
+                                "org_mentor_id": None, # Organisation Mentor is deprecated
+                                "angel_mentor_id": latest_angel_mentor_id,
+                                "created_at": str(datetime.now()),
+                                "updated_at": str(datetime.now())
+                            }
+                            inserted_mentors_data = await self.postgres_client.add_data(mentor_data, "issue_mentors")
+                            angel_mentor_id = latest_angel_mentor_id
 
-                    if angel_mentor_detials and len(angel_mentor_detials) > 0:
-                        angel_mentor_id = angel_mentor_detials[0]['id']
             except Exception as e:
                 print(f"Error in getting Angel Mentor from Markdown_contents - {e}")
                 
@@ -508,7 +557,6 @@ class TicketEventHandler:
                 "issue_id": issue[0]["id"],
                 "point": points,
                 "type": "credit",
-                # "angel_mentor_id": angel_mentor_detials[0]['id'] if angel_mentor_detials else None,
                 "angel_mentor_id": angel_mentor_id,
                 "created_at": str(datetime.now()),
                 "updated_at": str(datetime.now())
