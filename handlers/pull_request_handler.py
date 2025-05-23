@@ -56,18 +56,28 @@ class Pull_requestHandler(EventHandler):
 
             postgres_client = ServerQueries()
 
-            # merged_by =  data['pull_request']['merged_by']['id'] if data['pull_request']['merged_by'] else None
-            merged_by = data.get("pull_request", {}).get("merged_by", {}).get('id', None) if data.get("pull_request", {}).get("merged_by", {}) is not None else None
-            merged_at = data['pull_request']['merged_at']
-            # merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None
+            merged_by = None
+            merged_by_username = None
+            merged_at = None
+            created_at = None
+            raised_at = None
+            api_url = None
 
-            merged_by_username = data.get("pull_request", {}).get("merged_by", {}).get('login', None) if data.get("pull_request", {}).get("merged_by", {}) is not None else None
-            created_at =  self.convert_to_datetime(data['pull_request']['created_at'])
-            raised_at = self.convert_to_datetime(data['pull_request']['updated_at'])
+            pull_request_data = data.get("pull_request")
+            if pull_request_data is not None:
+                merged_by_data = pull_request_data.get(merged_by)
+                if merged_by_data is not None:
+                    merged_by = merged_by_data.get('id', None)
+                    merged_by_username = merged_by_data.get('login', None)
+
+                merged_at = self.convert_to_datetime(pull_request_data.get('merged_at', None))
+                created_at = self.convert_to_datetime(pull_request_data.get('created_at', None))
+                raised_at = self.convert_to_datetime(pull_request_data.get('updated_at', None))
+                api_url = pull_request_data.get('url', None)
+
             if merged_at:
                 merged_at = self.convert_to_datetime(merged_at)
 
-            api_url = data['pull_request']["url"]
                 
             issue_id = None
 
