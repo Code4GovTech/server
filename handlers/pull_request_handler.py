@@ -80,7 +80,7 @@ class Pull_requestHandler(EventHandler):
 
                 api_url = pull_request_data.get('url', None)
 
-            if merged_at:
+            if merged_at is not None and isinstance(merged_at, str):
                 merged_at = self.convert_to_datetime(merged_at)
 
                 
