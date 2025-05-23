@@ -70,9 +70,13 @@ class Pull_requestHandler(EventHandler):
                     merged_by = merged_by_data.get('id', None)
                     merged_by_username = merged_by_data.get('login', None)
 
-                merged_at = self.convert_to_datetime(pull_request_data.get('merged_at', None))
-                created_at = self.convert_to_datetime(pull_request_data.get('created_at', None))
-                raised_at = self.convert_to_datetime(pull_request_data.get('updated_at', None))
+                if pull_request_data.get('merged_at') is not None:
+                    merged_at = self.convert_to_datetime(pull_request_data.get('merged_at'))
+                if pull_request_data.get('created_at') is not None:
+                    created_at = self.convert_to_datetime(pull_request_data.get('created_at', None))
+                if pull_request_data.get('updated_at') is not None:
+                    raised_at = self.convert_to_datetime(pull_request_data.get('updated_at', None))
+                    
                 api_url = pull_request_data.get('url', None)
 
             if merged_at:
