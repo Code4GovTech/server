@@ -1,4 +1,7 @@
 import logging, httpx, os, re, aiohttp
+
+from sqlalchemy.util import ellipses_string
+
 from handlers.EventHandler import EventHandler
 from datetime import datetime
 from utils.user_activity import UserActivity
@@ -52,46 +55,51 @@ class Pull_requestHandler(EventHandler):
             print('inside pull request handler ', data) 
 
             postgres_client = ServerQueries()
+            
+            merged_by = None
+            merged_by_username = None
+            merged_at = None
+            created_at = None
+            raised_at = None
+            api_url = None
 
-            # merged_by =  data['pull_request']['merged_by']['id'] if data['pull_request']['merged_by'] else None
-            merged_by = data.get("pull_request", {}).get("merged_by", {}).get('id', None)
-            merged_at = data['pull_request']['merged_at']
-            # merged_by_username =  data['pull_request']['merged_by']['login'] if data['pull_request']['merged_by'] else None
-            merged_by_username = data.get("pull_request", {}).get("merged_by", {}).get('login', None)
-            created_at =  self.convert_to_datetime(data['pull_request']['created_at'])
-            raised_at = self.convert_to_datetime(data['pull_request']['updated_at'])
-            if merged_at:
-                merged_at = self.convert_to_datetime(merged_at)
 
-            api_url = data['pull_request']["url"]
+            pull_request_data = data.get("pull_request")
+            if pull_request_data is not None:
+                merged_by_data = pull_request_data.get(merged_by)
+                if merged_by_data is not None:
+                    merged_by = merged_by_data.get('id', None)
+                    merged_by_username = merged_by_data.get('login', None)
+
+                if pull_request_data.get('merged_at') is not None:
+                    merged_at = self.convert_to_datetime(pull_request_data.get('merged_at'))
+                if pull_request_data.get('created_at') is not None:
+                    created_at = self.convert_to_datetime(pull_request_data.get('created_at', None))
+                if pull_request_data.get('updated_at') is not None:
+                    raised_at = self.convert_to_datetime(pull_request_data.get('updated_at', None))
+
+                api_url = pull_request_data.get('url', None)
+
                 
             issue_id = None
 
 
-            # async with aiohttp.ClientSession() as session:
-            #     async with session.get(api_url) as response:
-            #         pr_data = await response.json()
-            # if pr_data:
-            #     pr_title = pr_data["title"]
-            #     issue_number = self.extract_issue_number(pr_title)
-            #     if issue_number:
-            #         url_parts = api_url.split('/')
-            #         owner = url_parts[4]
-            #         repo = url_parts[5]
-            #         issue_id = await self.get_issue_data(owner, repo, issue_number)
+            try:
+                pr_title = data.get("pull_request", {}).get("title", None)
+                if pr_title is not None:
+                    issue_number = self.extract_issue_number(pr_title)
+                    if issue_number:
+                        url_parts = api_url.split('/')
+                        owner = url_parts[4]
+                        repo = url_parts[5]
 
-            pr_title = data.get("pull_request", {}).get("title", None)
-            if pr_title is not None:
-                issue_number = self.extract_issue_number(pr_title)
-                if issue_number:
-                    url_parts = api_url.split('/')
-                    owner = url_parts[4]
-                    repo = url_parts[5]
-
-                    issue_link = f"https://github.com/{owner}/{repo}/issues/{issue_number}"
-                    issue_data = await postgres_client.get_data('link', 'issues',  issue_link)
-                    if issue_data:
-                        issue_id = issue_data[0].get("issue_id", None)
+                        issue_link = f"https://github.com/{owner}/{repo}/issues/{issue_number}"
+                        issue_data = await postgres_client.get_data('link', 'issues',  issue_link)
+                        if issue_data:
+                            issue_id = issue_data[0].get("issue_id", None) if issue_data[0] else None
+            except Exception as e:
+                print("Error getting issue from PR title - ", e)
+                print(f"{e.__traceback__.tb_lineno} - {str(e)}")
 
 
             
@@ -143,6 +151,7 @@ class Pull_requestHandler(EventHandler):
             await UserActivity.log_user_activity(data, 'pull_request')
         except Exception as e:
             print('exception in pr ', e)
+            print(f"{e.__traceback__.tb_lineno} - {str(e)}")
             logging.info(e)
             raise Exception
         
