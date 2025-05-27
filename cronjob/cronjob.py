@@ -270,8 +270,8 @@ class CronJob():
                     to_date=to_date,
                     token=token
                 )
-                pull_requests = await self.get_pull_requests(token, repo_name, since)
-                processed_prs = await self.process_cron_prs(pull_requests, all_pr_id)
+                # pull_requests = await self.get_pull_requests(token, repo_name, since)
+                # processed_prs = await self.process_cron_prs(pull_requests, all_pr_id)
 
         await self.purge_issues_comments(all_issue_ids, all_comment_ids)
 
