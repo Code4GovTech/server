@@ -156,7 +156,7 @@ productList = [
 ]
 @app.route("/")
 async def hello_world():
-    return "Welcome to C4GT"
+    return "hello world"
 
 @app.route("/verify/<githubUsername>")
 async def verify(githubUsername):
@@ -417,12 +417,9 @@ async def start_scheduler():
     scheduler.add_job(CronJob().main, "cron", hour=2, minute=0)
     scheduler.start()
 
+
 @app.route('/trigger-cron')
 async def trigger_cron():
-    provided_password = request.args.get('password')
-    expected_password = os.getenv('CRON_PASSWORD')
-    if not expected_password or provided_password != expected_password:
-        return 'forbidden', 403
     from_date = request.args.get('from')
     to_date = request.args.get('to')
     cronjob = CronJob()
