@@ -156,7 +156,7 @@ productList = [
 ]
 @app.route("/")
 async def hello_world():
-    return "Welcome to C4GT"
+    return "Welcome to C4GT Server"
 
 @app.route("/verify/<githubUsername>")
 async def verify(githubUsername):
