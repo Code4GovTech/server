@@ -421,7 +421,8 @@ async def start_scheduler():
 async def trigger_cron():
     provided_password = request.args.get('password')
     print(f"Provided password: {provided_password}")  # Log the password
-    expected_password = "c4gt_tech"
+    expected_password = os.getenv("CRON_PASSWORD")
+    print(f"Expected password: {expected_password}")
     if provided_password != expected_password:
         return 'forbidden', 403
     from_date = request.args.get('from')
