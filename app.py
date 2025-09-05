@@ -339,10 +339,8 @@ async def get_program_tickets_user():
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
-            # Get assignee from issue data directly
-            assignee = None
-            if issue["issue"].get("assignee"):
-                assignee = issue["issue"]["assignee"]
+            # Get assignee directly from issue data
+            assignee = issue["issue"].get("assignee")
 
             res = {
                 "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
@@ -370,6 +368,7 @@ async def get_program_tickets_user():
     except Exception as e:
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
+      
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
