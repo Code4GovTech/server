@@ -37,8 +37,8 @@ class CronJob():
         self.jwt_generator = NewGenerateJWT()
 
     def get_github_jwt(self):
-        pem = os.getenv('pem_file')
-        client_id = os.getenv('client_id')
+        pem = os.getenv('PEM_FILE')
+        client_id = os.getenv('CLIENT_ID')
         print('pem file ', pem) 
         print('client id ', client_id)
         try:
