@@ -156,7 +156,7 @@ productList = [
 ]
 @app.route("/")
 async def hello_world():
-    return "Welcome to C4GT Server"
+    return "hello world"
 
 @app.route("/verify/<githubUsername>")
 async def verify(githubUsername):
@@ -307,6 +307,7 @@ async def get_role_master():
     role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
+
 @app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
@@ -338,7 +339,14 @@ async def get_program_tickets_user():
                 labels = ['C4GT Coding']
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
-
+            contributors_data = issue["contributors_registration"]
+            if contributors_data:
+                contributors_name = contributors_data["name"]
+                if contributors_name:
+                    pass
+                else:
+                    contributors_url = contributors_data["github_url"].split('/')
+                    contributors_name = contributors_url[-1] if contributors_url else None
             # Get assignee directly from issue data
             assignee = issue["issue"].get("assignee")
 
@@ -358,9 +366,9 @@ async def get_program_tickets_user():
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
-                "assignees": assignee,
+                "assignees": contributors_name if contributors_data else None,
                 "project_type": project_type if reqd_skills else None,
-                "is_assigned": bool(assignee)
+                "is_assigned": True if contributors_data else False
             }
             issue_result.append(res)
 
@@ -368,6 +376,7 @@ async def get_program_tickets_user():
     except Exception as e:
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
+
       
 @app.route('/migrate-tickets')
 async def migrate_tickets():
@@ -410,14 +419,9 @@ async def start_scheduler():
     scheduler.add_job(CronJob().main, "cron", hour=2, minute=0)
     scheduler.start()
 
+
 @app.route('/trigger-cron')
 async def trigger_cron():
-    provided_password = request.args.get('password')
-    print(f"Provided password: {provided_password}")  # Log the password
-    expected_password = "c4gt_tech"
-    print(f"Expected password: {expected_password}")
-    if provided_password != expected_password:
-        return 'forbidden', 403
     from_date = request.args.get('from')
     to_date = request.args.get('to')
     cronjob = CronJob()
