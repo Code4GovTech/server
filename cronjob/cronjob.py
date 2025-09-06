@@ -39,7 +39,6 @@ class CronJob():
     def get_github_jwt(self):
         pem = os.getenv('pem_file')
         client_id = os.getenv('client_id')
-
         try:
             with open(pem, 'rb') as pem_file:
                 signing_key = pem_file.read()
