@@ -37,10 +37,9 @@ class CronJob():
         self.jwt_generator = NewGenerateJWT()
 
     def get_github_jwt(self):
-        pem = os.getenv('PEM_FILE')
-        client_id = os.getenv('CLIENT_ID')
-        print('pem file ', pem) 
-        print('client id ', client_id)
+        pem = os.getenv('pem_file')
+        client_id = os.getenv('client_id')
+
         try:
             with open(pem, 'rb') as pem_file:
                 signing_key = pem_file.read()
@@ -496,4 +495,3 @@ if __name__ == '__main__':
     from_date= "2025-03-01T00:00:00"
     to_date = "2025-03-11T00:00:00"
     asyncio.run(cronjob.main(from_date,to_date))
-
