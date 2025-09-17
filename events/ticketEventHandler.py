@@ -830,30 +830,27 @@ class TicketEventHandler:
         try:
             issue_exist = await self.postgres_client.get_data('issue_id', 'issues', issue["id"])
             if issue_exist:
-                assignee = issue["assignee"]
+                assignee = issue.get("assignee")
                 if assignee:
-                    contributors_id = assignee["id"]
-                    user = await self.postgres_client.get_data("github_id","contributors_registration", contributors_id)
+                    contributors_id = assignee.get("id")
+                    user = await self.postgres_client.get_data("github_id", "contributors_registration", contributors_id)
+                    if user:
+                        contributor_id = user[0]["id"]
+                    else:
+                        contributor_id = 0  # Not registered
+
                     contributors_data = {
-                                    "issue_id": issue_exist[0]["id"],
-                                    "role": 1,
-                                    "contributor_id": user[0]["id"] if user else None,
-                                    "created_at":str(datetime.now()),
-                                    "updated_at":str(datetime.now())
-                                }
+                        "issue_id": issue_exist[0]["id"],
+                        "role": 1,
+                        "contributor_id": contributor_id,
+                        "created_at": str(datetime.now()),
+                        "updated_at": str(datetime.now())
+                    }
                     inserted_data = await self.postgres_client.add_data(contributors_data, "issue_contributors")
-                    if inserted_data:
-                        print('assignee added ', inserted_data)
-                        return inserted_data
-            
+                    print('assignee added ', inserted_data)
+                    return inserted_data
             print('could not add assignee')
             return 'success'
-
         except Exception as e:
             print('exception occured while assigning an assignee to a ticket ', e)
             raise Exception
-        
-    
-
-
-    
