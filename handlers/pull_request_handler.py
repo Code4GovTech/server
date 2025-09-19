@@ -139,10 +139,15 @@ class Pull_requestHandler(EventHandler):
 
             #get contributor_id and save to supabase
             contributor = await postgres_client.get_data('github_id', 'contributors_registration', user_id)
-            if not contributor:
-                print('could not add contributors data contributor does not exist')
-                return pr_data
-            contributor_id = contributor[0]["id"]
+            # if not contributor:
+            #     print('could not add contributors data contributor does not exist')
+            #     return pr_data
+            # contributor_id = contributor[0]["id"]
+            if contributor:
+                contributor_id = contributor[0]["id"]
+            else:
+                contributor_id = 0
+                print('contributor not registered assiging default value ', contributor_id)
 
             issue_url = data['pull_request']['issue_url']
             issue = await postgres_client.get_data('link', 'issues', issue_url, '*')
