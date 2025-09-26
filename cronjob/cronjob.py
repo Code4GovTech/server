@@ -169,6 +169,7 @@ class CronJob():
 
             async with httpx.AsyncClient() as client:
                 if token:
+                    print(token)
                     token_headers = {
                         "Accept": "application/vnd.github+json",
                         "Authorization": f"Bearer {token}",
