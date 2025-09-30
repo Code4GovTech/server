@@ -14,7 +14,7 @@ class NewGenerateJWT:
         client_id = os.getenv('CLIENT_ID')
         print("Pem", pem)
         print("Client", client_id)
-
+ 
         try:
             with open(pem, 'rb') as pem_file:
                 signing_key = pem_file.read()
