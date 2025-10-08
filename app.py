@@ -338,7 +338,9 @@ async def get_program_tickets_user():
             if len(labels) == 1:
                 labels = ['C4GT Coding']
             else:
-                labels = [label for label in labels if label != 'C4GT Community']
+                labels = [label for label in labels if label not in ['C4GT Community', 'C4GT Bounty']]
+                if not labels:
+                    labels = ['C4GT Coding']
 
             contributors_data = issue["contributors_registration"]
             if contributors_data:
@@ -370,6 +372,7 @@ async def get_program_tickets_user():
                 "is_assigned": True if contributors_data else False
             }
             issue_result.append(res)
+            print('status test',contributors_name)
 
         return issue_result
     except Exception as e:
