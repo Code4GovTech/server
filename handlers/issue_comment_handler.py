@@ -16,7 +16,7 @@ class Issue_commentHandler(EventHandler):
             issue = data["issue"]
             print('inside issue comment handler ', issue)
             labels = issue["labels"]
-            if next((l for l in labels if l['name'].lower() == 'c4gt community'), None):
+            if next((l for l in labels if l['name'].lower() in ['c4gt community', 'c4gt bounty','c4gt coding']), None):
                 handler_method = getattr(self, f'handle_issue_comment_{module_name}', None)
                 if handler_method:
                     await handler_method(data)

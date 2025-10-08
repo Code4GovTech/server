@@ -21,7 +21,7 @@ class IssuesHandler(EventHandler):
             labels = issue["labels"]
             print(f'inside issue handler with issue data as {issue} '
                   f'\n label as {labels}')
-            if next((l for l in labels if l['name'].lower() == 'c4gt community'), None):
+            if next((l for l in labels if l['name'].lower() in ['c4gt community', 'c4gt bounty','c4gt coding']), None):
                 handler_method = getattr(self, f'handle_issue_{module_name}', None)
                 print(handler_method)
                 if handler_method:
