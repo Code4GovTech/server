@@ -1,25 +1,25 @@
 class PrEventHandler:
     def __init__(self) -> None:
-        return
+        pass
     
     def handleEvent(self, eventData):
-        #pr Raised
+        # Check if the action is one of the events to be ignored
         if eventData["action"] in ['assigned', 'edited', 'labeled', 'opened', 'ready_for_review', 'reopened', 'review_requested', 'unlocked']:
             return
-        
 
-        if eventData["action"] in ['closed']:
-            #merged
-            #abandoned
-        #pr abandoned
+        # If the action is 'closed'
+        if eventData["action"] == 'closed':
+            if eventData["merged"]:
+                # Action for merged PRs
+                self.handleMerged(eventData)
+            else:
+                # Action for closed but not merged (abandoned) PRs
+                self.handleAbandoned(eventData)
 
+    def handleMerged(self, eventData):
+        # Action for merged PRs
+        print("PR Merged:", eventData["pull_request"]["title"])
 
-
-        #prMerged corresponds to a close
-
-        #pr Reviewed and accepted
-        
-        
-        # assigned, closed, converted_to_draft, demilestoned, dequeued, edited, enqueued, labeled, locked, milestoned, opened, ready_for_review, reopened, request_review_removed, review_requested, unassigned, unlabeled, unlocked 
-        
-        return
+    def handleAbandoned(self, eventData):
+        # Action for abandoned PRs (closed but not merged)
+        print("PR Abandoned:", eventData["pull_request"]["title"])
