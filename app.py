@@ -327,7 +327,7 @@ async def get_program_tickets_user():
         six_months_ago = datetime.utcnow()
 
         for issue in all_issues:
-            issue_data = issue.get("issue", {}) or {}
+            issue_data = issue.get("issues", {}) or {}
             org_data = issue.get("org", {}) or {}
             contrib = issue.get("contributors_registration", {}) or {}
             points = issue.get("points", {}) or {}
