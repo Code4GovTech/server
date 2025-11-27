@@ -308,7 +308,8 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
-from email.utils import parsedate_to_datetime
+
+
 
 @app.route("/program-tickets-user", methods=["POST"])
 async def get_program_tickets_user():
@@ -337,7 +338,7 @@ async def get_program_tickets_user():
             created_at = None
             if created_at_raw:
                 try:
-                    created_at = parsedate_to_datetime(created_at_raw)
+                    created_at = parser.parse(created_at_raw)
                 except:
                     created_at = None
 
