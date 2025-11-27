@@ -320,13 +320,11 @@ async def get_program_tickets_user():
             except:
                 filters = {}
 
-        filters["created_after"] = (datetime.utcnow() - timedelta(days=180)).isoformat()
-
         postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filters)
 
         result = []
-        six_months_ago = datetime.utcnow() - timedelta(days=180)
+        six_months_ago = datetime.utcnow()
 
         for issue in all_issues:
             issue_data = issue.get("issue", {}) or {}
@@ -338,11 +336,13 @@ async def get_program_tickets_user():
             created_at = None
             if created_at_raw:
                 try:
-                    created_at = parsedate_to_datetime(created_at_raw)
+                    created_at = parser.parse(created_at_raw)
+                    if created_at.tzinfo:
+                        created_at = created_at.astimezone(tz=None).replace(tzinfo=None)
                 except:
                     created_at = None
 
-            if not created_at or created_at < six_months_ago:
+            if not created_at or created_at < six_months_ago - timedelta(days=180):
                 continue
 
             reqd = issue_data.get("technology")
