@@ -312,9 +312,6 @@ async def get_role_master():
 @app.route("/program-tickets-user", methods=['POST'])
 async def get_program_tickets_user():
     try:
-        print('getting data for users leaderboard')
-
-        # ------------------ Read Body ------------------
         raw_body = request.body._data
         filters = {}
 
@@ -322,18 +319,13 @@ async def get_program_tickets_user():
             try:
                 filters = json.loads(raw_body.decode('utf-8'))
             except Exception as e:
-                print("JSON parse failed:", e)
                 filters = {}
 
-        # ------------------ Query DB ------------------
         postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filters)
 
-        print("Total from DB:", len(all_issues))
-
         result = []
 
-        # 6 month cutoff
         six_months_ago = datetime.utcnow() - timedelta(days=180)
 
         for issue in all_issues:
@@ -343,9 +335,6 @@ async def get_program_tickets_user():
             contrib    = issue.get("contributors_registration", {}) or {}
             points     = issue.get("points", {}) or {}
 
-            # -------------------------------------------------------
-            # created_at — ALWAYS SAFE
-            # -------------------------------------------------------
             created_at_raw = issue_data.get("created_at")
             created_at = None
             if created_at_raw:
@@ -354,21 +343,14 @@ async def get_program_tickets_user():
                 except:
                     created_at = None
 
-            # skip if older than 6 months
             if created_at and created_at < six_months_ago:
                 continue
 
-            # -------------------------------------------------------
-            # reqd_skills parsing
-            # -------------------------------------------------------
             reqd = issue_data.get("technology")
             reqd_skills = []
             if reqd:
                 reqd_skills = [x.strip().replace('"', '') for x in reqd.split(",")]
 
-            # -------------------------------------------------------
-            # project_type parsing
-            # -------------------------------------------------------
             ptype_raw = issue_data.get("project_type")
             project_type = []
             if ptype_raw:
@@ -379,9 +361,6 @@ async def get_program_tickets_user():
                         x.strip().replace('"', '') for x in str(ptype_raw).split(",")
                     ]
 
-            # -------------------------------------------------------
-            # normalize labels
-            # -------------------------------------------------------
             labels = issue_data.get("labels") or []
             if len(labels) == 1:
                 labels = ["C4GT Coding"]
@@ -391,9 +370,6 @@ async def get_program_tickets_user():
                     if lbl not in ["C4GT Community", "C4GT Bounty"]
                 ] or ["C4GT Coding"]
 
-            # -------------------------------------------------------
-            # contributor name resolution
-            # -------------------------------------------------------
             contributor = None
             if contrib:
                 contributor = contrib.get("name")
@@ -401,14 +377,8 @@ async def get_program_tickets_user():
                     gh_url = contrib.get("github_url", "")
                     contributor = gh_url.split("/")[-1] if "/" in gh_url else None
 
-            # -------------------------------------------------------
-            # closed_at SAFE
-            # -------------------------------------------------------
             closed_at = issue_data.get("closed_at")
 
-            # -------------------------------------------------------
-            # FINAL object
-            # -------------------------------------------------------
             formatted = {
                 "created_at": created_at_raw,
                 "name": issue_data.get("title"),
@@ -430,13 +400,11 @@ async def get_program_tickets_user():
 
             result.append(formatted)
 
-        print("Final issues returned:", len(result))
         return result
 
     except Exception as e:
-        print("Exception:", e)
         return {"success": False, "error": str(e)}
-
+    
 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
