@@ -309,8 +309,6 @@ async def get_role_master():
     return role_masters.data
 
 
-
-
 @app.route("/program-tickets-user", methods=["POST"])
 async def get_program_tickets_user():
     try:
@@ -321,6 +319,8 @@ async def get_program_tickets_user():
                 filters = json.loads(raw_body.decode("utf-8"))
             except:
                 filters = {}
+
+        filters["created_after"] = (datetime.utcnow() - timedelta(days=180)).isoformat()
 
         postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filters)
@@ -338,7 +338,7 @@ async def get_program_tickets_user():
             created_at = None
             if created_at_raw:
                 try:
-                    created_at = parser.parse(created_at_raw)
+                    created_at = parsedate_to_datetime(created_at_raw)
                 except:
                     created_at = None
 
