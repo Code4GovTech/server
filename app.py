@@ -307,90 +307,75 @@ async def get_role_master():
     role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
-
-
-@app.route("/program-tickets-user", methods=["POST"])
+  
+  
+@app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
-        raw_body = request.body._data
-        filters = {}
-        if raw_body:
-            try:
-                filters = json.loads(raw_body.decode("utf-8"))
-            except:
-                filters = {}
-
+        print('getting data for users leader board')
+        request_data = request.body._data
+        filter = ''
+        if request_data:
+            filter = json.loads(request_data.decode('utf-8'))
         postgres_client = ServerQueries()
-        all_issues = await postgres_client.fetch_filtered_issues(filters)
+        all_issues = await postgres_client.fetch_filtered_issues(filter)
+        print('length of all issue ', len(all_issues))
 
-        result = []
-        six_months_ago = datetime.utcnow()
-
+        issue_result = []
         for issue in all_issues:
-            issue_data = issue.get("issue", {}) or {}
-            org_data = issue.get("org", {}) or {}
-            contrib = issue.get("contributors_registration", {}) or {}
-            points = issue.get("points", {}) or {}
+            reqd_skills = []
+            project_type = []
 
-            created_at_raw = issue_data.get("created_at")
-            created_at = None
-            if created_at_raw:
-                try:
-                    created_at = parser.parse(created_at_raw)
-                    if created_at.tzinfo:
-                        created_at = created_at.astimezone(tz=None).replace(tzinfo=None)
-                except:
-                    created_at = None
+            # Process 'reqd_skills'
+            if issue["issue"]["technology"]:
+                reqd_skills = [skill.strip().replace('"', '') for skill in issue["issue"]["technology"].split(',')]
 
-            if not created_at or created_at < six_months_ago - timedelta(days=180):
-                continue
+            # Process 'project_type'
+            if issue["issue"]["project_type"]:
+                project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
 
-            reqd = issue_data.get("technology")
-            reqd_skills = [x.strip().replace('"', "") for x in reqd.split(",")] if reqd else None
-
-            ptype_raw = issue_data.get("project_type")
-            if isinstance(ptype_raw, list):
-                project_type = ptype_raw
-            elif ptype_raw:
-                project_type = [x.strip().replace('"', "") for x in str(ptype_raw).split(",")]
-            else:
-                project_type = None
-
-            labels = issue_data.get("labels") or []
+            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
+            labels = issue["issue"]["labels"]
             if len(labels) == 1:
-                labels = ["C4GT Coding"]
+                labels = ['C4GT Coding']
             else:
-                labels = [l for l in labels if l not in ["C4GT Community", "C4GT Bounty"]] or ["C4GT Coding"]
+                labels = [label for label in labels if label != 'C4GT Community']
 
-            contributor = None
-            if contrib:
-                contributor = contrib.get("name") or contrib.get("github_url", "").split("/")[-1]
+            contributors_data = issue["contributors_registration"]
+            if contributors_data:
+                contributors_name = contributors_data["name"]
+                if contributors_name:
+                    pass
+                else:
+                    contributors_url = contributors_data["github_url"].split('/')
+                    contributors_name = contributors_url[-1] if contributors_url else None
 
-            formatted = {
-                "created_at": created_at_raw,
-                "name": issue_data.get("title"),
-                "complexity": issue_data.get("complexity"),
+            res = {
+                "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
+                "name": issue["issue"]["title"],
+                "complexity": issue["issue"]["complexity"],
                 "category": labels,
-                "reqd_skills": reqd_skills,
-                "issue_id": issue_data.get("issue_id"),
-                "url": issue_data.get("link"),
-                "ticket_points": points.get("points"),
-                "mentors": ["Amoghavarsh"],
-                "status": issue_data.get("status"),
-                "domain": issue_data.get("domain"),
-                "organization": org_data.get("name"),
-                "closed_at": issue_data.get("closed_at"),
-                "assignees": contributor,
-                "project_type": project_type,
-                "is_assigned": bool(contrib)
+                "reqd_skills": reqd_skills if reqd_skills else None,
+                "issue_id": issue["issue"]["issue_id"],
+                "url": issue["issue"]["link"],
+                "ticket_points": issue["points"]["points"] if issue["points"] else None,
+                "mentors": [
+                    "Amoghavarsh"
+                ],
+                "status": issue["issue"]["status"],
+                "domain": issue["issue"]["domain"],
+                "organization": issue["org"]["name"],
+                "closed_at": "2024-08-06T06:59:10+00:00",
+                "assignees": contributors_name if contributors_data else None,
+                "project_type": project_type if reqd_skills else None,
+                "is_assigned": True if contributors_data else False
             }
+            issue_result.append(res)
 
-            result.append(formatted)
-
-        return result
-
+        return issue_result
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print('Exception occured in getting users leaderboard data ', e)
+        return 'failed'
 
 
 @app.route('/migrate-tickets')
