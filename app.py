@@ -308,7 +308,6 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
   
-  
 @app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
@@ -317,65 +316,82 @@ async def get_program_tickets_user():
         filter = ''
         if request_data:
             filter = json.loads(request_data.decode('utf-8'))
+        
         postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filter)
+        
         print('length of all issue ', len(all_issues))
+
+        # 👇 calculate 6 months old timestamp
+        six_months_ago = datetime.utcnow() - timedelta(days=180)
 
         issue_result = []
         for issue in all_issues:
+
+            # ❗ FILTER: skip issues older than 6 months
+            created_at_str = issue["issue"]["created_at"]
+            if created_at_str:
+                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                if created_at < six_months_ago:
+                    continue
+            else:
+                continue  # skip if no created_at
+
+            # ------------ PROCESS ISSUE ------------
             reqd_skills = []
             project_type = []
 
-            # Process 'reqd_skills'
             if issue["issue"]["technology"]:
-                reqd_skills = [skill.strip().replace('"', '') for skill in issue["issue"]["technology"].split(',')]
+                reqd_skills = [
+                    skill.strip().replace('"', '')
+                    for skill in issue["issue"]["technology"].split(',')
+                ]
 
-            # Process 'project_type'
             if issue["issue"]["project_type"]:
-                project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
+                project_type = [
+                    p.strip().replace('"', '')
+                    for p in issue["issue"]["project_type"].split(',')
+                ]
 
-            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
                 labels = ['C4GT Coding']
             else:
-                labels = [label for label in labels if label != 'C4GT Community']
+                labels = [l for l in labels if l != 'C4GT Community']
 
             contributors_data = issue["contributors_registration"]
             if contributors_data:
-                contributors_name = contributors_data["name"]
-                if contributors_name:
-                    pass
-                else:
-                    contributors_url = contributors_data["github_url"].split('/')
-                    contributors_name = contributors_url[-1] if contributors_url else None
+                contributors_name = contributors_data["name"] or contributors_data["github_url"].split('/')[-1]
+            else:
+                contributors_name = None
 
             res = {
-                "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
+                "created_at": created_at_str,
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
-                "reqd_skills": reqd_skills if reqd_skills else None,
+                "reqd_skills": reqd_skills or None,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
                 "ticket_points": issue["points"]["points"] if issue["points"] else None,
-                "mentors": [
-                    "Amoghavarsh"
-                ],
+                "mentors": ["Amoghavarsh"],
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
-                "assignees": contributors_name if contributors_data else None,
-                "project_type": project_type if reqd_skills else None,
-                "is_assigned": True if contributors_data else False
+                "assignees": contributors_name,
+                "project_type": project_type or None,
+                "is_assigned": bool(contributors_data)
             }
+
             issue_result.append(res)
 
         return issue_result
+
     except Exception as e:
-        print('Exception occured in getting users leaderboard data ', e)
+        print('Exception in users leaderboard data ', e)
         return 'failed'
+
 
 
 @app.route('/migrate-tickets')
