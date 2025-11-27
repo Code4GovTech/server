@@ -308,126 +308,134 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
+
 @app.route("/program-tickets-user", methods=['POST'])
 async def get_program_tickets_user():
     try:
         print('getting data for users leaderboard')
 
-        request_data = request.body._data
-        filter = ''
-        if request_data:
-            filter = json.loads(request_data.decode('utf-8'))
+        # ------------------ Read Body ------------------
+        raw_body = request.body._data
+        filters = {}
 
+        if raw_body:
+            try:
+                filters = json.loads(raw_body.decode('utf-8'))
+            except Exception as e:
+                print("JSON parse failed:", e)
+                filters = {}
+
+        # ------------------ Query DB ------------------
         postgres_client = ServerQueries()
-        all_issues = await postgres_client.fetch_filtered_issues(filter)
-        print('length of all issues before filtering: ', len(all_issues))
+        all_issues = await postgres_client.fetch_filtered_issues(filters)
 
-        issue_result = []
+        print("Total from DB:", len(all_issues))
 
-        # 6-month cutoff
+        result = []
+
+        # 6 month cutoff
         six_months_ago = datetime.utcnow() - timedelta(days=180)
 
         for issue in all_issues:
-            reqd_skills = []
-            project_type = []
+
+            issue_data = issue.get("issue", {}) or {}
+            org_data   = issue.get("org", {}) or {}
+            contrib    = issue.get("contributors_registration", {}) or {}
+            points     = issue.get("points", {}) or {}
 
             # -------------------------------------------------------
-            # SAFE TIMESTAMP PARSING (FIXED)
+            # created_at — ALWAYS SAFE
             # -------------------------------------------------------
-            created_at_raw = issue["issue"]["created_at"]
+            created_at_raw = issue_data.get("created_at")
             created_at = None
-
             if created_at_raw:
-              try:
-                  created_at = parser.parse(created_at_raw)
-              except:
-                  created_at = None
+                try:
+                    created_at = parser.parse(created_at_raw)
+                except:
+                    created_at = None
 
-            # -------------------------------------------------------
-            # FILTER: REMOVE ITEMS OLDER THAN 6 MONTHS
-            # -------------------------------------------------------
+            # skip if older than 6 months
             if created_at and created_at < six_months_ago:
                 continue
 
             # -------------------------------------------------------
-            # Parse required skills
+            # reqd_skills parsing
             # -------------------------------------------------------
-            if issue["issue"]["technology"]:
-                reqd_skills = [
-                    skill.strip().replace('"', '')
-                    for skill in issue["issue"]["technology"].split(',')
-                ]
+            reqd = issue_data.get("technology")
+            reqd_skills = []
+            if reqd:
+                reqd_skills = [x.strip().replace('"', '') for x in reqd.split(",")]
 
             # -------------------------------------------------------
-            # Parse project type
+            # project_type parsing
             # -------------------------------------------------------
-            if issue["issue"]["project_type"]:
-                project_type = [
-                    pt.strip().replace('"', '')
-                    for pt in issue["issue"]["project_type"].split(',')
-                ]
+            ptype_raw = issue_data.get("project_type")
+            project_type = []
+            if ptype_raw:
+                if isinstance(ptype_raw, list):
+                    project_type = ptype_raw
+                else:
+                    project_type = [
+                        x.strip().replace('"', '') for x in str(ptype_raw).split(",")
+                    ]
 
             # -------------------------------------------------------
-            # Labels Cleaning
+            # normalize labels
             # -------------------------------------------------------
-            labels = issue["issue"]["labels"] or []
+            labels = issue_data.get("labels") or []
             if len(labels) == 1:
-                labels = ['C4GT Coding']
+                labels = ["C4GT Coding"]
             else:
                 labels = [
                     lbl for lbl in labels
-                    if lbl not in ['C4GT Community', 'C4GT Bounty']
-                ]
-                if not labels:
-                    labels = ['C4GT Coding']
+                    if lbl not in ["C4GT Community", "C4GT Bounty"]
+                ] or ["C4GT Coding"]
 
             # -------------------------------------------------------
-            # Contributor Name Extraction
+            # contributor name resolution
             # -------------------------------------------------------
-            contributors_data = issue["contributors_registration"]
-            contributors_name = None
-
-            if contributors_data:
-                contributors_name = contributors_data.get("name")
-                if not contributors_name:
-                    contributors_url = contributors_data["github_url"].split('/')
-                    contributors_name = (
-                        contributors_url[-1] if contributors_url else None
-                    )
+            contributor = None
+            if contrib:
+                contributor = contrib.get("name")
+                if not contributor:
+                    gh_url = contrib.get("github_url", "")
+                    contributor = gh_url.split("/")[-1] if "/" in gh_url else None
 
             # -------------------------------------------------------
-            # FINAL RESPONSE OBJECT
+            # closed_at SAFE
             # -------------------------------------------------------
-            formatted_issue = {
+            closed_at = issue_data.get("closed_at")
+
+            # -------------------------------------------------------
+            # FINAL object
+            # -------------------------------------------------------
+            formatted = {
                 "created_at": created_at_raw,
-                "name": issue["issue"]["title"],
-                "complexity": issue["issue"]["complexity"],
+                "name": issue_data.get("title"),
+                "complexity": issue_data.get("complexity"),
                 "category": labels,
                 "reqd_skills": reqd_skills or None,
-                "issue_id": issue["issue"]["issue_id"],
-                "url": issue["issue"]["link"],
-                "ticket_points": (
-                    issue["points"]["points"] if issue["points"] else None
-                ),
+                "issue_id": issue_data.get("issue_id"),
+                "url": issue_data.get("link"),
+                "ticket_points": points.get("points"),
                 "mentors": ["Amoghavarsh"],
-                "status": issue["issue"]["status"],
-                "domain": issue["issue"]["domain"],
-                "organization": issue["org"]["name"],
-                "closed_at": issue["issue"]["closed_at"] or None,
-                "assignees": contributors_name,
+                "status": issue_data.get("status"),
+                "domain": issue_data.get("domain"),
+                "organization": org_data.get("name"),
+                "closed_at": closed_at,
+                "assignees": contributor,
                 "project_type": project_type or None,
-                "is_assigned": True if contributors_data else False
+                "is_assigned": bool(contrib)
             }
 
-            issue_result.append(formatted_issue)
+            result.append(formatted)
 
-        print("Final issues returned:", len(issue_result))
-        return issue_result
+        print("Final issues returned:", len(result))
+        return result
 
     except Exception as e:
-        print('Exception occurred in getting users leaderboard data:', e)
+        print("Exception:", e)
         return {"success": False, "error": str(e)}
-
 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
