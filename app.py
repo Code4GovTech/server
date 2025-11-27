@@ -308,6 +308,7 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
+
 @app.route("/program-tickets-user", methods=['POST'])
 async def get_program_tickets_user():
     try:
