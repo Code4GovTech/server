@@ -319,6 +319,8 @@ async def get_program_tickets_user():
             except:
                 filters = {}
 
+        filters["created_after"] = (datetime.utcnow() - timedelta(days=180)).isoformat()
+
         postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filters)
 
@@ -379,7 +381,7 @@ async def get_program_tickets_user():
                 "closed_at": issue_data.get("closed_at"),
                 "assignees": contributor,
                 "project_type": project_type,
-                "is_assigned": bool(contrib),
+                "is_assigned": bool(contrib)
             }
 
             result.append(formatted)
