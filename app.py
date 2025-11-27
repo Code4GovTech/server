@@ -308,12 +308,12 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
-
 @app.route("/program-tickets-user", methods=['POST'])
 async def get_program_tickets_user():
     try:
         print('getting data for users leaderboard')
 
+        # -------- request body parsing --------
         request_data = request.body._data
         filter = ''
         if request_data:
@@ -325,99 +325,99 @@ async def get_program_tickets_user():
 
         issue_result = []
 
-        # 6-month cutoff
+        # -------- 6-month cutoff --------
         six_months_ago = datetime.utcnow() - timedelta(days=180)
 
         for issue in all_issues:
-            reqd_skills = []
-            project_type = []
 
             # -------------------------------------------------------
-            # SAFE TIMESTAMP PARSING (FIXED)
+            # SAFE TIMESTAMP PARSING
             # -------------------------------------------------------
-            created_at_raw = issue["issue"]["created_at"]
+            created_at_raw = issue["issue"].get("created_at")
             created_at = None
 
             if created_at_raw:
-              try:
-                  created_at = parser.parse(created_at_raw)
-              except:
-                  created_at = None
+                try:
+                    created_at = parser.parse(created_at_raw)
+                except:
+                    created_at = None
 
-            # -------------------------------------------------------
-            # FILTER: REMOVE ITEMS OLDER THAN 6 MONTHS
-            # -------------------------------------------------------
+            # -------- FILTER if older than 6 months --------
             if created_at and created_at < six_months_ago:
                 continue
 
             # -------------------------------------------------------
-            # Parse required skills
+            # REQUIRED SKILLS
             # -------------------------------------------------------
-            if issue["issue"]["technology"]:
+            reqd_skills = []
+            tech = issue["issue"].get("technology")
+            if tech:
                 reqd_skills = [
                     skill.strip().replace('"', '')
-                    for skill in issue["issue"]["technology"].split(',')
+                    for skill in tech.split(',')
                 ]
 
             # -------------------------------------------------------
-            # Parse project type
+            # PROJECT TYPE
             # -------------------------------------------------------
-            if issue["issue"]["project_type"]:
+            project_type = []
+            ptype = issue["issue"].get("project_type")
+            if ptype:
                 project_type = [
                     pt.strip().replace('"', '')
-                    for pt in issue["issue"]["project_type"].split(',')
+                    for pt in ptype.split(',')
                 ]
 
             # -------------------------------------------------------
-            # Labels Cleaning
+            # LABELS CLEANING
             # -------------------------------------------------------
-            labels = issue["issue"]["labels"] or []
+            labels = issue["issue"].get("labels") or []
             if len(labels) == 1:
-                labels = ['C4GT Coding']
+                labels = ["C4GT Coding"]
             else:
                 labels = [
                     lbl for lbl in labels
-                    if lbl not in ['C4GT Community', 'C4GT Bounty']
-                ]
-                if not labels:
-                    labels = ['C4GT Coding']
+                    if lbl not in ["C4GT Community", "C4GT Bounty"]
+                ] or ["C4GT Coding"]
 
             # -------------------------------------------------------
-            # Contributor Name Extraction
+            # CONTRIBUTOR NAME
             # -------------------------------------------------------
-            contributors_data = issue["contributors_registration"]
+            contributors_data = issue.get("contributors_registration")
             contributors_name = None
 
             if contributors_data:
                 contributors_name = contributors_data.get("name")
+
                 if not contributors_name:
-                    contributors_url = contributors_data["github_url"].split('/')
-                    contributors_name = (
-                        contributors_url[-1] if contributors_url else None
-                    )
+                    url_parts = contributors_data.get("github_url", "").split("/")
+                    contributors_name = url_parts[-1] if url_parts else None
 
             # -------------------------------------------------------
-            # FINAL RESPONSE OBJECT
+            # SAFE closed_at
+            # -------------------------------------------------------
+            closed_raw = issue["issue"].get("closed_at")  # prevents KeyError
+
+            # -------------------------------------------------------
+            # FINAL STRUCTURED RESPONSE
             # -------------------------------------------------------
             formatted_issue = {
                 "created_at": created_at_raw,
-                "name": issue["issue"]["title"],
-                "complexity": issue["issue"]["complexity"],
+                "name": issue["issue"].get("title"),
+                "complexity": issue["issue"].get("complexity"),
                 "category": labels,
                 "reqd_skills": reqd_skills or None,
-                "issue_id": issue["issue"]["issue_id"],
-                "url": issue["issue"]["link"],
-                "ticket_points": (
-                    issue["points"]["points"] if issue["points"] else None
-                ),
+                "issue_id": issue["issue"].get("issue_id"),
+                "url": issue["issue"].get("link"),
+                "ticket_points": issue.get("points", {}).get("points"),
                 "mentors": ["Amoghavarsh"],
-                "status": issue["issue"]["status"],
-                "domain": issue["issue"]["domain"],
-                "organization": issue["org"]["name"],
-                "closed_at": issue["issue"]["closed_at"] or None,
+                "status": issue["issue"].get("status"),
+                "domain": issue["issue"].get("domain"),
+                "organization": issue["org"].get("name"),
+                "closed_at": closed_raw,         # SAFE VALUE
                 "assignees": contributors_name,
                 "project_type": project_type or None,
-                "is_assigned": True if contributors_data else False
+                "is_assigned": contributors_data is not None
             }
 
             issue_result.append(formatted_issue)
