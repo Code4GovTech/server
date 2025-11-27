@@ -319,6 +319,8 @@ async def get_program_tickets_user():
             except:
                 filters = {}
 
+        filters["created_after"] = (datetime.utcnow() - timedelta(days=180)).isoformat()
+
         postgres_client = ServerQueries()
         all_issues = await postgres_client.fetch_filtered_issues(filters)
 
@@ -388,7 +390,6 @@ async def get_program_tickets_user():
 
     except Exception as e:
         return {"success": False, "error": str(e)}
-
 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
