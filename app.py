@@ -308,8 +308,7 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
   
-  
-@app.route("/program-tickets-user")
+@app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
         print('getting data for users leader board')
@@ -392,6 +391,7 @@ async def get_program_tickets_user():
     except Exception as e:
         print('Exception in users leaderboard data ', e)
         return 'failed'
+
 
 
 @app.route('/migrate-tickets')
