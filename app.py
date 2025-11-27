@@ -381,7 +381,7 @@ async def get_program_tickets_user():
                 "closed_at": issue_data.get("closed_at"),
                 "assignees": contributor,
                 "project_type": project_type,
-                "is_assigned": bool(contrib)
+                "is_assigned": bool(contrib),
             }
 
             result.append(formatted)
@@ -390,8 +390,6 @@ async def get_program_tickets_user():
 
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-    
 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
