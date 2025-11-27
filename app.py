@@ -307,7 +307,8 @@ async def get_role_master():
     role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
-
+  
+  
 @app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
@@ -375,7 +376,6 @@ async def get_program_tickets_user():
     except Exception as e:
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
-
 
 
 @app.route('/migrate-tickets')
