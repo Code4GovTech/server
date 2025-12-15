@@ -336,7 +336,7 @@ async def get_program_tickets_user():
             #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
-                labels = ['C4GT Coding']
+                labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
