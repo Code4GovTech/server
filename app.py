@@ -22,7 +22,7 @@ import httpx
 from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
-from datetime import datetime
+from datetime import datetime, timedelta
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
@@ -313,86 +313,93 @@ async def get_program_tickets_user():
     try:
         print('getting data for users leader board')
         request_data = request.body._data
-        filter = ''
+        filter_dict = {}
         if request_data:
-            filter = json.loads(request_data.decode('utf-8'))
+            filter_dict = json.loads(request_data.decode('utf-8'))
+        
         postgres_client = ServerQueries()
-        all_issues = await postgres_client.fetch_filtered_issues(filter)
-        print('length of all issue ', len(all_issues))
+        all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
+        print('length of all issues ', len(all_issues))
+
+        # Define cutoff: 6 months ago in UTC
+        six_months_ago = datetime.utcnow() - timedelta(days=183)
 
         # Define the cutoff: issues created in the last 6 months (approx 183 days)
         six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
 
         issue_result = []
-        six_months_ago = datetime.now() - datetime.timedelta(days=180)
-        
         for issue in all_issues:
-            # Parse created_at string to timestamp for comparison
-            created_at_str = issue["issue"]["created_at"]
+            created_at_str = issue["issue"].get("created_at")
             if not created_at_str:
-                continue  # skip if no created_at
+                continue
 
             try:
-                created_at_ts = eut.parsedate_to_datetime(created_at_str).timestamp()
-            except Exception:
-                continue  # skip if parsing fails
+                # Parse RFC 2822 format (e.g., "Thu, 18 Sep 2025 10:07:44 GMT")
+                created_at_dt = eut.parsedate_to_datetime(created_at_str)
+                # Ensure it's timezone-aware or normalize to UTC
+                if created_at_dt.tzinfo is None:
+                    created_at_dt = created_at_dt.replace(tzinfo=None)  # treat as UTC
+            except Exception as e:
+                print(f"Failed to parse created_at '{created_at_str}': {e}")
+                continue
 
-            if created_at_ts < six_months_ago_ts:
-                continue  # skip older issues
+            # Filter: only issues from the last 6 months
+            if created_at_dt < six_months_ago:
+                continue
 
+            # Process skills
             reqd_skills = []
-            project_type = []
-
-            # Process 'reqd_skills'
             if issue["issue"]["technology"]:
-                reqd_skills = [skill.strip().replace('"', '') for skill in issue["issue"]["technology"].split(',')]
+                reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
 
-            # Process 'project_type'
+            # Process project type
+            project_type = []
             if issue["issue"]["project_type"]:
-                project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
+                project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
 
-            # labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
+            # Handle labels
             labels = issue["issue"]["labels"]
-            if len(labels) == 1:
-                labels = ['C4GT Coding']
+            if len(labels) <= 1:  # includes empty or single irrelevant label
+                labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
-            contributors_data = issue["contributors_registration"]
+            # Handle assignee
+            contributors_data = issue.get("contributors_registration")
             contributors_name = None
             if contributors_data:
-                contributors_name = contributors_data.get("name")
-                if not contributors_name:
-                    contributors_url = contributors_data["github_url"].split('/')
-                    contributors_name = contributors_url[-1] if contributors_url else None
+                contributors_name = contributors_data.get("name") or \
+                                    (contributors_data.get("github_url", "").split('/')[-1] if contributors_data.get("github_url") else None)
 
             res = {
-                "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
+                "created_at": issue["issue"]["created_at"],
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
-                "reqd_skills": reqd_skills if reqd_skills else None,
+                "reqd_skills": reqd_skills or None,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
-                "ticket_points": issue["points"]["points"] if issue["points"] else None,
-                "mentors": [
-                    "Amoghavarsh"
-                ],
+                "ticket_points": issue["points"]["points"] if issue.get("points") else None,
+                "mentors": ["Amoghavarsh"],
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
-                "closed_at": "2024-08-06T06:59:10+00:00",
+                "closed_at": "2024-08-06T06:59:10+00:00",  # Consider making this dynamic later
                 "assignees": contributors_name,
-                "project_type": project_type if project_type else None,  # Fixed: was using reqd_skills by mistake
+                "project_type": project_type or None,
                 "is_assigned": bool(contributors_data)
             }
             issue_result.append(res)
 
+        print(f"Returning {len(issue_result)} issues (filtered from {len(all_issues)})")
         return issue_result
+
     except Exception as e:
-        print('Exception occured in getting users leaderboard data ', e)
+        print('Exception occurred in getting users leaderboard data:', str(e))
+        import traceback
+        traceback.print_exc()  # Very helpful for debugging
         return 'failed'
-    
+ 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
