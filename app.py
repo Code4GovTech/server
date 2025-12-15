@@ -324,6 +324,9 @@ async def get_program_tickets_user():
         # Define cutoff: 6 months ago in UTC
         six_months_ago = datetime.utcnow() - timedelta(days=183)
 
+        # Define the cutoff: issues created in the last 6 months (approx 183 days)
+        six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
+
         issue_result = []
         for issue in all_issues:
             created_at_str = issue["issue"].get("created_at")
