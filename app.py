@@ -327,7 +327,12 @@ async def get_program_tickets_user():
         # Define the cutoff: issues created in the last 6 months (approx 183 days)
         six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
 
+        # Define the cutoff: issues created in the last 6 months (approx 183 days)
+        six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
+
         issue_result = []
+        six_months_ago = datetime.now() - datetime.timedelta(days=180)
+        
         for issue in all_issues:
             created_at_str = issue["issue"].get("created_at")
             if not created_at_str:
