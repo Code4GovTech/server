@@ -22,8 +22,7 @@ import httpx
 from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
-from datetime import datetime, timedelta, timezone
-from dateutil.relativedelta import relativedelta
+from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
@@ -84,7 +83,7 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
+            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
             if utc_now - update_time >= datetime.timedelta(minutes=15):
                 url_components = comment["api_url"].split("/")
@@ -157,7 +156,7 @@ productList = [
 ]
 @app.route("/")
 async def hello_world():
-    return "hello Server is up and running!"
+    return "hello world"
 
 @app.route("/verify/<githubUsername>")
 async def verify(githubUsername):
@@ -308,7 +307,7 @@ async def get_role_master():
     role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
-  
+
 @app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
@@ -376,8 +375,7 @@ async def get_program_tickets_user():
     except Exception as e:
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
-    
-    
+
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
