@@ -3,7 +3,7 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, sys
-from datetime import datetime, timedelta  # Add this line
+from datetime import datetime, timedelta, timezone  # Fixed: added timezone
 import email.utils as eut
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
@@ -73,7 +73,7 @@ async def get_github_data(code, discord_id):
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
             "email": ','.join(private_emails),
-            "joined_at": datetime.now()
+            "joined_at": datetime.now(timezone.utc)  # Fixed: use UTC for consistency
         }
 
         return user_data
@@ -83,9 +83,9 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            utc_now = datetime.now(timezone.utc)  # Fixed: modern UTC
             update_time = dateutil.parser.parse(comment["updated_at"])
-            if utc_now - update_time >= datetime.timedelta(minutes=15):
+            if utc_now - update_time >= timedelta(minutes=15):  # Fixed: use imported timedelta
                 url_components = comment["api_url"].split("/")
                 owner = url_components[-5]
                 repo = url_components[-4]
@@ -198,7 +198,7 @@ async def do_update():
 
 @app.route("/already_authenticated")
 async def isAuthenticated():
-    print(f'already authenticated at {datetime.now()}')
+    print(f'already authenticated at {datetime.now(timezone.utc)}')  # Fixed: UTC
     return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 @app.route("/authenticate/<discord_userdata>")
@@ -321,8 +321,8 @@ async def get_program_tickets_user():
         all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
         print('length of all issues ', len(all_issues))
 
-        # Correct way: use the imported timedelta
-        six_months_ago = datetime.utcnow() - timedelta(days=183)
+        # Modern way: replaces deprecated datetime.utcnow()
+        six_months_ago = datetime.now(timezone.utc) - timedelta(days=183)
 
         issue_result = []
         for issue in all_issues:
