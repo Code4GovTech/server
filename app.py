@@ -377,7 +377,6 @@ async def get_program_tickets_user():
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
 
-
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
