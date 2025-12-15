@@ -83,7 +83,7 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
             if utc_now - update_time >= datetime.timedelta(minutes=15):
                 url_components = comment["api_url"].split("/")
@@ -336,7 +336,7 @@ async def get_program_tickets_user():
             #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
-                labels = ['C4GT Coding']
+                labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
