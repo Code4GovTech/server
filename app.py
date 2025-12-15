@@ -322,59 +322,64 @@ async def get_program_tickets_user():
         all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
         print('length of all issues ', len(all_issues))
 
-        six_months_ago = datetime.now(timezone.utc) - timedelta(days=183)
+        # Calculate 6 months ago from today
+        six_months_ago = datetime.datetime.now(timezone.utc) - timedelta(days=183)
+        print(f'Filtering issues created after: {six_months_ago}')
 
         issue_result = []
         for issue in all_issues:
-            created_at = issue["issue"].get("created_at")
-            if not created_at:
+            created_at_str = issue["issue"].get("created_at")
+            if not created_at_str:
                 continue
 
-            # Handle both string and datetime object
-            if isinstance(created_at, str):
-                try:
-                    # Try parsing as ISO first (common case now)
-                    created_at_dt = dateutil.parser.parse(created_at)
-                except:
-                    # Fallback to RFC 2822
-                    created_at_dt = eut.parsedate_to_datetime(created_at)
-            else:
-                # Already a datetime object
-                created_at_dt = created_at
+            try:
+                # Parse the date string - it's in RFC 2822 format
+                created_at_dt = eut.parsedate_to_datetime(created_at_str)
+                
+                # Make sure it's timezone-aware for comparison
+                if created_at_dt.tzinfo is None:
+                    created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
+                
+            except Exception as e:
+                print(f"Failed to parse created_at '{created_at_str}': {e}")
+                continue
 
-            # Normalize timezone
-            if created_at_dt.tzinfo is None:
-                created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
-            else:
-                created_at_dt = created_at_dt.astimezone(timezone.utc)
-
-            # Filter: only issues from last 6 months
+            # Filter: only issues created in the last 6 months
             if created_at_dt < six_months_ago:
                 continue
 
-            # Rest of your processing (unchanged)
-            reqd_skills = [s.strip().replace('"', '') for s in issue["issue"].get("technology", "").split(',') if s.strip()]
-            project_type = [p.strip().replace('"', '') for p in issue["issue"].get("project_type", "").split(',') if p.strip()]
+            # Process skills
+            reqd_skills = []
+            if issue["issue"].get("technology"):
+                reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
 
+            # Process project type
+            project_type = []
+            if issue["issue"].get("project_type"):
+                project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
+
+            # Handle labels
             labels = issue["issue"]["labels"]
             if len(labels) <= 1:
                 labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
+            # Handle assignee
             contributors_data = issue.get("contributors_registration")
             contributors_name = None
             if contributors_data:
                 contributors_name = contributors_data.get("name")
                 if not contributors_name and contributors_data.get("github_url"):
-                    contributors_name = contributors_data["github_url"].split("/")[-1]
+                    contributors_url = contributors_data["github_url"].split('/')
+                    contributors_name = contributors_url[-1] if contributors_url else None
 
             res = {
-                "created_at": issue["issue"]["created_at"],  # Keep original format
+                "created_at": issue["issue"]["created_at"],
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
-                "reqd_skills": reqd_skills or None,
+                "reqd_skills": reqd_skills if reqd_skills else None,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
                 "ticket_points": issue["points"]["points"] if issue.get("points") else None,
@@ -384,12 +389,12 @@ async def get_program_tickets_user():
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
                 "assignees": contributors_name,
-                "project_type": project_type or None,
+                "project_type": project_type if project_type else None,
                 "is_assigned": bool(contributors_data)
             }
             issue_result.append(res)
 
-        print(f"Returning {len(issue_result)} filtered issues out of {len(all_issues)}")
+        print(f"Returning {len(issue_result)} filtered issues out of {len(all_issues)} total issues")
         return issue_result
 
     except Exception as e:
@@ -397,8 +402,7 @@ async def get_program_tickets_user():
         import traceback
         traceback.print_exc()
         return 'failed'
-
-
+    
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
