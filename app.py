@@ -379,7 +379,7 @@ async def get_program_tickets_user():
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
-                "reqd_skills": reqd_skills if reqd_skills else None,
+                "reqd_skills": reqd_skills or None,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
                 "ticket_points": issue["points"]["points"] if issue.get("points") else None,
@@ -387,7 +387,7 @@ async def get_program_tickets_user():
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
-                "closed_at": "2024-08-06T06:59:10+00:00",
+                "closed_at": "2024-08-06T06:59:10+00:00",  # Consider making this dynamic later
                 "assignees": contributors_name,
                 "project_type": project_type if project_type else None,
                 "is_assigned": bool(contributors_data)
@@ -402,7 +402,8 @@ async def get_program_tickets_user():
         import traceback
         traceback.print_exc()
         return 'failed'
-    
+
+
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
