@@ -22,7 +22,6 @@ import httpx
 from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
-from datetime import datetime
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
@@ -73,7 +72,7 @@ async def get_github_data(code, discord_id):
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
             "email": ','.join(private_emails),
-            "joined_at": datetime.now()
+            "joined_at": datetime.datetime.now(timezone.utc)  # Fixed: use datetime.datetime
         }
 
         return user_data
@@ -83,9 +82,9 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            utc_now = datetime.datetime.now(timezone.utc)  # Fixed: use datetime.datetime
             update_time = dateutil.parser.parse(comment["updated_at"])
-            if utc_now - update_time >= datetime.timedelta(minutes=15):
+            if utc_now - update_time >= timedelta(minutes=15):  # Fixed: use imported timedelta
                 url_components = comment["api_url"].split("/")
                 owner = url_components[-5]
                 repo = url_components[-4]
@@ -198,7 +197,7 @@ async def do_update():
 
 @app.route("/already_authenticated")
 async def isAuthenticated():
-    print(f'already authenticated at {datetime.now()}')
+    print(f'already authenticated at {datetime.datetime.now(timezone.utc)}')  # Fixed: use datetime.datetime
     return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 @app.route("/authenticate/<discord_userdata>")
@@ -313,30 +312,29 @@ async def get_program_tickets_user():
     try:
         print('getting data for users leader board')
         request_data = request.body._data
-        filter = ''
+        filter_dict = {}
         if request_data:
-            filter = json.loads(request_data.decode('utf-8'))
+            filter_dict = json.loads(request_data.decode('utf-8'))
+        
         postgres_client = ServerQueries()
-        all_issues = await postgres_client.fetch_filtered_issues(filter)
-        print('length of all issue ', len(all_issues))
+        all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
+        print('length of all issues ', len(all_issues))
 
         issue_result = []
         for issue in all_issues:
             reqd_skills = []
+            if issue["issue"].get("technology"):
+                reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
+
+            # Process project type
             project_type = []
-
-            # Process 'reqd_skills'
-            if issue["issue"]["technology"]:
-                reqd_skills = [skill.strip().replace('"', '') for skill in issue["issue"]["technology"].split(',')]
-
-            # Process 'project_type'
-            if issue["issue"]["project_type"]:
-                project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
+            if issue["issue"].get("project_type"):
+                project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
 
             #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
-            if len(labels) == 1:
-                labels = ['C4GT Coding']
+            if len(labels) <= 1:
+                labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
@@ -350,17 +348,15 @@ async def get_program_tickets_user():
                     contributors_name = contributors_url[-1] if contributors_url else None
 
             res = {
-                "created_at": issue["issue"]["created_at"] if issue["issue"]["created_at"] else None,
+                "created_at": issue["issue"]["created_at"],
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
-                "reqd_skills": reqd_skills if reqd_skills else None,
+                "reqd_skills": reqd_skills or None,
                 "issue_id": issue["issue"]["issue_id"],
                 "url": issue["issue"]["link"],
-                "ticket_points": issue["points"]["points"] if issue["points"] else None,
-                "mentors": [
-                    "Amoghavarsh"
-                ],
+                "ticket_points": issue["points"]["points"] if issue.get("points") else None,
+                "mentors": ["Amoghavarsh"],
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
@@ -371,9 +367,13 @@ async def get_program_tickets_user():
             }
             issue_result.append(res)
 
+        print(f"Returning {len(issue_result)} filtered issues out of {len(all_issues)} total issues")
         return issue_result
+
     except Exception as e:
-        print('Exception occured in getting users leaderboard data ', e)
+        print('Exception occurred in getting users leaderboard data:', e)
+        import traceback
+        traceback.print_exc()
         return 'failed'
 
 @app.route('/migrate-tickets')
