@@ -22,7 +22,8 @@ import httpx
 from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta, timezone
+from dateutil.relativedelta import relativedelta
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
@@ -83,7 +84,7 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
             if utc_now - update_time >= datetime.timedelta(minutes=15):
                 url_components = comment["api_url"].split("/")
@@ -307,90 +308,90 @@ async def get_role_master():
     role_masters = await ServerQueries().readAll("role_master")
     print('role master ', role_masters)
     return role_masters.data
- 
-@app.route("/program-tickets-user", methods = ['POST'])
+  
+@app.route("/program-tickets-user", methods=["POST"])
 async def get_program_tickets_user():
     try:
-        print('getting data for users leader board')
-        request_data = request.body._data
-        filter = ''
-        if request_data:
-            filter = json.loads(request_data.decode('utf-8'))
-        
+        raw_body = request.body._data
+        filters = {}
+        if raw_body:
+            try:
+                filters = json.loads(raw_body.decode("utf-8"))
+            except:
+                filters = {}
+
         postgres_client = ServerQueries()
-        all_issues = await postgres_client.fetch_filtered_issues(filter)
-        
-        print('length of all issue ', len(all_issues))
+        all_issues = await postgres_client.fetch_filtered_issues(filters)
 
-        # 👇 calculate 6 months old timestamp
-        six_months_ago = datetime.utcnow() - timedelta(days=180)
+        result = []
+        six_months_ago = datetime.utcnow()
 
-        issue_result = []
         for issue in all_issues:
+            issue_data = issue.get("issues", {}) or {}
+            org_data = issue.get("org", {}) or {}
+            contrib = issue.get("contributors_registration", {}) or {}
+            points = issue.get("points", {}) or {}
 
-            # ❗ FILTER: skip issues older than 6 months
-            created_at_str = issue["issue"]["created_at"]
-            if created_at_str:
-                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                if created_at < six_months_ago:
-                    continue
+            created_at_raw = issue_data.get("created_at")
+            created_at = None
+            if created_at_raw:
+                try:
+                    created_at = parser.parse(created_at_raw)
+                    if created_at.tzinfo:
+                        created_at = created_at.astimezone(tz=None).replace(tzinfo=None)
+                except:
+                    created_at = None
+
+            if not created_at or created_at < six_months_ago - timedelta(days=180):
+                continue
+
+            reqd = issue_data.get("technology")
+            reqd_skills = [x.strip().replace('"', "") for x in reqd.split(",")] if reqd else None
+
+            ptype_raw = issue_data.get("project_type")
+            if isinstance(ptype_raw, list):
+                project_type = ptype_raw
+            elif ptype_raw:
+                project_type = [x.strip().replace('"', "") for x in str(ptype_raw).split(",")]
             else:
-                continue  # skip if no created_at
+                project_type = None
 
-            # ------------ PROCESS ISSUE ------------
-            reqd_skills = []
-            project_type = []
-
-            if issue["issue"]["technology"]:
-                reqd_skills = [
-                    skill.strip().replace('"', '')
-                    for skill in issue["issue"]["technology"].split(',')
-                ]
-
-            if issue["issue"]["project_type"]:
-                project_type = [
-                    p.strip().replace('"', '')
-                    for p in issue["issue"]["project_type"].split(',')
-                ]
-
-            labels = issue["issue"]["labels"]
+            labels = issue_data.get("labels") or []
             if len(labels) == 1:
-                labels = ['C4GT Coding']
+                labels = ["C4GT Coding"]
             else:
-                labels = [l for l in labels if l != 'C4GT Community']
+                labels = [l for l in labels if l not in ["C4GT Community", "C4GT Bounty"]] or ["C4GT Coding"]
 
-            contributors_data = issue["contributors_registration"]
-            if contributors_data:
-                contributors_name = contributors_data["name"] or contributors_data["github_url"].split('/')[-1]
-            else:
-                contributors_name = None
+            contributor = None
+            if contrib:
+                contributor = contrib.get("name") or contrib.get("github_url", "").split("/")[-1]
 
-            res = {
-                "created_at": created_at_str,
-                "name": issue["issue"]["title"],
-                "complexity": issue["issue"]["complexity"],
+            formatted = {
+                "created_at": created_at_raw,
+                "name": issue_data.get("title"),
+                "complexity": issue_data.get("complexity"),
                 "category": labels,
-                "reqd_skills": reqd_skills or None,
-                "issue_id": issue["issue"]["issue_id"],
-                "url": issue["issue"]["link"],
-                "ticket_points": issue["points"]["points"] if issue["points"] else None,
+                "reqd_skills": reqd_skills,
+                "issue_id": issue_data.get("issue_id"),
+                "url": issue_data.get("link"),
+                "ticket_points": points.get("points"),
                 "mentors": ["Amoghavarsh"],
-                "status": issue["issue"]["status"],
-                "domain": issue["issue"]["domain"],
-                "organization": issue["org"]["name"],
-                "closed_at": "2024-08-06T06:59:10+00:00",
-                "assignees": contributors_name,
-                "project_type": project_type or None,
-                "is_assigned": bool(contributors_data)
+                "status": issue_data.get("status"),
+                "domain": issue_data.get("domain"),
+                "organization": org_data.get("name"),
+                "closed_at": issue_data.get("closed_at"),
+                "assignees": contributor,
+                "project_type": project_type,
+                "is_assigned": bool(contrib)
             }
 
-            issue_result.append(res)
+            result.append(formatted)
 
-        return issue_result
+        return result
 
     except Exception as e:
-        print('Exception in users leaderboard data ', e)
-        return 'failed'
+        return {"success": False, "error": str(e)}
+
 
 
 @app.route('/migrate-tickets')
