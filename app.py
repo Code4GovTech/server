@@ -322,41 +322,46 @@ async def get_program_tickets_user():
         all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
         print('length of all issues ', len(all_issues))
 
-        # Modern way: replaces deprecated datetime.utcnow()
-        six_months_ago = datetime.datetime.now(timezone.utc) - timedelta(days=183)  # Fixed: use datetime.datetime
+        six_months_ago = datetime.now(timezone.utc) - timedelta(days=183)
 
         issue_result = []
         for issue in all_issues:
-            created_at_str = issue["issue"].get("created_at")
-            if not created_at_str:
+            created_at = issue["issue"].get("created_at")
+            if not created_at:
                 continue
 
-            try:
-                created_at_dt = eut.parsedate_to_datetime(created_at_str)
-                if created_at_dt.tzinfo is None:
-                    created_at_dt = created_at_dt.replace(tzinfo=None)
-            except Exception as e:
-                print(f"Failed to parse created_at '{created_at_str}': {e}")
-                continue
+            # Handle both string and datetime object
+            if isinstance(created_at, str):
+                try:
+                    # Try parsing as ISO first (common case now)
+                    created_at_dt = dateutil.parser.parse(created_at)
+                except:
+                    # Fallback to RFC 2822
+                    created_at_dt = eut.parsedate_to_datetime(created_at)
+            else:
+                # Already a datetime object
+                created_at_dt = created_at
 
-            # Filter: only issues created in the last 6 months
+            # Normalize timezone
+            if created_at_dt.tzinfo is None:
+                created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
+            else:
+                created_at_dt = created_at_dt.astimezone(timezone.utc)
+
+            # Filter: only issues from last 6 months
             if created_at_dt < six_months_ago:
                 continue
 
-            # Process skills
+            # Rest of your processing (unchanged)
             reqd_skills = [s.strip().replace('"', '') for s in issue["issue"].get("technology", "").split(',') if s.strip()]
-
-            # Process project type
             project_type = [p.strip().replace('"', '') for p in issue["issue"].get("project_type", "").split(',') if p.strip()]
 
-            # Handle labels
             labels = issue["issue"]["labels"]
             if len(labels) <= 1:
                 labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
-            # Handle assignee
             contributors_data = issue.get("contributors_registration")
             contributors_name = None
             if contributors_data:
@@ -365,7 +370,7 @@ async def get_program_tickets_user():
                     contributors_name = contributors_data["github_url"].split("/")[-1]
 
             res = {
-                "created_at": issue["issue"]["created_at"],
+                "created_at": issue["issue"]["created_at"],  # Keep original format
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
@@ -392,7 +397,8 @@ async def get_program_tickets_user():
         import traceback
         traceback.print_exc()
         return 'failed'
- 
+
+
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
