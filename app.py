@@ -321,7 +321,16 @@ async def get_program_tickets_user():
         print('length of all issue ', len(all_issues))
 
         issue_result = []
+        six_months_ago = datetime.now() - datetime.timedelta(days=180)
+        
         for issue in all_issues:
+            # Filter issues created in last 6 months
+            created_at = issue["issue"]["created_at"]
+            if created_at:
+                created_at_dt = dateutil.parser.parse(created_at)
+                if created_at_dt < six_months_ago:
+                    continue
+            
             reqd_skills = []
             project_type = []
 
@@ -333,7 +342,6 @@ async def get_program_tickets_user():
             if issue["issue"]["project_type"]:
                 project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
 
-            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
                 labels = ['C4GT Coding']
