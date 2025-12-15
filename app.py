@@ -2,7 +2,8 @@ from quart import Quart, redirect, render_template, request, jsonify, current_ap
 from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
-import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+import dotenv, os, json, urllib, sys, dateutil, sys
+from datetime import datetime, timedelta, timezone  # Fixed: added timezone
 import email.utils as eut
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
@@ -22,7 +23,6 @@ import httpx
 from utils.logging_file import logger
 from utils.connect_db import connect_db
 from utils.helpers import *
-from datetime import datetime, timedelta
 from quart_cors import cors
 from utils.migrate_tickets import MigrateTickets
 from utils.migrate_users import MigrateContributors
@@ -73,7 +73,7 @@ async def get_github_data(code, discord_id):
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
             "email": ','.join(private_emails),
-            "joined_at": datetime.now()
+            "joined_at": datetime.now(timezone.utc)  # Fixed: use UTC for consistency
         }
 
         return user_data
@@ -83,9 +83,9 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            utc_now = datetime.now(timezone.utc)  # Fixed: modern UTC
             update_time = dateutil.parser.parse(comment["updated_at"])
-            if utc_now - update_time >= datetime.timedelta(minutes=15):
+            if utc_now - update_time >= timedelta(minutes=15):  # Fixed: use imported timedelta
                 url_components = comment["api_url"].split("/")
                 owner = url_components[-5]
                 repo = url_components[-4]
@@ -198,7 +198,7 @@ async def do_update():
 
 @app.route("/already_authenticated")
 async def isAuthenticated():
-    print(f'already authenticated at {datetime.now()}')
+    print(f'already authenticated at {datetime.now(timezone.utc)}')  # Fixed: UTC
     return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 @app.route("/authenticate/<discord_userdata>")
@@ -321,50 +321,36 @@ async def get_program_tickets_user():
         all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
         print('length of all issues ', len(all_issues))
 
-        # Define cutoff: 6 months ago in UTC
-        six_months_ago = datetime.utcnow() - timedelta(days=183)
-
-        # Define the cutoff: issues created in the last 6 months (approx 183 days)
-        six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
-
-        # Define the cutoff: issues created in the last 6 months (approx 183 days)
-        six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
+        # Modern way: replaces deprecated datetime.utcnow()
+        six_months_ago = datetime.now(timezone.utc) - timedelta(days=183)
 
         issue_result = []
-        six_months_ago = datetime.now() - datetime.timedelta(days=180)
-        
         for issue in all_issues:
             created_at_str = issue["issue"].get("created_at")
             if not created_at_str:
                 continue
 
             try:
-                # Parse RFC 2822 format (e.g., "Thu, 18 Sep 2025 10:07:44 GMT")
                 created_at_dt = eut.parsedate_to_datetime(created_at_str)
-                # Ensure it's timezone-aware or normalize to UTC
                 if created_at_dt.tzinfo is None:
-                    created_at_dt = created_at_dt.replace(tzinfo=None)  # treat as UTC
+                    created_at_dt = created_at_dt.replace(tzinfo=None)
             except Exception as e:
                 print(f"Failed to parse created_at '{created_at_str}': {e}")
                 continue
 
-            # Filter: only issues from the last 6 months
+            # Filter: only issues created in the last 6 months
             if created_at_dt < six_months_ago:
                 continue
 
             # Process skills
-            reqd_skills = []
-            if issue["issue"]["technology"]:
-                reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
+            reqd_skills = [s.strip().replace('"', '') for s in issue["issue"].get("technology", "").split(',') if s.strip()]
 
             # Process project type
-            project_type = []
-            if issue["issue"]["project_type"]:
-                project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
+            project_type = [p.strip().replace('"', '') for p in issue["issue"].get("project_type", "").split(',') if p.strip()]
 
             # Handle labels
             labels = issue["issue"]["labels"]
-            if len(labels) <= 1:  # includes empty or single irrelevant label
+            if len(labels) <= 1:
                 labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
@@ -373,8 +359,9 @@ async def get_program_tickets_user():
             contributors_data = issue.get("contributors_registration")
             contributors_name = None
             if contributors_data:
-                contributors_name = contributors_data.get("name") or \
-                                    (contributors_data.get("github_url", "").split('/')[-1] if contributors_data.get("github_url") else None)
+                contributors_name = contributors_data.get("name")
+                if not contributors_name and contributors_data.get("github_url"):
+                    contributors_name = contributors_data["github_url"].split("/")[-1]
 
             res = {
                 "created_at": issue["issue"]["created_at"],
@@ -389,22 +376,22 @@ async def get_program_tickets_user():
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
-                "closed_at": "2024-08-06T06:59:10+00:00",  # Consider making this dynamic later
+                "closed_at": "2024-08-06T06:59:10+00:00",
                 "assignees": contributors_name,
                 "project_type": project_type or None,
                 "is_assigned": bool(contributors_data)
             }
             issue_result.append(res)
 
-        print(f"Returning {len(issue_result)} issues (filtered from {len(all_issues)})")
+        print(f"Returning {len(issue_result)} filtered issues out of {len(all_issues)}")
         return issue_result
 
     except Exception as e:
-        print('Exception occurred in getting users leaderboard data:', str(e))
+        print('Exception occurred in getting users leaderboard data:', e)
         import traceback
-        traceback.print_exc()  # Very helpful for debugging
+        traceback.print_exc()
         return 'failed'
- 
+    
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
