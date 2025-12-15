@@ -3,7 +3,7 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
-
+import email.utils as eut
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
@@ -83,7 +83,7 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
+            utc_now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
             update_time = dateutil.parser.parse(comment["updated_at"])
             if utc_now - update_time >= datetime.timedelta(minutes=15):
                 url_components = comment["api_url"].split("/")
@@ -308,7 +308,7 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
-@app.route("/program-tickets-user", methods = ['POST'])
+@app.route("/program-tickets-user", methods=['POST'])
 async def get_program_tickets_user():
     try:
         print('getting data for users leader board')
@@ -320,8 +320,26 @@ async def get_program_tickets_user():
         all_issues = await postgres_client.fetch_filtered_issues(filter)
         print('length of all issue ', len(all_issues))
 
+        # Define the cutoff: issues created in the last 6 months (approx 183 days)
+        six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
+
         issue_result = []
+        six_months_ago = datetime.now() - datetime.timedelta(days=180)
+        
         for issue in all_issues:
+            # Parse created_at string to timestamp for comparison
+            created_at_str = issue["issue"]["created_at"]
+            if not created_at_str:
+                continue  # skip if no created_at
+
+            try:
+                created_at_ts = eut.parsedate_to_datetime(created_at_str).timestamp()
+            except Exception:
+                continue  # skip if parsing fails
+
+            if created_at_ts < six_months_ago_ts:
+                continue  # skip older issues
+
             reqd_skills = []
             project_type = []
 
@@ -333,19 +351,18 @@ async def get_program_tickets_user():
             if issue["issue"]["project_type"]:
                 project_type = [ptype.strip().replace('"', '') for ptype in issue["issue"]["project_type"].split(',')]
 
-            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
+            # labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
-                labels = ["C4GT Coding"]
+                labels = ['C4GT Coding']
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
             contributors_data = issue["contributors_registration"]
+            contributors_name = None
             if contributors_data:
-                contributors_name = contributors_data["name"]
-                if contributors_name:
-                    pass
-                else:
+                contributors_name = contributors_data.get("name")
+                if not contributors_name:
                     contributors_url = contributors_data["github_url"].split('/')
                     contributors_name = contributors_url[-1] if contributors_url else None
 
@@ -365,9 +382,9 @@ async def get_program_tickets_user():
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
                 "closed_at": "2024-08-06T06:59:10+00:00",
-                "assignees": contributors_name if contributors_data else None,
-                "project_type": project_type if reqd_skills else None,
-                "is_assigned": True if contributors_data else False
+                "assignees": contributors_name,
+                "project_type": project_type if project_type else None,  # Fixed: was using reqd_skills by mistake
+                "is_assigned": bool(contributors_data)
             }
             issue_result.append(res)
 
@@ -375,7 +392,7 @@ async def get_program_tickets_user():
     except Exception as e:
         print('Exception occured in getting users leaderboard data ', e)
         return 'failed'
-
+    
 @app.route('/migrate-tickets')
 async def migrate_tickets():
     try:
