@@ -2,10 +2,8 @@ from quart import Quart, redirect, render_template, request, jsonify, current_ap
 from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
-import dotenv, os, json, urllib, sys, dateutil, sys
-import datetime  # Changed: import datetime module
-from datetime import timedelta, timezone  # Changed: only import timedelta and timezone
-import email.utils as eut
+import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
@@ -309,7 +307,7 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
-@app.route("/program-tickets-user", methods=['POST'])
+@app.route("/program-tickets-user", methods = ['POST'])
 async def get_program_tickets_user():
     try:
         print('getting data for users leader board')
@@ -322,33 +320,8 @@ async def get_program_tickets_user():
         all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
         print('length of all issues ', len(all_issues))
 
-        # Calculate 6 months ago from today
-        six_months_ago = datetime.datetime.now(timezone.utc) - timedelta(days=183)
-        print(f'Filtering issues created after: {six_months_ago}')
-
         issue_result = []
         for issue in all_issues:
-            created_at_str = issue["issue"].get("created_at")
-            if not created_at_str:
-                continue
-
-            try:
-                # Parse the date string - it's in RFC 2822 format
-                created_at_dt = eut.parsedate_to_datetime(created_at_str)
-                
-                # Make sure it's timezone-aware for comparison
-                if created_at_dt.tzinfo is None:
-                    created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
-                
-            except Exception as e:
-                print(f"Failed to parse created_at '{created_at_str}': {e}")
-                continue
-
-            # Filter: only issues created in the last 6 months
-            if created_at_dt < six_months_ago:
-                continue
-
-            # Process skills
             reqd_skills = []
             if issue["issue"].get("technology"):
                 reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
@@ -358,19 +331,19 @@ async def get_program_tickets_user():
             if issue["issue"].get("project_type"):
                 project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
 
-            # Handle labels
+            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) <= 1:
                 labels = ["C4GT Coding"]
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
-            # Handle assignee
-            contributors_data = issue.get("contributors_registration")
-            contributors_name = None
+            contributors_data = issue["contributors_registration"]
             if contributors_data:
-                contributors_name = contributors_data.get("name")
-                if not contributors_name and contributors_data.get("github_url"):
+                contributors_name = contributors_data["name"]
+                if contributors_name:
+                    pass
+                else:
                     contributors_url = contributors_data["github_url"].split('/')
                     contributors_name = contributors_url[-1] if contributors_url else None
 
@@ -387,10 +360,10 @@ async def get_program_tickets_user():
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
-                "closed_at": "2024-08-06T06:59:10+00:00",  # Consider making this dynamic later
-                "assignees": contributors_name,
-                "project_type": project_type if project_type else None,
-                "is_assigned": bool(contributors_data)
+                "closed_at": "2024-08-06T06:59:10+00:00",
+                "assignees": contributors_name if contributors_data else None,
+                "project_type": project_type if reqd_skills else None,
+                "is_assigned": True if contributors_data else False
             }
             issue_result.append(res)
 
@@ -402,7 +375,6 @@ async def get_program_tickets_user():
         import traceback
         traceback.print_exc()
         return 'failed'
-
 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
