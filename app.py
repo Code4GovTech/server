@@ -324,6 +324,8 @@ async def get_program_tickets_user():
         six_months_ago_ts = datetime.now().timestamp() - (183 * 24 * 3600)
 
         issue_result = []
+        six_months_ago = datetime.now() - datetime.timedelta(days=180)
+        
         for issue in all_issues:
             # Parse created_at string to timestamp for comparison
             created_at_str = issue["issue"]["created_at"]
@@ -352,7 +354,7 @@ async def get_program_tickets_user():
             # labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) == 1:
-                labels = ["C4GT Coding"]
+                labels = ['C4GT Coding']
             else:
                 labels = [label for label in labels if label != 'C4GT Community']
 
