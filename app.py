@@ -3,7 +3,8 @@ from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, sys
-from datetime import datetime, timedelta, timezone  # Fixed: added timezone
+import datetime  # Changed: import datetime module
+from datetime import timedelta, timezone  # Changed: only import timedelta and timezone
 import email.utils as eut
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
@@ -73,7 +74,7 @@ async def get_github_data(code, discord_id):
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
             "email": ','.join(private_emails),
-            "joined_at": datetime.now(timezone.utc)  # Fixed: use UTC for consistency
+            "joined_at": datetime.datetime.now(timezone.utc)  # Fixed: use datetime.datetime
         }
 
         return user_data
@@ -83,7 +84,7 @@ async def comment_cleaner():
         await asyncio.sleep(5)
         comments = await ServerQueries().readAll("app_comments")
         for comment in comments:
-            utc_now = datetime.now(timezone.utc)  # Fixed: modern UTC
+            utc_now = datetime.datetime.now(timezone.utc)  # Fixed: use datetime.datetime
             update_time = dateutil.parser.parse(comment["updated_at"])
             if utc_now - update_time >= timedelta(minutes=15):  # Fixed: use imported timedelta
                 url_components = comment["api_url"].split("/")
@@ -198,7 +199,7 @@ async def do_update():
 
 @app.route("/already_authenticated")
 async def isAuthenticated():
-    print(f'already authenticated at {datetime.now(timezone.utc)}')  # Fixed: UTC
+    print(f'already authenticated at {datetime.datetime.now(timezone.utc)}')  # Fixed: use datetime.datetime
     return await render_template('success.html'), {"Refresh": f'2; url=https://discord.com/channels/{os.getenv("DISCORD_SERVER_ID")}'}
 
 @app.route("/authenticate/<discord_userdata>")
@@ -322,7 +323,7 @@ async def get_program_tickets_user():
         print('length of all issues ', len(all_issues))
 
         # Modern way: replaces deprecated datetime.utcnow()
-        six_months_ago = datetime.now(timezone.utc) - timedelta(days=183)
+        six_months_ago = datetime.datetime.now(timezone.utc) - timedelta(days=183)  # Fixed: use datetime.datetime
 
         issue_result = []
         for issue in all_issues:
