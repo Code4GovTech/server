@@ -427,5 +427,103 @@ async def trigger_cron():
     return 'cron started'
 
 
+@app.route("/program-tickets-user/last-6-months", methods=["GET"])
+async def get_program_tickets_user_last_6_months():
+    try:
+        print("Fetching issues from last 6 months")
+
+        postgres_client = ServerQueries()
+
+        # Fetch ALL issues (no filter from DB)
+        all_issues = await postgres_client.fetch_filtered_issues({})
+        print("Total issues in DB:", len(all_issues))
+
+        # Calculate cutoff date (UTC)
+        six_months_ago = datetime.utcnow() - datetime.timedelta(days=183)
+
+        issue_result = []
+
+        for issue in all_issues:
+            created_at_str = issue["issue"].get("created_at")
+            if not created_at_str:
+                continue
+
+            try:
+                created_at = dateutil.parser.isoparse(created_at_str)
+            except Exception as e:
+                print("Invalid date format:", created_at_str)
+                continue
+
+            # 🔴 FILTER: keep only last 6 months
+            if created_at < six_months_ago:
+                continue
+
+            # -------- Required Skills --------
+            reqd_skills = []
+            if issue["issue"].get("technology"):
+                reqd_skills = [
+                    s.strip().replace('"', '')
+                    for s in issue["issue"]["technology"].split(',')
+                    if s.strip()
+                ]
+
+            # -------- Project Type --------
+            project_type = []
+            if issue["issue"].get("project_type"):
+                project_type = [
+                    p.strip().replace('"', '')
+                    for p in issue["issue"]["project_type"].split(',')
+                    if p.strip()
+                ]
+
+            # -------- Labels --------
+            labels = issue["issue"]["labels"]
+            if len(labels) <= 1:
+                labels = ["C4GT Coding"]
+            else:
+                labels = [l for l in labels if l != "C4GT Community"]
+
+            # -------- Assignee --------
+            contributors_data = issue.get("contributors_registration")
+            contributors_name = None
+            if contributors_data:
+                contributors_name = (
+                    contributors_data.get("name")
+                    or contributors_data.get("github_url", "").split("/")[-1]
+                )
+
+            # -------- Response Object --------
+            res = {
+                "created_at": created_at_str,
+                "name": issue["issue"]["title"],
+                "complexity": issue["issue"]["complexity"],
+                "category": labels,
+                "reqd_skills": reqd_skills or None,
+                "issue_id": issue["issue"]["issue_id"],
+                "url": issue["issue"]["link"],
+                "ticket_points": issue["points"]["points"] if issue.get("points") else None,
+                "mentors": ["Amoghavarsh"],
+                "status": issue["issue"]["status"],
+                "domain": issue["issue"]["domain"],
+                "organization": issue["org"]["name"],
+                "closed_at": issue["issue"].get("updated_at"),
+                "assignees": contributors_name,
+                "project_type": project_type or None,
+                "is_assigned": bool(contributors_data),
+            }
+
+            issue_result.append(res)
+
+        print(f"Returning {len(issue_result)} issues from last 6 months")
+        return jsonify(issue_result)
+
+    except Exception as e:
+        print("Exception in last-6-months API:", e)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "failed"}), 500
+
+
+
 if __name__ == '__main__':
     app.run()
