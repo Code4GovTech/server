@@ -2,10 +2,7 @@ from quart import Quart, redirect, render_template, request, jsonify, current_ap
 from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
-import dotenv, os, json, urllib, sys, dateutil, sys
-from datetime import datetime, timedelta, timezone
-
-
+import dotenv, os, json, urllib, sys, dateutil, datetime, sys
 
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
@@ -429,77 +426,52 @@ async def trigger_cron():
     asyncio.create_task(cronjob.main(from_date, to_date))
     return 'cron started'
 
-
-@app.route("/program-tickets-user/last-6-months", methods=["GET"])
-async def get_program_tickets_user_last_6_months():
+@app.route('/last-6-months', methods=['GET'])
+async def get_last_6_months_issues():
     try:
-        print("Fetching issues from last 6 months")
-
+        print('Getting last 6 months issues')
+        
+        # Calculate date 6 months ago from today
+        six_months_ago = datetime.datetime.now(timezone.utc) - datetime.timedelta(days=180)
+        six_months_ago_str = six_months_ago.isoformat()
+        
+        # Create filter for last 6 months
+        filter_dict = {
+            "created_at": ("gte", six_months_ago_str)  # Greater than or equal to 6 months ago
+        }
+        
         postgres_client = ServerQueries()
-
-        # Fetch ALL issues (no filter from DB)
-        all_issues = await postgres_client.fetch_filtered_issues({})
-        print("Total issues in DB:", len(all_issues))
-
-        # Calculate cutoff date (UTC)
-        six_months_ago = datetime.now(timezone.utc) - timedelta(days=183)
-
-
+        all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
+        print(f'Found {len(all_issues)} issues from last 6 months')
 
         issue_result = []
-
         for issue in all_issues:
-            created_at_str = issue["issue"].get("created_at")
-            if not created_at_str:
-                continue
-
-            try:
-                created_at = dateutil.parser.isoparse(created_at_str)
-            except Exception as e:
-                print("Invalid date format:", created_at_str)
-                continue
-
-            # 🔴 FILTER: keep only last 6 months
-            if created_at < six_months_ago:
-                continue
-
-            # -------- Required Skills --------
             reqd_skills = []
             if issue["issue"].get("technology"):
-                reqd_skills = [
-                    s.strip().replace('"', '')
-                    for s in issue["issue"]["technology"].split(',')
-                    if s.strip()
-                ]
+                reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
 
-            # -------- Project Type --------
+            # Process project type
             project_type = []
             if issue["issue"].get("project_type"):
-                project_type = [
-                    p.strip().replace('"', '')
-                    for p in issue["issue"]["project_type"].split(',')
-                    if p.strip()
-                ]
+                project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
 
-            # -------- Labels --------
+            # Labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
             labels = issue["issue"]["labels"]
             if len(labels) <= 1:
                 labels = ["C4GT Coding"]
             else:
-                labels = [l for l in labels if l != "C4GT Community"]
+                labels = [label for label in labels if label != 'C4GT Community']
 
-            # -------- Assignee --------
-            contributors_data = issue.get("contributors_registration")
+            contributors_data = issue["contributors_registration"]
             contributors_name = None
             if contributors_data:
-                contributors_name = (
-                    contributors_data.get("name")
-                    or contributors_data.get("github_url", "").split("/")[-1]
-                )
+                contributors_name = contributors_data["name"]
+                if not contributors_name:
+                    contributors_url = contributors_data["github_url"].split('/')
+                    contributors_name = contributors_url[-1] if contributors_url else None
 
-            # -------- Response Object --------
             res = {
-                "created_at": created_at_str,
+                "created_at": issue["issue"]["created_at"],
                 "name": issue["issue"]["title"],
                 "complexity": issue["issue"]["complexity"],
                 "category": labels,
@@ -511,24 +483,21 @@ async def get_program_tickets_user_last_6_months():
                 "status": issue["issue"]["status"],
                 "domain": issue["issue"]["domain"],
                 "organization": issue["org"]["name"],
-                "closed_at": issue["issue"].get("updated_at"),
-                "assignees": contributors_name,
-                "project_type": project_type or None,
-                "is_assigned": bool(contributors_data),
+                "closed_at": issue["issue"].get("closed_at"),
+                "assignees": contributors_name if contributors_data else None,
+                "project_type": project_type if project_type else None,
+                "is_assigned": True if contributors_data else False
             }
-
             issue_result.append(res)
 
         print(f"Returning {len(issue_result)} issues from last 6 months")
         return jsonify(issue_result)
 
     except Exception as e:
-        print("Exception in last-6-months API:", e)
+        print('Exception occurred in getting last 6 months issues:', e)
         import traceback
         traceback.print_exc()
         return jsonify({"error": "failed"}), 500
-
-
-
+    
 if __name__ == '__main__':
     app.run()
