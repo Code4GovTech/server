@@ -432,12 +432,12 @@ async def get_last_6_months_issues():
         print('Getting last 6 months issues')
         
         # Calculate date 6 months ago from today
-        six_months_ago = datetime.datetime.now(timezone.utc) - datetime.timedelta(days=180)
+        six_months_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=180)
         six_months_ago_str = six_months_ago.isoformat()
         
         # Create filter for last 6 months
         filter_dict = {
-            "created_at": ("gte", six_months_ago_str)  # Greater than or equal to 6 months ago
+            "created_at": ("gte", six_months_ago_str)
         }
         
         postgres_client = ServerQueries()
@@ -498,6 +498,6 @@ async def get_last_6_months_issues():
         import traceback
         traceback.print_exc()
         return jsonify({"error": "failed"}), 500
-    
+     
 if __name__ == '__main__':
     app.run()
