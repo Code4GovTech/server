@@ -18,7 +18,8 @@ from sqlalchemy import delete, insert
 from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from utils.logging_file import logger
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
 from models.models import Issues, CommunityOrgs, PointSystem, PrHistory
@@ -1306,6 +1307,7 @@ class PostgresORM:
                 # Execute the query and fetch results
                 result = await session.execute(query)
                 rows = result.fetchall()
+                logger.info(f"fetch_filtered_issues returned {len(rows)} rows")
 
                 # Process the result into a dictionary or a preferred format
                 data = []
