@@ -18,8 +18,7 @@ from sqlalchemy import delete, insert
 from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
-from datetime import datetime, timedelta, timezone
-from utils.logging_file import logger
+from datetime import datetime, timedelta
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
 from models.models import Issues, CommunityOrgs, PointSystem, PrHistory
@@ -1256,25 +1255,34 @@ class PostgresORM:
             return [dict(issue=record[0].to_dict(), org=record[1].to_dict(), points=record[2].to_dict()) for record in records]
 
     async def fetch_filtered_issues(self, filters):
+        six_months_ago = datetime.now() - timedelta(days=180)
         try:
             async with self.session() as session:
                 # Start building the query by joining tables
                 query = (
-                        select(Issues, CommunityOrgs, PointSystem, IssueContributors, ContributorsRegistration)
-                        .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
-                        .join(PointSystem, Issues.complexity == PointSystem.complexity)
-                        .outerjoin(IssueContributors, Issues.id == IssueContributors.issue_id)
-                        .outerjoin(ContributorsRegistration, IssueContributors.contributor_id == ContributorsRegistration.id) 
-                        .where(Issues.complexity != 'Beginner')
-                        .order_by(desc(Issues.id))
-                    )
+                                select(
+                                Issues,
+                                CommunityOrgs,
+                                PointSystem,
+                                IssueContributors,
+                                ContributorsRegistration
+                            )
+                            .join(CommunityOrgs, Issues.org_id == CommunityOrgs.id)
+                            .join(PointSystem, Issues.complexity == PointSystem.complexity)
+                            .outerjoin(IssueContributors, Issues.id == IssueContributors.issue_id)
+                            .outerjoin(
+                                ContributorsRegistration,
+                                IssueContributors.contributor_id == ContributorsRegistration.id
+                            )
+                            .where(
+                                Issues.complexity != 'Beginner',
+                                Issues.created_at >= six_months_ago
+                            )
+                            .order_by(desc(Issues.id))
+                        )
                 
                 # Prepare dynamic filter conditions
                 conditions = []
-                # include only issues created within the past ~6 months (180 days)
-                six_months_ago = datetime.now(timezone.utc) - timedelta(days=180)
-                logger.info(f"Applying 6-month cutoff in fetch_filtered_issues: since={six_months_ago.isoformat()}")
-                conditions.append(Issues.created_at >= six_months_ago)
                 
                 # Check if there are filters for Issues table
                 if 'issues' in filters:
@@ -1298,7 +1306,6 @@ class PostgresORM:
                 # Execute the query and fetch results
                 result = await session.execute(query)
                 rows = result.fetchall()
-                logger.info(f"fetch_filtered_issues returned {len(rows)} rows")
 
                 # Process the result into a dictionary or a preferred format
                 data = []
