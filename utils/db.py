@@ -1281,7 +1281,7 @@ class PostgresORM:
                             .order_by(desc(Issues.id))
                         )
                 
-                # Prepare dynamic filter conditions
+                # Prepare dynamic filter conditions (include only issues from last 6 months)
                 conditions = []
                 
                 # Check if there are filters for Issues table
