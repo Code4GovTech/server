@@ -2,7 +2,10 @@ from quart import Quart, redirect, render_template, request, jsonify, current_ap
 from werkzeug.exceptions import BadRequestKeyError
 from io import BytesIO
 import aiohttp, asyncio
-import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+import dotenv, os, json, urllib, sys, dateutil, sys
+import datetime
+from datetime import datetime, timedelta
+
 
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
@@ -439,7 +442,8 @@ async def get_program_tickets_user_last_6_months():
         print("Total issues in DB:", len(all_issues))
 
         # Calculate cutoff date (UTC)
-        six_months_ago = datetime.utcnow() - datetime.timedelta(days=183)
+        six_months_ago = datetime.utcnow() - timedelta(days=183)
+
 
         issue_result = []
 
