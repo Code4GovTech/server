@@ -1269,7 +1269,7 @@ class PostgresORM:
                         .order_by(desc(Issues.id))
                     )
                 
-                # Prepare dynamic filter conditions
+                # Prepare dynamic filter conditions (include only issues from last 6 months)
                 conditions = []
                 # include only issues created within the past ~6 months (180 days)
                 six_months_ago = datetime.now(timezone.utc) - timedelta(days=180)
