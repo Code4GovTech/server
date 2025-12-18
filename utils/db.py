@@ -18,7 +18,8 @@ from sqlalchemy import delete, insert
 from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from utils.logging_file import logger
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
 from models.models import Issues, CommunityOrgs, PointSystem, PrHistory
@@ -1268,10 +1269,11 @@ class PostgresORM:
                         .order_by(desc(Issues.id))
                     )
                 
-                # Prepare dynamic filter conditions (include only issues from last 6 months)
+                # Prepare dynamic filter conditions
                 conditions = []
-                # Only include issues created within the past ~6 months (180 days)
-                six_months_ago = datetime.now() - timedelta(days=180)
+                # include only issues created within the past ~6 months (180 days)
+                six_months_ago = datetime.now(timezone.utc) - timedelta(days=180)
+                logger.info(f"Applying 6-month cutoff in fetch_filtered_issues: since={six_months_ago.isoformat()}")
                 conditions.append(Issues.created_at >= six_months_ago)
                 
                 # Check if there are filters for Issues table
@@ -1296,6 +1298,7 @@ class PostgresORM:
                 # Execute the query and fetch results
                 result = await session.execute(query)
                 rows = result.fetchall()
+                logger.info(f"fetch_filtered_issues returned {len(rows)} rows")
 
                 # Process the result into a dictionary or a preferred format
                 data = []
