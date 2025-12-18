@@ -18,7 +18,7 @@ from sqlalchemy import delete, insert
 from sqlalchemy import select, asc, desc,update, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import cast, String ,and_
 from sqlalchemy.dialects.postgresql import ARRAY
 from models.models import Issues, CommunityOrgs, PointSystem, PrHistory
@@ -1268,8 +1268,11 @@ class PostgresORM:
                         .order_by(desc(Issues.id))
                     )
                 
-                # Prepare dynamic filter conditions
+                # Prepare dynamic filter conditions (include only issues from last 6 months)
                 conditions = []
+                # Only include issues created within the past ~6 months (180 days)
+                six_months_ago = datetime.now() - timedelta(days=180)
+                conditions.append(Issues.created_at >= six_months_ago)
                 
                 # Check if there are filters for Issues table
                 if 'issues' in filters:
