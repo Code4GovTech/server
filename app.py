@@ -1,8 +1,10 @@
 from quart import Quart, redirect, render_template, request, jsonify, current_app
 from werkzeug.exceptions import BadRequestKeyError
+
 from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
+from datetime import timezone, timedelta
 
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
@@ -42,15 +44,18 @@ app.config['TESTING']= False
 
 
 
-async def get_github_data(code, discord_id):
 
+async def get_github_data(code, discord_id):
     async with aiohttp.ClientSession() as session:
         github_response = await GithubAdapter.get_github_data(code)
-        auth_token = (github_response)["access_token"]
+        if "access_token" not in github_response:
+            print("GitHub OAuth error:", github_response, file=sys.stderr)
+            raise Exception(f"GitHub OAuth failed: {github_response}")
+        auth_token = github_response["access_token"]
 
         headers = {
-                "Accept": "application/json",
-                "Authorization": f"Bearer {auth_token}"
+            "Accept": "application/json",
+            "Authorization": f"Bearer {auth_token}"
         }
 
         user_response = await GithubAdapter.get_github_user(headers)
@@ -59,11 +64,10 @@ async def get_github_data(code, discord_id):
         github_username = user["login"]
 
         # Fetching user's private emails
-        if "user:email" in github_response["scope"]:
-            # print("🛠️GETTING USER EMAIL", locals(), file=sys.stderr)
+        if "user:email" in github_response.get("scope", ""):
             async with session.get("https://api.github.com/user/emails", headers=headers) as email_response:
                 emails = await email_response.json()
-                private_emails = [email["email"] for email in emails if email["verified"]]
+                private_emails = [email["email"] for email in emails if email.get("verified")]
         else:
             private_emails = []
 
@@ -72,7 +76,7 @@ async def get_github_data(code, discord_id):
             "github_id": github_id,
             "github_url": f"https://github.com/{github_username}",
             "email": ','.join(private_emails),
-            "joined_at": datetime.datetime.now(timezone.utc)  # Fixed: use datetime.datetime
+            "joined_at": datetime.datetime.now(timezone.utc)
         }
 
         return user_data
