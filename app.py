@@ -311,74 +311,90 @@ async def get_role_master():
     print('role master ', role_masters)
     return role_masters.data
 
-@app.route("/program-tickets-user", methods = ['POST'])
+@app.route("/program-tickets-user", methods=["POST"])
 async def get_program_tickets_user():
     try:
-        print('getting data for users leader board')
-        request_data = request.body._data
-        filter_dict = {}
-        if request_data:
-            filter_dict = json.loads(request_data.decode('utf-8'))
-        
+        raw_body = request.body._data
+        filters = {}
+        if raw_body:
+            try:
+                filters = json.loads(raw_body.decode("utf-8"))
+            except:
+                filters = {}
+
         postgres_client = ServerQueries()
-        all_issues = await postgres_client.fetch_filtered_issues(filter_dict)
-        print('length of all issues ', len(all_issues))
+        all_issues = await postgres_client.fetch_filtered_issues(filters)
 
-        issue_result = []
+        result = []
+        six_months_ago = datetime.utcnow()
+
         for issue in all_issues:
-            reqd_skills = []
-            if issue["issue"].get("technology"):
-                reqd_skills = [s.strip().replace('"', '') for s in issue["issue"]["technology"].split(',') if s.strip()]
+            issue_data = issue.get("issues", {}) or {}
+            org_data = issue.get("org", {}) or {}
+            contrib = issue.get("contributors_registration", {}) or {}
+            points = issue.get("points", {}) or {}
 
-            # Process project type
-            project_type = []
-            if issue["issue"].get("project_type"):
-                project_type = [p.strip().replace('"', '') for p in issue["issue"]["project_type"].split(',') if p.strip()]
+            created_at_raw = issue_data.get("created_at")
+            created_at = None
+            if created_at_raw:
+                try:
+                    created_at = parser.parse(created_at_raw)
+                    if created_at.tzinfo:
+                        created_at = created_at.astimezone(tz=None).replace(tzinfo=None)
+                except:
+                    created_at = None
 
-            #labels are extracted and in case the label is C4GT Community then it is replaced by C4GT Coding
-            labels = issue["issue"]["labels"]
-            if len(labels) <= 1:
+            if not created_at or created_at < six_months_ago - timedelta(days=180):
+                continue
+
+            reqd = issue_data.get("technology")
+            reqd_skills = [x.strip().replace('"', "") for x in reqd.split(",")] if reqd else None
+
+            ptype_raw = issue_data.get("project_type")
+            if isinstance(ptype_raw, list):
+                project_type = ptype_raw
+            elif ptype_raw:
+                project_type = [x.strip().replace('"', "") for x in str(ptype_raw).split(",")]
+            else:
+                project_type = None
+
+            labels = issue_data.get("labels") or []
+            if len(labels) == 1:
                 labels = ["C4GT Coding"]
             else:
-                labels = [label for label in labels if label != 'C4GT Community']
+                labels = [l for l in labels if l not in ["C4GT Community", "C4GT Bounty"]] or ["C4GT Coding"]
 
-            contributors_data = issue["contributors_registration"]
-            if contributors_data:
-                contributors_name = contributors_data["name"]
-                if contributors_name:
-                    pass
-                else:
-                    contributors_url = contributors_data["github_url"].split('/')
-                    contributors_name = contributors_url[-1] if contributors_url else None
+            contributor = None
+            if contrib:
+                contributor = contrib.get("name") or contrib.get("github_url", "").split("/")[-1]
 
-            res = {
-                "created_at": issue["issue"]["created_at"],
-                "name": issue["issue"]["title"],
-                "complexity": issue["issue"]["complexity"],
+            formatted = {
+                "created_at": created_at_raw,
+                "name": issue_data.get("title"),
+                "complexity": issue_data.get("complexity"),
                 "category": labels,
-                "reqd_skills": reqd_skills or None,
-                "issue_id": issue["issue"]["issue_id"],
-                "url": issue["issue"]["link"],
-                "ticket_points": issue["points"]["points"] if issue.get("points") else None,
+                "reqd_skills": reqd_skills,
+                "issue_id": issue_data.get("issue_id"),
+                "url": issue_data.get("link"),
+                "ticket_points": points.get("points"),
                 "mentors": ["Amoghavarsh"],
-                "status": issue["issue"]["status"],
-                "domain": issue["issue"]["domain"],
-                "organization": issue["org"]["name"],
-                "closed_at": "2024-08-06T06:59:10+00:00",
-                "assignees": contributors_name if contributors_data else None,
-                "project_type": project_type if reqd_skills else None,
-                "is_assigned": True if contributors_data else False
+                "status": issue_data.get("status"),
+                "domain": issue_data.get("domain"),
+                "organization": org_data.get("name"),
+                "closed_at": issue_data.get("closed_at"),
+                "assignees": contributor,
+                "project_type": project_type,
+                "is_assigned": bool(contrib)
             }
-            issue_result.append(res)
 
-        print(f"Returning {len(issue_result)} filtered issues out of {len(all_issues)} total issues")
-        return issue_result
+            result.append(formatted)
+
+        return result
 
     except Exception as e:
-        print('Exception occurred in getting users leaderboard data:', e)
-        import traceback
-        traceback.print_exc()
-        return 'failed'
+        return {"success": False, "error": str(e)}
+
+
 
 @app.route('/migrate-tickets')
 async def migrate_tickets():
@@ -429,6 +445,115 @@ async def trigger_cron():
     cronjob = CronJob()
     asyncio.create_task(cronjob.main(from_date, to_date))
     return 'cron started'
+
+@app.route("/leaderboard", methods=["GET"])
+async def get_leaderboard():
+    try:
+        # Query params like Supabase
+        points_filter = request.args.get("points")   # e.g. gt.0
+        order_param = request.args.get("order")      # e.g. points.desc
+        select_param = request.args.get("select")    # e.g. *
+
+        base_query = """
+        WITH contributor_points AS (
+            SELECT 
+                cr.discord_id,
+                COALESCE(
+                    SUM(
+                        CASE 
+                            WHEN cp.is_merged THEN cp.points::integer
+                            ELSE 0
+                        END
+                    ), 
+                0) AS points
+            FROM contributors_registration_old cr
+            LEFT JOIN connected_prs cp 
+                ON substring(cr.github_url FROM 'https://github.com/([^/]+)') = cp.raised_by_username
+            GROUP BY cr.discord_id, cr.github_id, cr.github_url
+        )
+
+        SELECT 
+            cr.discord_id,
+            cr.github_id,
+            cr.github_url,
+            de.has_introduced AS apprentice_badge,
+            CASE WHEN de.total_message_count > 10 THEN true ELSE false END AS converser_badge,
+            CASE WHEN de.total_reaction_count > 5 THEN true ELSE false END AS rockstar_badge,
+            CASE WHEN cp.points > 9 THEN true ELSE false END AS enthusiast_badge,
+            CASE WHEN cp.points > 49 THEN true ELSE false END AS rising_star_badge,
+            true AS github_x_discord_badge,
+            cp.points,
+            CASE WHEN cp.points >= 10 AND cp.points < 50 THEN true ELSE false END AS bronze_badge,
+            CASE WHEN cp.points >= 50 AND cp.points < 100 THEN true ELSE false END AS silver_badge,
+            CASE WHEN cp.points >= 100 AND cp.points < 175 THEN true ELSE false END AS gold_badge,
+            CASE WHEN cp.points >= 175 AND cp.points < 275 THEN true ELSE false END AS ruby_badge,
+            CASE WHEN cp.points >= 275 THEN true ELSE false END AS diamond_badge,
+            CASE
+                WHEN cp.points >= 275 THEN 
+                    'https://credentials.codeforgovtech.in/c4gt/' ||
+                    substring(cr.github_url FROM 'https://github.com/([^/]+)') || '_Diamond.pdf'
+                WHEN cp.points >= 175 THEN 
+                    'https://credentials.codeforgovtech.in/c4gt/' ||
+                    substring(cr.github_url FROM 'https://github.com/([^/]+)') || '_Ruby.pdf'
+                WHEN cp.points >= 100 THEN 
+                    'https://credentials.codeforgovtech.in/c4gt/' ||
+                    substring(cr.github_url FROM 'https://github.com/([^/]+)') || '_Gold.pdf'
+                WHEN cp.points >= 50 THEN 
+                    'https://credentials.codeforgovtech.in/c4gt/' ||
+                    substring(cr.github_url FROM 'https://github.com/([^/]+)') || '_Silver.pdf'
+                WHEN cp.points >= 10 THEN 
+                    'https://credentials.codeforgovtech.in/c4gt/' ||
+                    substring(cr.github_url FROM 'https://github.com/([^/]+)') || '_Bronze.pdf'
+                ELSE NULL
+            END AS certificate_link
+        FROM contributors_registration_old cr
+        LEFT JOIN discord_engagement de 
+            ON cr.discord_id = de.contributor
+        LEFT JOIN contributor_points cp 
+            ON cr.discord_id = cp.discord_id
+        GROUP BY 
+            cr.discord_id,
+            cr.github_id,
+            cr.github_url,
+            cp.points,
+            de.has_introduced,
+            de.total_message_count,
+            de.total_reaction_count
+        """
+
+        conditions = []
+        params = []
+
+        # Handle points=gt.0
+        if points_filter:
+            operator, value = points_filter.split(".")
+            if operator == "gt":
+                conditions.append("COALESCE(cp.points, 0) > %s")
+                params.append(int(value))
+            elif operator == "gte":
+                conditions.append("COALESCE(cp.points, 0) >= %s")
+                params.append(int(value))
+
+        if conditions:
+            base_query += " HAVING " + " AND ".join(conditions)
+
+        # Handle order=points.desc
+        if order_param:
+            column, direction = order_param.split(".")
+            if column == "points" and direction.lower() in ["asc", "desc"]:
+                base_query += f" ORDER BY cp.points {direction.upper()}"
+        else:
+            base_query += " ORDER BY cp.points DESC"
+
+        # Execute query
+        postgres_client = ServerQueries()
+        result = await postgres_client.raw_query(base_query, params)
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(e)
+        return {"error": str(e)}, 500
 
 
 if __name__ == '__main__':
