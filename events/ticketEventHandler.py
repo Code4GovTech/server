@@ -251,9 +251,19 @@ class TicketEventHandler:
 
                 
 
+                # else:
+                #     print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
+                #     #await self.postgres_client.add_data("issues", ticket_data)
+                #     await self.postgres_client.add_data(ticket_data, "issues")
                 else:
-                    print("TICKET NOT ADDED", ticket_data, file=sys.stderr)
-                    await self.postgres_client.add_data("issues", ticket_data)
+                    print("DMP ticket creation triggered", ticket_data, file=sys.stderr)
+
+                    recorded_data = await self.postgres_client.record_created_ticket(
+                        data=ticket_data,
+                        table_name="issues"
+                    )
+
+                    print("DMP recorded issue data", recorded_data)
 
                 if TicketFeedbackHandler().evaluateDict(markdown_contents) and ticketType == "ccbp":
                     url_components = issue["url"].split('/')
