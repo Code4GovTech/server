@@ -5,7 +5,7 @@ from io import BytesIO
 import aiohttp, asyncio
 import dotenv, os, json, urllib, sys, dateutil, datetime, sys
 from datetime import timezone, timedelta
-
+from sqlalchemy import text
 from githubdatapipeline.issues.processor import get_url
 from utils.github_adapter import GithubAdapter
 from utils.dispatcher import dispatch_event
@@ -429,7 +429,7 @@ async def trigger_cron():
     cronjob = CronJob()
     asyncio.create_task(cronjob.main(from_date, to_date))
     return 'cron started'
-from sqlalchemy import text
+
 
 @app.route("/leaderboard", methods=["GET"])
 async def leaderboard():
@@ -483,6 +483,7 @@ async def leaderboard():
 
     except Exception as e:
         return {"error": str(e)}, 500
+
 
 if __name__ == '__main__':
     app.run()
