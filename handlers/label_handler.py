@@ -7,7 +7,7 @@ class LabelHandler(EventHandler):
         try:
             if data.get("action") == 'edited' and 'name' in data.get("changes"):
                 label_name = data["label"]["name"].lower()
-                if 'c4gt' in label_name and label_name not in ['c4gt community', 'dmp 2024','c4gt bounty','c4gt coding']:
+                if 'c4gt' in label_name and label_name not in ['c4gt community', 'dmp 2024','c4gt bounty','c4gt coding','dmp 2026']:
                     tickets = await postgres_client.readAll("ccbp_tickets")
                     for ticket in tickets:
                         ticket_url_elements = ticket["url"].split('/')
