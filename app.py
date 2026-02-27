@@ -433,7 +433,6 @@ from sqlalchemy import text
 
 
 
-
 @app.route("/leaderboard", methods=["GET"])
 async def leaderboard():
     try:
