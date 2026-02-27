@@ -174,7 +174,7 @@ class TicketEventHandler:
             if is_issue:
                 return await self.onTicketEdit(eventData)
             print(f'ticket creation called at {datetime.now()} with {issue}')
-            if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024"] for label in issue["labels"] ):
+            if any(label["name"].lower() in ["c4gt community".lower(), "dmp 2024","dmp 2026"] for label in issue["labels"] ):
                 if any(label["name"].lower() == "c4gt community" for label in issue["labels"]):
                     ticketType = "ccbp"
                 else:
@@ -199,7 +199,7 @@ class TicketEventHandler:
                 designer = markdown_contents.get("Designer")
 
                 labels = issue["labels"]  # Assuming this contains the list of labels
-                desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty', 'C4GT Community']
+                desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty', 'C4GT Community','DMP 2026']
                 # Filter the labels to include only the desired ones
                 filtered_labels = []
                 for label in labels:
@@ -309,7 +309,7 @@ class TicketEventHandler:
         designer = markdown_contents.get("Designer")
 
         labels = issue["labels"]  # Assuming this contains the list of labels
-        desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty', 'C4GT Community']
+        desired_labels = ['C4GT Coding', 'C4GT Advisory', 'C4GT Mentorship', 'C4GT Design', 'C4GT Bounty', 'C4GT Community','DMP 2026']
         # Filter the labels to include only the desired ones
         filtered_labels = []
         for label in labels:
