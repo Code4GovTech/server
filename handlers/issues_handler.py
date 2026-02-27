@@ -88,33 +88,97 @@ class IssuesHandler(EventHandler):
             logging.info(e)
             raise Exception
         
-    async def handle_issue_labeled(self, data, **kwargs):
-        try:
-            token = kwargs.get("token", None)
-            print(json.dumps(data, indent=4))
+    # async def handle_issue_labeled(self, data, **kwargs):
+    #     try:
+    #         token = kwargs.get("token", None)
+    #         print(json.dumps(data, indent=4))
             
-            issue = data["issue"]
-            print('inside issue labeled with', issue)
-            db_issue = await self.postgres_client.get_data('id', 'issues', issue["id"])
+    #         issue = data["issue"]
+    #         print('inside issue labeled with', issue)
+    #         db_issue = await self.postgres_client.get_data('id', 'issues', issue["id"])
+    #         if not db_issue:
+    #             if token is not None:
+    #                 await self.handle_issue_opened(data,
+    #                                                token=token)
+    #             else:
+    #                 await self.handle_issue_opened(data)
+    #         labels = issue["labels"]
+    #         print(labels)
+    #         if labels:
+    #             label_names = [l['name'] for l in labels]
+    #             db_issue["labels"] = label_names
+    #             await self.postgres_client.update_data(db_issue, 'id', 'issues')
+                
+    #         return "success"
+    #     except Exception as e:
+    #         print('exception occured while handling labels ', e)
+    #         logging.info(e)
+    #         raise Exception
+    async def handle_issue_labeled(self, data, token=None):
+        try:
+            issue = data.get("issue")
+            if not issue:
+                print("No issue data found in payload")
+                return "failed"
+
+            print("inside issue labeled with", issue)
+
+            # Extract label names from GitHub payload
+            labels = issue.get("labels", [])
+            label_names = [l.get("name") for l in labels if l.get("name")]
+
+            # Allowed labels (normalize everything)
+            allowed_labels = [
+                "c4gt community",
+                "c4gt bounty",
+                "c4gt coding",
+                "dmp 2026"
+            ]
+
+            # Check if any allowed label exists
+            if not any(l.strip().lower() in allowed_labels for l in label_names):
+                print("No allowed labels found, skipping issue.")
+                return "skipped"
+
+            github_issue_id = issue.get("id")
+
+            #  Correct lookup using issue_id column (NOT id)
+            db_issue = await self.postgres_client.get_issue_from_issue_id(github_issue_id)
+
+            # If issue not found, create it first (race condition handling)
             if not db_issue:
+                print("Issue not found in DB. Creating issue first...")
+
                 if token is not None:
-                    await self.handle_issue_opened(data,
-                                                   token=token)
+                    await self.handle_issue_opened(data, token=token)
                 else:
                     await self.handle_issue_opened(data)
-            labels = issue["labels"]
-            print(labels)
-            if labels:
-                label_names = [l['name'] for l in labels]
-                db_issue["labels"] = label_names
-                await self.postgres_client.update_data(db_issue, 'id', 'issues')
-                
+
+                # Refetch after creation
+                db_issue = await self.postgres_client.get_issue_from_issue_id(github_issue_id)
+
+            if not db_issue:
+                print("Issue still not found after creation attempt.")
+                return "failed"
+
+            # get_issue_from_issue_id returns list
+            db_issue = db_issue[0]
+
+            # Update labels safely
+            db_issue["labels"] = label_names
+
+            await self.postgres_client.update_data(
+                db_issue,
+                "id",   # primary key column
+                "issues"
+            )
+
+            print("Labels updated successfully:", label_names)
             return "success"
+
         except Exception as e:
-            print('exception occured while handling labels ', e)
-            logging.info(e)
-            raise Exception
-        
+            print("Exception occurred while handling labels:", str(e))
+            return "failed"
     async def handle_issue_unlabeled(self, data):
         try:
             
