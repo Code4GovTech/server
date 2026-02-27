@@ -432,6 +432,7 @@ async def trigger_cron():
 from sqlalchemy import text
 
 
+
 @app.route("/leaderboard", methods=["GET"])
 async def leaderboard():
     try:
