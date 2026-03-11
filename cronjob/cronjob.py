@@ -119,6 +119,46 @@ class CronJob():
                 return repo_data.get('repositories', [])
 
 
+    # async def get_issues(self, token: str, since: datetime, repo_fullname: str, to_date=None):
+    #     page = 1
+    #     all_issues = []
+    #     while True:
+    #         get_issue_url = f"https://api.github.com/repos/{repo_fullname}/issues?state=all&per_page=100&page={page}"
+    #         token_headers = {
+    #             "Accept": "application/vnd.github+json",
+    #             "Authorization": f"Bearer {token}",
+    #             "X-GitHub-Api-Version": "2022-11-28"
+    #         }
+
+    #         payload = {
+    #             # "labels": "c4gt community",
+    #             "since": since.isoformat(),
+    #             "direction": "asc"
+    #         }
+    #         async with httpx.AsyncClient() as client:
+    #             allowed_labels = {"c4gt community", "dmp 2026"}
+    #             issues_response = await client.get(url=get_issue_url, headers=token_headers, params=payload)
+
+    #             page_issues = issues_response.json()
+    #             page_issues = [
+    #                 issue for issue in page_issues
+    #                 if any(label["name"].lower() in allowed_labels for label in issue.get("labels", []))
+    #             ]
+    #             # Filter based on created_at if to_date is provided
+    #             if to_date:
+    #                 page_issues = [issue for issue in page_issues if
+    #                                datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00')) <= to_date]
+
+    #             if len(page_issues) > 0:
+    #                 all_issues += page_issues
+    #                 page += 1
+    #             else:
+    #                 break
+
+    #             rate_limit = await self.get_rate_limits(token)
+    #             print(rate_limit)
+
+    #     return all_issues
     async def get_issues(self, token: str, since: datetime, repo_fullname: str, to_date=None):
         page = 1
         all_issues = []
@@ -131,30 +171,39 @@ class CronJob():
             }
 
             payload = {
-                "labels": "c4gt community",
                 "since": since.isoformat(),
                 "direction": "asc"
             }
+
             async with httpx.AsyncClient() as client:
+                allowed_labels = {"c4gt community", "dmp 2026"}
                 issues_response = await client.get(url=get_issue_url, headers=token_headers, params=payload)
-                page_issues = issues_response.json()
+
+                raw_issues = issues_response.json()
+
+                # Stop only when GitHub returns no more issues
+                if len(raw_issues) == 0:
+                    break
+
+                page_issues = [
+                    issue for issue in raw_issues
+                    if any(label["name"].lower() in allowed_labels for label in issue.get("labels", []))
+                ]
 
                 # Filter based on created_at if to_date is provided
                 if to_date:
-                    page_issues = [issue for issue in page_issues if
-                                   datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00')) <= to_date]
+                    page_issues = [
+                        issue for issue in page_issues
+                        if datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00')) <= to_date
+                    ]
 
-                if len(page_issues) > 0:
-                    all_issues += page_issues
-                    page += 1
-                else:
-                    break
+                all_issues += page_issues
+                page += 1
 
                 rate_limit = await self.get_rate_limits(token)
                 print(rate_limit)
 
         return all_issues
-
     async def get_issue_comments(self, issue_comment_url, since: datetime, to_date=None, **kwargs):
         page = 1
 
